@@ -1,0 +1,7 @@
+.venv/
+requirements.txt
+README.md
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
