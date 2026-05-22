@@ -168,7 +168,7 @@ if __name__ == "__main__":
     with open("datasets/rnp.gml", "r", encoding="utf-8") as f:
         gml_text = f.read()
 
-    N = 10  # número de nós
+    N = 2  # número de nós
 
     G = create_topology_from_gml_locations(
         gml_text=gml_text,
