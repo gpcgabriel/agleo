@@ -1,4 +1,5 @@
 import os
+from json import dump
 from agno.agent import Agent
 from agno.models.ollama import Ollama
 
@@ -49,8 +50,7 @@ offloading_agent = Agent(
         "2. Choose the best algorithm based on the source code logic provided above.",
         "3. Call 'apply_offloading_strategy' with the chosen strategy_name.",
     ],
-    markdown=True,
-    debug_mode=True
+    markdown=True
 )
 
 def llm_orchestrator(model, parameters):
@@ -59,8 +59,6 @@ def llm_orchestrator(model, parameters):
     from ..process_unit import ProcessUnit
     from ..application import Application
     from ..user import User
-
-    parameters = parameters or None
 
     current_state = f"""
     ### Current Simulation State
@@ -77,12 +75,13 @@ def llm_orchestrator(model, parameters):
         f"Current State:\n{current_state}\n\nApply the best heuristic.",
         expected_output="The result of the tool call only."
     )
-    
-    with open("llm_orchestrator_content.log", "a", encoding="utf-8") as log_file:
-        log_file.write(f"\n--- Step {model.scheduler.steps} ---\n")
-        log_file.write(f"LLM Response:\n{response.content}\n")
 
-    with open("logs/llm_orchestrator_debug.json", "a", encoding="utf-8") as log_file:
-        log_file.write(f'{{"Step": {model.scheduler.steps}, "Response": {response.to_dict()}}}\n')
+    output_data = {
+        "step": model.scheduler.steps,
+        "agent_response": response.to_dict()
+    }
+    
+    with open("logs/agent_log.json", "w", encoding="utf-8") as json_file:
+        dump(output_data, json_file, indent=4)
 
     print(response.content)
