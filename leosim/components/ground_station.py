@@ -4,6 +4,10 @@ from .network_link import NetworkLink
 from .satellite import Satellite
 from .user import User
 from typing import List, Tuple, Optional, Dict, Any
+from json import dump
+import os
+from agno.agent import Agent
+from agno.models.ollama import Ollama
 
 class GroundStation(ComponentManager):
     """Represents a ground station providing wireless connectivity.
@@ -59,6 +63,57 @@ class GroundStation(ComponentManager):
         self.users: List[User] = []
 
         self.process_unit = []
+
+        self.llm_params = None
+
+        self.offloading_agent = Agent(
+            model=Ollama(id="qwen3.5", options={"temperature": 0}),
+            tools=[self.apply_offloading_strategy],
+            instructions=[
+                "You are an expert Resource Management Controller for a LEO Satellite Network.",
+                "Below is the source code for the heuristics you can use. READ THEM to understand their logic:",
+                self.get_algorithms_code(),
+                "1. Analyze the current network state provided (CPU, load, visibility).",
+                "2. Choose the best algorithm based on the source code logic provided above.",
+                "3. Call 'apply_offloading_strategy' with the chosen strategy_name.",
+            ],
+            markdown=True
+        )
+
+    def get_algorithms_code(self):
+        code_context = ""
+        path = "leosim/components/allocation_algorithms"
+        files = ["best_fit_allocation.py", "longest_duration_allocation.py"]
+        
+        for file in files:
+            full_path = os.path.join(path, file)
+            if os.path.exists(full_path):
+                with open(full_path, "r", encoding="utf-8") as f:
+                    code_context += f"\n--- SOURCE CODE FOR {file} ---\n{f.read()}\n"
+        return code_context
+
+    def apply_offloading_strategy(self, strategy_name: str) -> str:
+        """
+        Applies a resource allocation heuristic to the satellite network.
+        Args:
+            strategy_name (str): Name of the heuristic ('best_fit_allocation' or 'longest_duration_allocation').
+        """
+        from leosim.components.allocation_algorithms import best_fit_allocation, longest_duration_allocation
+
+        algorithms = {
+            "best_fit_allocation": best_fit_allocation,
+            "longest_duration_allocation": longest_duration_allocation
+        }
+
+        model = ComponentManager.model
+        if not model:
+            return "Error: Simulator model not initialized."
+
+        selected_heuristic = algorithms.get(strategy_name)
+        if selected_heuristic:
+            selected_heuristic(model, self.llm_params)
+            return f"Successfully applied {strategy_name}."
+        return f"Heuristic '{strategy_name}' not found."
 
     def export(self) -> Dict[str, Any]:
         """Generates a dictionary representation of the ground station state.
@@ -148,6 +203,36 @@ class GroundStation(ComponentManager):
                 topology.add_edge(satellite, self)
                 topology._adj[satellite][self] = link
                 topology._adj[self][satellite] = link
+
+    def resource_management_algorithm(self, model, parameters):
+        parameters['ground_station'] = self
+        self.llm_params = parameters
+
+        current_state = f"""
+        ### Current Simulation State
+        - **Step**: {model.scheduler.steps}
+
+        **Users:** {self.users}
+        **Ground Station Coordinates:** {self.coordinates}
+        **Ground Station Max Connection Range:** {self.max_connection_range} km
+        **Ground Station Wireless Delay:** {self.wireless_delay} ms
+        **Available Process Units for this Ground Station:** {self.process_unit}
+        """
+
+        response = self.offloading_agent.run(
+            f"Current State:\n{current_state}\n\nApply the best heuristic.",
+            expected_output="The result of the tool call only."
+        )
+
+        output_data = {
+            "step": model.scheduler.steps,
+            "agent_response": response.to_dict()
+        }
+        
+        with open("logs/agent_log.json", "w", encoding="utf-8") as json_file:
+            dump(output_data, json_file, indent=4)
+
+        print(response.content)
 
     @staticmethod
     def export_groundstations() -> Dict:

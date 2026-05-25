@@ -49,7 +49,7 @@ def best_fit_allocation(model, parameters):
         # Try to allocate on the ground network
         if process_units == []:   
             process_units = []
-            for unit in ProcessUnit.all():
+            for unit in parameters['ground_station'].process_unit:
                 # Check if communication with this server is possible
                 if unit.has_capacity_to_host(access_model.application) and unit.available and has_path(model.topology, access_model.user, unit):
                     process_units.append(unit)

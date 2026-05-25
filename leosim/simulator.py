@@ -1,6 +1,5 @@
 # Simulator components
 import json
-import time
 import os
 import datetime
 from typing import Callable, List, Dict, Any, Optional
@@ -197,10 +196,13 @@ class Simulator(ComponentManager):
             topology=self.topology, 
             **self.topology_management_parameters
         )
-        self.resource_management_algorithm(
-            self, 
-            self.resource_management_algorithm_parameters
-        )
+        # self.resource_management_algorithm(
+        #     self, 
+        #     self.resource_management_algorithm_parameters
+        # )
+
+        for gs in GroundStation.all():
+            gs.resource_management_algorithm(self, self.resource_management_algorithm_parameters)
             
     def monitor(self) -> None:
         """Collects metrics from all tracked components.
