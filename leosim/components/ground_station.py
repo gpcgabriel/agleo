@@ -8,6 +8,7 @@ from json import dump
 import os
 from agno.agent import Agent
 from agno.models.ollama import Ollama
+from leosim.components.application import Application
 
 class GroundStation(ComponentManager):
     """Represents a ground station providing wireless connectivity.
@@ -216,8 +217,17 @@ class GroundStation(ComponentManager):
         **Ground Station Coordinates:** {self.coordinates}
         **Ground Station Max Connection Range:** {self.max_connection_range} km
         **Ground Station Wireless Delay:** {self.wireless_delay} ms
-        **Available Process Units for this Ground Station:** {self.process_unit}
+        **Available Process Units for this Ground Station:**"
         """
+
+        for i in self.process_unit:
+            current_state += f"- ID: {i.id}\n"
+            current_state += f"\t- CPU: {i.cpu}, Memory: {i.memory} GB\n"
+
+        for i in Application.all():
+            current_state += f"- ID: {i.id}\n"
+            current_state += f"\t- Demand:\n"
+            current_state += f"\t\t- CPU: {i.cpu_demand}, Memory: {i.memory_demand} GB\n"
 
         response = self.offloading_agent.run(
             f"Current State:\n{current_state}\n\nApply the best heuristic.",
