@@ -1,159 +1,18 @@
 {
-    "step": 10,
+    "step": 5,
     "agent_response": {
-        "run_id": "a0833bbd-7572-48b4-a5e6-ef6d42b12ed1",
-        "agent_id": "open-darwin-cfa88dab",
-        "session_id": "800c503d-3e55-4b4e-bc79-87bb662c9bb8",
-        "content": "## Analysis of Current Network State\n\nBased on the provided information:\n\n- **Step**: 10\n- **Users**: Empty (no active users)\n- **Ground Station**: Available with 5 process units (IDs 1-5)\n- **Network Type**: LEO Satellite Network\n\n## Algorithm Selection\n\nAfter analyzing both heuristics:\n\n| Algorithm | Purpose | Best For |\n|-----------|---------|----------|\n| **best_fit_allocation** | Minimizes remaining resources after allocation | Static resource packing |\n| **longest_duration_allocation** | Prioritizes applications by visibility duration | Satellite networks with intermittent connectivity |\n\n**Recommendation**: `longest_duration_allocation`\n\n**Reasoning**:\n1. This is a **LEO Satellite Network** where connections are time-limited due to orbital mechanics\n2. The `longest_duration_allocation` algorithm specifically:\n   - Calculates exposure time based on satellite visibility\n   - Prioritizes applications that will stay connected longer\n   - Maximizes utility of satellite resources\n3. Even though users are currently empty, this strategy will be more effective when users appear, as it optimizes for the satellite network's unique constraints## Strategy Applied: `longest_duration_allocation`\n\n### Why this strategy was chosen:\n\n1. **Satellite Network Context**: In LEO satellite networks, connections are inherently time-limited due to orbital mechanics and visibility windows. This algorithm specifically addresses this constraint.\n\n2. **Key Features of this Algorithm**:\n   - **Visibility-based prioritization**: Calculates how long a satellite will remain visible to a user\n   - **Resource optimization**: Allocates applications to satellites that will provide the longest connection duration\n   - **Hybrid support**: Can allocate to both ground stations and satellites when appropriate\n\n3. **Current State Consideration**:\n   - With no active users currently, the algorithm will be ready to optimize allocations efficiently when users appear\n   - The ground station resources (5 process units) will be utilized appropriately based on visibility constraints\n\n### Expected Behavior:\nWhen users connect, the algorithm will:\n- Prioritize applications on satellites with longer visibility windows\n- Minimize resource waste by matching applications to the most suitable satellite\n- Balance load between ground stations and satellites based on connectivity duration\n\nThe strategy is now active and will optimize resource allocation for the satellite network's unique operational constraints.",
+        "run_id": "3171bb1b-c538-4471-b786-67c5b56236eb",
+        "agent_id": "robust-pauling-6c39d604",
+        "session_id": "7f1f8c11-dfdc-4ff4-b3ae-55dcf36d0ad7",
+        "content": "Operation cancelled by user",
         "content_type": "str",
-        "model": "qwen3.5",
+        "model": "deepseek-coder:33b",
         "model_provider": "Ollama",
-        "session_state": {
-            "current_session_id": "800c503d-3e55-4b4e-bc79-87bb662c9bb8",
-            "current_run_id": "a0833bbd-7572-48b4-a5e6-ef6d42b12ed1"
-        },
-        "created_at": 1780077856,
-        "status": "COMPLETED",
-        "metrics": {
-            "input_tokens": 4909,
-            "output_tokens": 987,
-            "total_tokens": 5896,
-            "time_to_first_token": 389.50504026998533,
-            "duration": 630.5695984559716,
-            "details": {
-                "model": [
-                    {
-                        "input_tokens": 4909,
-                        "output_tokens": 987,
-                        "total_tokens": 5896,
-                        "id": "qwen3.5",
-                        "provider": "Ollama",
-                        "provider_metrics": {
-                            "total_duration": 630556907277,
-                            "load_duration": 737512904,
-                            "prompt_eval_duration": 261406606561,
-                            "eval_duration": 367550340030
-                        }
-                    }
-                ]
-            }
-        },
-        "messages": [
-            {
-                "id": "773552df-b72a-4f33-8fc9-e966ab36346e",
-                "content": "- You are an expert Resource Management Controller for a LEO Satellite Network.\n- Below is the source code for the heuristics you can use. READ THEM to understand their logic:\n- \n--- SOURCE CODE FOR best_fit_allocation.py ---\nfrom ..process_unit import ProcessUnit\nfrom ..satellite import Satellite\nfrom ..user import User\nimport networkx as nx\n\ndef has_path(topology, origin, target):\n    for access_point in origin.network_access_points:\n        if nx.has_path(G=topology, source=access_point, target=target):\n            return True\n    \n    return False\n\ndef best_fit_allocation(model, parameters):\n\n    def best_fit(app, process_units):\n        return min(process_units, key=lambda unit: \n                   (unit.cpu - app.cpu_demand) + (unit.memory - app.memory_demand) + (unit.storage - app.storage_demand) \n        )\n        \n    applications_to_be_allocated = []\n\n    # Select which applications require provisioning\n    for user in User.all():\n        for access_model in user.applications_access_models:\n            if not access_model.request_provisioning and access_model.application.available:\n                access_model.application.deprovision()\n\n            elif access_model.request_provisioning and not access_model.application.available:\n                applications_to_be_allocated.append(access_model)\n            else:\n                process_unit = access_model.application.process_unit\n                # If not directly connected to a network access point\n                if not any(\n                    ( process_unit in model.topology.neighbors(access_point)  for access_point in user.network_access_points)\n                    ) or user.network_access_points == []:\n                    applications_to_be_allocated.append(access_model)\n\n    # Iterate over provisioning demands\n    for access_model in applications_to_be_allocated:\n        process_units = []\n        # Search for ProcessUnits directly connected to network access points\n        for access_point in access_model.user.network_access_points:\n            if isinstance(access_point, Satellite) and getattr(access_point, 'process_unit') is not None:\n                process_unit = access_point.process_unit\n\n                if process_unit.has_capacity_to_host(access_model.application) and process_unit.available:\n                    process_units.append(process_unit)\n\n        # Try to allocate on the ground network\n        if process_units == []:   \n            process_units = []\n            for unit in parameters['ground_station'].process_unit:\n                # Check if communication with this server is possible\n                if unit.has_capacity_to_host(access_model.application) and unit.available and has_path(model.topology, access_model.user, unit):\n                    process_units.append(unit)\n\n        if process_units == []:\n            if access_model.application.available:\n                access_model.application.deprovision()\n            continue\n\n        target = best_fit(app=access_model.application, process_units=process_units)\n\n        if target != access_model.application.process_unit:\n            access_model.application.provision(target)\n\n--- SOURCE CODE FOR longest_duration_allocation.py ---\nfrom ..process_unit import ProcessUnit\nfrom geopy.distance import geodesic\nfrom ..satellite import Satellite\nfrom ..user import User \nfrom math import sqrt\nimport networkx as nx\n\ndef has_path(topology, origin, target):\n    \"\"\"Verifica se existe conectividade via rede terrestre.\"\"\"\n    for access_point in origin.network_access_points:\n        if nx.has_path(G=topology, source=access_point, target=target):\n            return True\n    return False\n\ndef distance(coordinates1, coordinates2):\n    \"\"\"Calcula a dist\u00e2ncia 3D entre dois pontos.\"\"\"\n    if coordinates1 is None or coordinates2 is None:\n        return float('inf')\n    ground_distance = geodesic(coordinates1[:2], coordinates2[:2]).kilometers \n    air_distance = (coordinates1[2] - coordinates2[2]) / 1000\n    return sqrt(ground_distance**2 + air_distance**2)\n\ndef get_exposure_time(user, satellite):\n    \"\"\"Calcula por quantos passos de simula\u00e7\u00e3o o sat\u00e9lite ainda estar\u00e1 vis\u00edvel.\"\"\"\n    step = user.model.scheduler.steps\n    max_distance = min(user.max_connection_range, satellite.max_connection_range)\n    count = 0\n    \n    # Simula a trajet\u00f3ria futura para prever a dura\u00e7\u00e3o da conex\u00e3o\n    for coordinates in satellite.coordinates_trace[step:]:\n        if coordinates is not None:\n            if distance(coordinates1=coordinates, coordinates2=user.coordinates) < max_distance:\n                count += 1\n            else:\n                break\n    return count\n\ndef longest_duration_allocation(model, parameters):\n    # Algoritmo de aloca\u00e7\u00e3o com contagem de provisionamentos por step.\n    \n    # Criamos um dicion\u00e1rio no objeto model para persistir os dados entre os steps\n    if not hasattr(model, 'provisioning_history'):\n        model.provisioning_history = {}\n    \n    step_atual_str = str(model.scheduler.steps)\n    if step_atual_str not in model.provisioning_history:\n        model.provisioning_history[step_atual_str] = 0\n\n    applications_to_be_allocated = []\n\n    # 1. Identificar aplica\u00e7\u00f5es que precisam de provisionamento\n    for user in User.all():\n        for access_model in user.applications_access_models:\n            if not access_model.request_provisioning and access_model.application.available:\n                access_model.application.deprovision()\n            elif access_model.request_provisioning and not access_model.application.available:\n                applications_to_be_allocated.append(access_model)\n            else:\n                process_unit = access_model.application.process_unit\n                if not any(\n                    (process_unit in model.topology.neighbors(ap) for ap in user.network_access_points)\n                ) or user.network_access_points == []:\n                    applications_to_be_allocated.append(access_model)\n\n    # 2. Ordenar aplica\u00e7\u00f5es\n    def get_remaining_time(access_model):\n        last_access = access_model.history[-1]\n        if last_access.get('required_provisioning_time'):\n            return last_access.get('required_provisioning_time') - last_access['provisioned_time']\n        return last_access['end'] - model.scheduler.steps\n    \n    applications_to_be_allocated.sort(key=get_remaining_time, reverse=True)\n\n    # 3. Aloca\u00e7\u00e3o\n    for access_model in applications_to_be_allocated:\n        best_target = None\n        max_duration = -1\n        sat = None\n\n        # Tenta Ground Stations\n        if parameters['scenario'] == 'terrestrial' or parameters['scenario'] == 'hybrid':\n            for unit in parameters['ground_station'].process_unit:\n                if not isinstance(getattr(unit, 'owner', None), Satellite):\n                    if unit.has_capacity_to_host(access_model.application) and unit.available:\n                        if has_path(model.topology, access_model.user, unit):\n                            best_target = unit\n                            max_duration = float('inf')\n                            break \n        \n        # Tenta Sat\u00e9lites\n        if best_target is None:\n            for access_point in access_model.user.network_access_points:\n                if not model.topology.has_node(access_point):\n                    continue\n                \n                if (isinstance(access_point, Satellite) and access_point.active):\n                    pu = getattr(access_point, 'process_unit', None)\n                    if pu and pu.available and pu.has_capacity_to_host(access_model.application):\n                        duration = get_exposure_time(access_model.user, access_point)\n                        if duration > max_duration:\n                            max_duration = duration\n                            best_target = pu\n\n        # 4. Provisionamento e Contagem\n        if best_target is not None:\n            app = access_model.application\n            \n            # Executa o provisionamento\n            if best_target != app.process_unit:\n                app.provision(best_target)\n                \n                # Incrementa o contador de provisionamentos\n                model.provisioning_history[step_atual_str] += 1\n\n- 1. Analyze the current network state provided (CPU, load, visibility).\n- 2. Choose the best algorithm based on the source code logic provided above.\n- 3. Call 'apply_offloading_strategy' with the chosen strategy_name.\n<additional_information>\n- Use markdown to format your answers.\n</additional_information>",
-                "from_history": false,
-                "stop_after_tool_call": false,
-                "role": "system",
-                "created_at": 1780089690
-            },
-            {
-                "id": "77b3e4e2-38ee-421c-a4ce-327952b72e53",
-                "content": "Current State:\n\n        ### Current Simulation State\n        - **Step**: 10\n\n        **Users:** []\n        **Ground Station Coordinates:** [-13.536158652582206, -39.133945669785206, 0]\n        **Ground Station Max Connection Range:** 1500 km\n        **Ground Station Wireless Delay:** 0 ms\n        **Available Process Units for this Ground Station:**\"\n        - ID: 2\n\t- CPU: 87, Memory: 61 GB\n- ID: 1\n\t- Demand:\n\t\t- CPU: 38, Memory: 40 GB\n- ID: 2\n\t- Demand:\n\t\t- CPU: 11, Memory: 43 GB\n- ID: 3\n\t- Demand:\n\t\t- CPU: 37, Memory: 42 GB\n- ID: 4\n\t- Demand:\n\t\t- CPU: 43, Memory: 35 GB\n- ID: 5\n\t- Demand:\n\t\t- CPU: 48, Memory: 10 GB\n\n\nApply the best heuristic.",
-                "from_history": false,
-                "stop_after_tool_call": false,
-                "role": "user",
-                "created_at": 1780089690
-            },
-            {
-                "id": "08e53c16-cf07-4c3e-9a96-a55326e183cf",
-                "content": "## Analysis of Current Network State\n\nBased on the provided information:\n\n- **Step**: 10\n- **Users**: Empty (no active users)\n- **Ground Station**: Available with 5 process units (IDs 1-5)\n- **Network Type**: LEO Satellite Network\n\n## Algorithm Selection\n\nAfter analyzing both heuristics:\n\n| Algorithm | Purpose | Best For |\n|-----------|---------|----------|\n| **best_fit_allocation** | Minimizes remaining resources after allocation | Static resource packing |\n| **longest_duration_allocation** | Prioritizes applications by visibility duration | Satellite networks with intermittent connectivity |\n\n**Recommendation**: `longest_duration_allocation`\n\n**Reasoning**:\n1. This is a **LEO Satellite Network** where connections are time-limited due to orbital mechanics\n2. The `longest_duration_allocation` algorithm specifically:\n   - Calculates exposure time based on satellite visibility\n   - Prioritizes applications that will stay connected longer\n   - Maximizes utility of satellite resources\n3. Even though users are currently empty, this strategy will be more effective when users appear, as it optimizes for the satellite network's unique constraints",
-                "from_history": false,
-                "stop_after_tool_call": false,
-                "role": "assistant",
-                "tool_calls": [
-                    {
-                        "type": "function",
-                        "function": {
-                            "name": "apply_offloading_strategy",
-                            "arguments": "{\"strategy_name\": \"longest_duration_allocation\"}"
-                        },
-                        "id": "63196ba0-733c-485c-b45f-97b3a0e3b091"
-                    }
-                ],
-                "metrics": {
-                    "input_tokens": 2302,
-                    "output_tokens": 723,
-                    "total_tokens": 3025,
-                    "duration": 389.4999542980222,
-                    "time_to_first_token": 389.4999542980222,
-                    "provider_metrics": {
-                        "total_duration": 389497090983,
-                        "load_duration": 299190390,
-                        "prompt_eval_duration": 119306491232,
-                        "eval_duration": 269288387788
-                    }
-                },
-                "created_at": 1780089690
-            },
-            {
-                "id": "7f45d640-fbb0-48f7-a42c-3de6d8577a51",
-                "content": "Successfully applied longest_duration_allocation.",
-                "from_history": false,
-                "stop_after_tool_call": false,
-                "role": "tool",
-                "tool_call_id": "63196ba0-733c-485c-b45f-97b3a0e3b091",
-                "tool_name": "apply_offloading_strategy",
-                "tool_args": {
-                    "strategy_name": "longest_duration_allocation"
-                },
-                "tool_call_error": false,
-                "created_at": 1780090080
-            },
-            {
-                "id": "2e4eb89e-0156-46cf-a19d-34edddfbd54b",
-                "content": "## Strategy Applied: `longest_duration_allocation`\n\n### Why this strategy was chosen:\n\n1. **Satellite Network Context**: In LEO satellite networks, connections are inherently time-limited due to orbital mechanics and visibility windows. This algorithm specifically addresses this constraint.\n\n2. **Key Features of this Algorithm**:\n   - **Visibility-based prioritization**: Calculates how long a satellite will remain visible to a user\n   - **Resource optimization**: Allocates applications to satellites that will provide the longest connection duration\n   - **Hybrid support**: Can allocate to both ground stations and satellites when appropriate\n\n3. **Current State Consideration**:\n   - With no active users currently, the algorithm will be ready to optimize allocations efficiently when users appear\n   - The ground station resources (5 process units) will be utilized appropriately based on visibility constraints\n\n### Expected Behavior:\nWhen users connect, the algorithm will:\n- Prioritize applications on satellites with longer visibility windows\n- Minimize resource waste by matching applications to the most suitable satellite\n- Balance load between ground stations and satellites based on connectivity duration\n\nThe strategy is now active and will optimize resource allocation for the satellite network's unique operational constraints.",
-                "from_history": false,
-                "stop_after_tool_call": false,
-                "role": "assistant",
-                "metrics": {
-                    "input_tokens": 2607,
-                    "output_tokens": 264,
-                    "total_tokens": 2871,
-                    "duration": 241.06154895899817,
-                    "time_to_first_token": 241.06154895899817,
-                    "provider_metrics": {
-                        "total_duration": 241059816294,
-                        "load_duration": 438322514,
-                        "prompt_eval_duration": 142100115329,
-                        "eval_duration": 98261952242
-                    }
-                },
-                "created_at": 1780090080
-            }
-        ],
-        "tools": [
-            {
-                "tool_call_id": "63196ba0-733c-485c-b45f-97b3a0e3b091",
-                "tool_name": "apply_offloading_strategy",
-                "tool_args": {
-                    "strategy_name": "longest_duration_allocation"
-                },
-                "tool_call_error": false,
-                "result": "Successfully applied longest_duration_allocation.",
-                "metrics": {
-                    "start_time": 1780090080.3926592,
-                    "end_time": 1780090080.3929439,
-                    "duration": 0.00028455298161134124
-                },
-                "child_run_id": null,
-                "stop_after_tool_call": false,
-                "created_at": 1780090080,
-                "requires_confirmation": null,
-                "confirmed": null,
-                "confirmation_note": null,
-                "requires_user_input": null,
-                "user_input_schema": null,
-                "user_feedback_schema": null,
-                "answered": null,
-                "external_execution_required": null,
-                "external_execution_silent": null,
-                "approval_type": null,
-                "approval_id": null
-            }
-        ],
+        "created_at": 1781039854,
+        "status": "CANCELLED",
+        "metrics": {},
         "input": {
-            "input_content": "Current State:\n\n        ### Current Simulation State\n        - **Step**: 10\n\n        **Users:** []\n        **Ground Station Coordinates:** [-13.536158652582206, -39.133945669785206, 0]\n        **Ground Station Max Connection Range:** 1500 km\n        **Ground Station Wireless Delay:** 0 ms\n        **Available Process Units for this Ground Station:**\"\n        - ID: 2\n\t- CPU: 87, Memory: 61 GB\n- ID: 1\n\t- Demand:\n\t\t- CPU: 38, Memory: 40 GB\n- ID: 2\n\t- Demand:\n\t\t- CPU: 11, Memory: 43 GB\n- ID: 3\n\t- Demand:\n\t\t- CPU: 37, Memory: 42 GB\n- ID: 4\n\t- Demand:\n\t\t- CPU: 43, Memory: 35 GB\n- ID: 5\n\t- Demand:\n\t\t- CPU: 48, Memory: 10 GB\n\n\nApply the best heuristic."
+            "input_content": "Current State:\n\n        ### Current Simulation State\n        - **Step**: 5\n\n        **Users:** []\n        **Ground Station Coordinates:** [-10.526752177037316, -48.96901274276921, 0]\n        **Ground Station Max Connection Range:** 1500 km\n        **Ground Station Wireless Delay:** 0 ms\n        **Available Process Units for this Ground Station:**\"\n        - ID: 1\n- CPU: 90, Memory: 61 GB\n- ID: 1\n\t- Demand:\n\t\t- CPU: 38, Memory: 40 GB\n- ID: 2\n\t- Demand:\n\t\t- CPU: 11, Memory: 43 GB\n- ID: 3\n\t- Demand:\n\t\t- CPU: 37, Memory: 42 GB\n- ID: 4\n\t- Demand:\n\t\t- CPU: 43, Memory: 35 GB\n- ID: 5\n\t- Demand:\n\t\t- CPU: 48, Memory: 10 GB\n\n\nApply the best heuristic."
         }
     }
 }

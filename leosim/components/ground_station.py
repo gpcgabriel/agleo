@@ -68,7 +68,7 @@ class GroundStation(ComponentManager):
         self.llm_params = None
 
         self.offloading_agent = Agent(
-            model=Ollama(id="qwen3.5", options={"temperature": 0}),
+            model=Ollama(id="deepseek-coder:33b", options={"temperature": 0}),
             tools=[self.apply_offloading_strategy],
             instructions=[
                 "You are an expert Resource Management Controller for a LEO Satellite Network.",
@@ -220,9 +220,10 @@ class GroundStation(ComponentManager):
         **Available Process Units for this Ground Station:**"
         """
 
-        for i in self.process_unit:
-            current_state += f"- ID: {i.id}\n"
-            current_state += f"\t- CPU: {i.cpu}, Memory: {i.memory} GB\n"
+        if self.process_unit:
+            for i in self.process_unit:
+                current_state += f"- ID: {i.id}\n"
+                current_state += f"- CPU: {i.cpu}, Memory: {i.memory} GB\n"
 
         for i in Application.all():
             current_state += f"- ID: {i.id}\n"
@@ -241,8 +242,6 @@ class GroundStation(ComponentManager):
         
         with open("logs/agent_log.json", "w", encoding="utf-8") as json_file:
             dump(output_data, json_file, indent=4)
-
-        print(response.content)
 
     @staticmethod
     def export_groundstations() -> Dict:

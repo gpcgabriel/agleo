@@ -78,7 +78,7 @@ def longest_duration_allocation(model, parameters):
         sat = None
 
         # Tenta Ground Stations
-        if parameters['scenario'] == 'terrestrial' or parameters['scenario'] == 'hybrid':
+        if parameters['ground_station'].process_unit and (parameters['scenario'] == 'terrestrial' or parameters['scenario'] == 'hybrid'):
             for unit in parameters['ground_station'].process_unit:
                 if not isinstance(getattr(unit, 'owner', None), Satellite):
                     if unit.has_capacity_to_host(access_model.application) and unit.available:

@@ -9,8 +9,8 @@
             "model_name": "",
             "architecture": {},
             "coordinates": [
-                -21.052044812064608,
-                -54.26774327064675,
+                -10.526752177037316,
+                -48.96901274276921,
                 0
             ],
             "available": true,
@@ -32,8 +32,8 @@
             "model_name": "",
             "architecture": {},
             "coordinates": [
-                -13.536158652582206,
-                -39.133945669785206,
+                -20.961005242445758,
+                -54.32432266698689,
                 0
             ],
             "available": true,
@@ -48,8 +48,31 @@
         },
         {
             "id": 3,
-            "cpu": 32,
-            "memory": 32,
+            "cpu": 85,
+            "memory": 66,
+            "storage": 52,
+            "power": 0,
+            "model_name": "",
+            "architecture": {},
+            "coordinates": [
+                -12.963969615862183,
+                -39.14211537375485,
+                0
+            ],
+            "available": true,
+            "power_generation_model_parameters": {},
+            "power_consumption_model_parameters": {},
+            "relationships": {
+                "power_generation_model": null,
+                "power_consumption_model": null,
+                "failure_model": null,
+                "applications": []
+            }
+        },
+        {
+            "id": 4,
+            "cpu": 30,
+            "memory": 44,
             "storage": 30,
             "power": 0,
             "model_name": "",
@@ -70,17 +93,17 @@
             }
         },
         {
-            "id": 4,
-            "cpu": 44,
-            "memory": 30,
+            "id": 5,
+            "cpu": 38,
+            "memory": 37,
             "storage": 38,
             "power": 0,
             "model_name": "",
             "architecture": {},
             "coordinates": [
-                -21.9062,
-                -68.5487,
-                553.7671
+                2.6542,
+                -60.4495,
+                454.9697
             ],
             "available": true,
             "power_generation_model_parameters": {},
@@ -93,17 +116,17 @@
             }
         },
         {
-            "id": 5,
-            "cpu": 37,
-            "memory": 38,
-            "storage": 33,
+            "id": 6,
+            "cpu": 33,
+            "memory": 49,
+            "storage": 35,
             "power": 0,
             "model_name": "",
             "architecture": {},
             "coordinates": [
-                2.6542,
-                -60.4495,
-                454.9697
+                -21.9062,
+                -68.5487,
+                553.7671
             ],
             "available": true,
             "power_generation_model_parameters": {},
@@ -378,7 +401,7 @@
                 "power_generate_model": null,
                 "failure_model": null,
                 "process_unit": {
-                    "id": 4,
+                    "id": 6,
                     "class": "ProcessUnit"
                 }
             }
@@ -460,7 +483,7 @@
                 "power_generate_model": null,
                 "failure_model": null,
                 "process_unit": {
-                    "id": 3,
+                    "id": 4,
                     "class": "ProcessUnit"
                 }
             }
@@ -902,7 +925,7 @@
                     },
                     {
                         "class": "GroundStation",
-                        "id": 2
+                        "id": 6
                     }
                 ]
             }
@@ -911,7 +934,7 @@
             "id": 2,
             "delay": 1,
             "active": true,
-            "bandwidth": 100000,
+            "bandwidth": 10000.0,
             "type": "static",
             "relationships": {
                 "topology": {
@@ -921,21 +944,21 @@
                 "flows": [],
                 "nodes": [
                     {
-                        "class": "Satellite",
-                        "id": 2
+                        "class": "GroundStation",
+                        "id": 1
                     },
                     {
                         "class": "GroundStation",
-                        "id": 1
+                        "id": 10
                     }
                 ]
             }
         },
         {
             "id": 3,
-            "delay": 10,
+            "delay": 1,
             "active": true,
-            "bandwidth": 100000,
+            "bandwidth": 200000.0,
             "type": "static",
             "relationships": {
                 "topology": {
@@ -945,21 +968,21 @@
                 "flows": [],
                 "nodes": [
                     {
-                        "class": "ProcessUnit",
+                        "class": "GroundStation",
                         "id": 1
                     },
                     {
                         "class": "GroundStation",
-                        "id": 1
+                        "id": 8
                     }
                 ]
             }
         },
         {
             "id": 4,
-            "delay": 10,
+            "delay": 1,
             "active": true,
-            "bandwidth": 100000,
+            "bandwidth": 20000.0,
             "type": "static",
             "relationships": {
                 "topology": {
@@ -969,18 +992,426 @@
                 "flows": [],
                 "nodes": [
                     {
-                        "class": "ProcessUnit",
-                        "id": 2
+                        "class": "GroundStation",
+                        "id": 1
                     },
                     {
                         "class": "GroundStation",
-                        "id": 2
+                        "id": 3
                     }
                 ]
             }
         },
         {
             "id": 5,
+            "delay": 1,
+            "active": true,
+            "bandwidth": 10000.0,
+            "type": "static",
+            "relationships": {
+                "topology": {
+                    "class": "Topology",
+                    "id": 0
+                },
+                "flows": [],
+                "nodes": [
+                    {
+                        "class": "GroundStation",
+                        "id": 2
+                    },
+                    {
+                        "class": "GroundStation",
+                        "id": 4
+                    }
+                ]
+            }
+        },
+        {
+            "id": 6,
+            "delay": 1,
+            "active": true,
+            "bandwidth": 1450.0,
+            "type": "static",
+            "relationships": {
+                "topology": {
+                    "class": "Topology",
+                    "id": 0
+                },
+                "flows": [],
+                "nodes": [
+                    {
+                        "class": "GroundStation",
+                        "id": 2
+                    },
+                    {
+                        "class": "GroundStation",
+                        "id": 9
+                    }
+                ]
+            }
+        },
+        {
+            "id": 7,
+            "delay": 1,
+            "active": true,
+            "bandwidth": 20000.0,
+            "type": "static",
+            "relationships": {
+                "topology": {
+                    "class": "Topology",
+                    "id": 0
+                },
+                "flows": [],
+                "nodes": [
+                    {
+                        "class": "GroundStation",
+                        "id": 2
+                    },
+                    {
+                        "class": "GroundStation",
+                        "id": 8
+                    }
+                ]
+            }
+        },
+        {
+            "id": 8,
+            "delay": 1,
+            "active": true,
+            "bandwidth": 3500.0,
+            "type": "static",
+            "relationships": {
+                "topology": {
+                    "class": "Topology",
+                    "id": 0
+                },
+                "flows": [],
+                "nodes": [
+                    {
+                        "class": "GroundStation",
+                        "id": 2
+                    },
+                    {
+                        "class": "GroundStation",
+                        "id": 5
+                    }
+                ]
+            }
+        },
+        {
+            "id": 9,
+            "delay": 1,
+            "active": true,
+            "bandwidth": 10000.0,
+            "type": "static",
+            "relationships": {
+                "topology": {
+                    "class": "Topology",
+                    "id": 0
+                },
+                "flows": [],
+                "nodes": [
+                    {
+                        "class": "GroundStation",
+                        "id": 2
+                    },
+                    {
+                        "class": "GroundStation",
+                        "id": 10
+                    }
+                ]
+            }
+        },
+        {
+            "id": 10,
+            "delay": 1,
+            "active": true,
+            "bandwidth": 3500.0,
+            "type": "static",
+            "relationships": {
+                "topology": {
+                    "class": "Topology",
+                    "id": 0
+                },
+                "flows": [],
+                "nodes": [
+                    {
+                        "class": "GroundStation",
+                        "id": 3
+                    },
+                    {
+                        "class": "GroundStation",
+                        "id": 10
+                    }
+                ]
+            }
+        },
+        {
+            "id": 11,
+            "delay": 1,
+            "active": true,
+            "bandwidth": 1450.0,
+            "type": "static",
+            "relationships": {
+                "topology": {
+                    "class": "Topology",
+                    "id": 0
+                },
+                "flows": [],
+                "nodes": [
+                    {
+                        "class": "GroundStation",
+                        "id": 3
+                    },
+                    {
+                        "class": "GroundStation",
+                        "id": 7
+                    }
+                ]
+            }
+        },
+        {
+            "id": 12,
+            "delay": 1,
+            "active": true,
+            "bandwidth": 20000.0,
+            "type": "static",
+            "relationships": {
+                "topology": {
+                    "class": "Topology",
+                    "id": 0
+                },
+                "flows": [],
+                "nodes": [
+                    {
+                        "class": "GroundStation",
+                        "id": 4
+                    },
+                    {
+                        "class": "GroundStation",
+                        "id": 9
+                    }
+                ]
+            }
+        },
+        {
+            "id": 13,
+            "delay": 1,
+            "active": true,
+            "bandwidth": 20000.0,
+            "type": "static",
+            "relationships": {
+                "topology": {
+                    "class": "Topology",
+                    "id": 0
+                },
+                "flows": [],
+                "nodes": [
+                    {
+                        "class": "GroundStation",
+                        "id": 4
+                    },
+                    {
+                        "class": "GroundStation",
+                        "id": 8
+                    }
+                ]
+            }
+        },
+        {
+            "id": 14,
+            "delay": 1,
+            "active": true,
+            "bandwidth": 3000.0,
+            "type": "static",
+            "relationships": {
+                "topology": {
+                    "class": "Topology",
+                    "id": 0
+                },
+                "flows": [],
+                "nodes": [
+                    {
+                        "class": "GroundStation",
+                        "id": 4
+                    },
+                    {
+                        "class": "GroundStation",
+                        "id": 5
+                    }
+                ]
+            }
+        },
+        {
+            "id": 15,
+            "delay": 1,
+            "active": true,
+            "bandwidth": 20000.0,
+            "type": "static",
+            "relationships": {
+                "topology": {
+                    "class": "Topology",
+                    "id": 0
+                },
+                "flows": [],
+                "nodes": [
+                    {
+                        "class": "GroundStation",
+                        "id": 4
+                    },
+                    {
+                        "class": "GroundStation",
+                        "id": 10
+                    }
+                ]
+            }
+        },
+        {
+            "id": 16,
+            "delay": 1,
+            "active": true,
+            "bandwidth": 1450.0,
+            "type": "static",
+            "relationships": {
+                "topology": {
+                    "class": "Topology",
+                    "id": 0
+                },
+                "flows": [],
+                "nodes": [
+                    {
+                        "class": "GroundStation",
+                        "id": 5
+                    },
+                    {
+                        "class": "GroundStation",
+                        "id": 9
+                    }
+                ]
+            }
+        },
+        {
+            "id": 17,
+            "delay": 1,
+            "active": true,
+            "bandwidth": 3000.0,
+            "type": "static",
+            "relationships": {
+                "topology": {
+                    "class": "Topology",
+                    "id": 0
+                },
+                "flows": [],
+                "nodes": [
+                    {
+                        "class": "GroundStation",
+                        "id": 5
+                    },
+                    {
+                        "class": "GroundStation",
+                        "id": 7
+                    }
+                ]
+            }
+        },
+        {
+            "id": 18,
+            "delay": 1,
+            "active": true,
+            "bandwidth": 10000.0,
+            "type": "static",
+            "relationships": {
+                "topology": {
+                    "class": "Topology",
+                    "id": 0
+                },
+                "flows": [],
+                "nodes": [
+                    {
+                        "class": "GroundStation",
+                        "id": 6
+                    },
+                    {
+                        "class": "GroundStation",
+                        "id": 8
+                    }
+                ]
+            }
+        },
+        {
+            "id": 19,
+            "delay": 1,
+            "active": true,
+            "bandwidth": 10000.0,
+            "type": "static",
+            "relationships": {
+                "topology": {
+                    "class": "Topology",
+                    "id": 0
+                },
+                "flows": [],
+                "nodes": [
+                    {
+                        "class": "GroundStation",
+                        "id": 6
+                    },
+                    {
+                        "class": "GroundStation",
+                        "id": 10
+                    }
+                ]
+            }
+        },
+        {
+            "id": 20,
+            "delay": 1,
+            "active": true,
+            "bandwidth": 3500.0,
+            "type": "static",
+            "relationships": {
+                "topology": {
+                    "class": "Topology",
+                    "id": 0
+                },
+                "flows": [],
+                "nodes": [
+                    {
+                        "class": "GroundStation",
+                        "id": 7
+                    },
+                    {
+                        "class": "GroundStation",
+                        "id": 10
+                    }
+                ]
+            }
+        },
+        {
+            "id": 21,
+            "delay": 1,
+            "active": true,
+            "bandwidth": 20000.0,
+            "type": "static",
+            "relationships": {
+                "topology": {
+                    "class": "Topology",
+                    "id": 0
+                },
+                "flows": [],
+                "nodes": [
+                    {
+                        "class": "GroundStation",
+                        "id": 7
+                    },
+                    {
+                        "class": "GroundStation",
+                        "id": 9
+                    }
+                ]
+            }
+        },
+        {
+            "id": 22,
             "delay": 1,
             "active": true,
             "bandwidth": 100000,
@@ -993,18 +1424,162 @@
                 "flows": [],
                 "nodes": [
                     {
-                        "class": "ProcessUnit",
-                        "id": 3
+                        "class": "Satellite",
+                        "id": 2
                     },
                     {
+                        "class": "GroundStation",
+                        "id": 1
+                    }
+                ]
+            }
+        },
+        {
+            "id": 23,
+            "delay": 1,
+            "active": true,
+            "bandwidth": 100000,
+            "type": "static",
+            "relationships": {
+                "topology": {
+                    "class": "Topology",
+                    "id": 0
+                },
+                "flows": [],
+                "nodes": [
+                    {
                         "class": "Satellite",
+                        "id": 2
+                    },
+                    {
+                        "class": "GroundStation",
                         "id": 3
                     }
                 ]
             }
         },
         {
-            "id": 6,
+            "id": 24,
+            "delay": 1,
+            "active": true,
+            "bandwidth": 100000,
+            "type": "static",
+            "relationships": {
+                "topology": {
+                    "class": "Topology",
+                    "id": 0
+                },
+                "flows": [],
+                "nodes": [
+                    {
+                        "class": "Satellite",
+                        "id": 3
+                    },
+                    {
+                        "class": "GroundStation",
+                        "id": 6
+                    }
+                ]
+            }
+        },
+        {
+            "id": 25,
+            "delay": 1,
+            "active": true,
+            "bandwidth": 100000,
+            "type": "static",
+            "relationships": {
+                "topology": {
+                    "class": "Topology",
+                    "id": 0
+                },
+                "flows": [],
+                "nodes": [
+                    {
+                        "class": "Satellite",
+                        "id": 1
+                    },
+                    {
+                        "class": "GroundStation",
+                        "id": 7
+                    }
+                ]
+            }
+        },
+        {
+            "id": 26,
+            "delay": 10,
+            "active": true,
+            "bandwidth": 100000,
+            "type": "static",
+            "relationships": {
+                "topology": {
+                    "class": "Topology",
+                    "id": 0
+                },
+                "flows": [],
+                "nodes": [
+                    {
+                        "class": "ProcessUnit",
+                        "id": 1
+                    },
+                    {
+                        "class": "GroundStation",
+                        "id": 10
+                    }
+                ]
+            }
+        },
+        {
+            "id": 27,
+            "delay": 10,
+            "active": true,
+            "bandwidth": 100000,
+            "type": "static",
+            "relationships": {
+                "topology": {
+                    "class": "Topology",
+                    "id": 0
+                },
+                "flows": [],
+                "nodes": [
+                    {
+                        "class": "ProcessUnit",
+                        "id": 2
+                    },
+                    {
+                        "class": "GroundStation",
+                        "id": 1
+                    }
+                ]
+            }
+        },
+        {
+            "id": 28,
+            "delay": 10,
+            "active": true,
+            "bandwidth": 100000,
+            "type": "static",
+            "relationships": {
+                "topology": {
+                    "class": "Topology",
+                    "id": 0
+                },
+                "flows": [],
+                "nodes": [
+                    {
+                        "class": "ProcessUnit",
+                        "id": 3
+                    },
+                    {
+                        "class": "GroundStation",
+                        "id": 4
+                    }
+                ]
+            }
+        },
+        {
+            "id": 29,
             "delay": 1,
             "active": true,
             "bandwidth": 100000,
@@ -1022,13 +1597,13 @@
                     },
                     {
                         "class": "Satellite",
-                        "id": 2
+                        "id": 3
                     }
                 ]
             }
         },
         {
-            "id": 7,
+            "id": 30,
             "delay": 1,
             "active": true,
             "bandwidth": 100000,
@@ -1050,33 +1625,38 @@
                     }
                 ]
             }
+        },
+        {
+            "id": 31,
+            "delay": 1,
+            "active": true,
+            "bandwidth": 100000,
+            "type": "static",
+            "relationships": {
+                "topology": {
+                    "class": "Topology",
+                    "id": 0
+                },
+                "flows": [],
+                "nodes": [
+                    {
+                        "class": "ProcessUnit",
+                        "id": 6
+                    },
+                    {
+                        "class": "Satellite",
+                        "id": 2
+                    }
+                ]
+            }
         }
     ],
     "GroundStation": [
         {
             "id": 1,
             "coordinates": [
-                -21.052044812064608,
-                -54.26774327064675,
-                0
-            ],
-            "wireless_delay": 0,
-            "max_connection_range": 1500,
-            "relationships": {
-                "users": [],
-                "process_unit": [
-                    {
-                        "id": 1,
-                        "class": "ProcessUnit"
-                    }
-                ]
-            }
-        },
-        {
-            "id": 2,
-            "coordinates": [
-                -13.536158652582206,
-                -39.133945669785206,
+                -20.961005242445758,
+                -54.32432266698689,
                 0
             ],
             "wireless_delay": 0,
@@ -1086,6 +1666,142 @@
                 "process_unit": [
                     {
                         "id": 2,
+                        "class": "ProcessUnit"
+                    }
+                ]
+            }
+        },
+        {
+            "id": 2,
+            "coordinates": [
+                -13.451726095299808,
+                -39.040836431771325,
+                0
+            ],
+            "wireless_delay": 0,
+            "max_connection_range": 1500,
+            "relationships": {
+                "users": [],
+                "process_unit": null
+            }
+        },
+        {
+            "id": 3,
+            "coordinates": [
+                -10.078824240419639,
+                -68.43693704074924,
+                0
+            ],
+            "wireless_delay": 0,
+            "max_connection_range": 1500,
+            "relationships": {
+                "users": [],
+                "process_unit": null
+            }
+        },
+        {
+            "id": 4,
+            "coordinates": [
+                -12.963969615862183,
+                -39.14211537375485,
+                0
+            ],
+            "wireless_delay": 0,
+            "max_connection_range": 1500,
+            "relationships": {
+                "users": [],
+                "process_unit": [
+                    {
+                        "id": 3,
+                        "class": "ProcessUnit"
+                    }
+                ]
+            }
+        },
+        {
+            "id": 5,
+            "coordinates": [
+                -5.595154082960636,
+                -35.14951802586238,
+                0
+            ],
+            "wireless_delay": 0,
+            "max_connection_range": 1500,
+            "relationships": {
+                "users": [],
+                "process_unit": null
+            }
+        },
+        {
+            "id": 6,
+            "coordinates": [
+                -29.914039088165453,
+                -50.817426057762894,
+                0
+            ],
+            "wireless_delay": 0,
+            "max_connection_range": 1500,
+            "relationships": {
+                "users": [],
+                "process_unit": null
+            }
+        },
+        {
+            "id": 7,
+            "coordinates": [
+                0.4466490024437438,
+                -50.8022041400157,
+                0
+            ],
+            "wireless_delay": 0,
+            "max_connection_range": 1500,
+            "relationships": {
+                "users": [],
+                "process_unit": null
+            }
+        },
+        {
+            "id": 8,
+            "coordinates": [
+                -20.778800666917626,
+                -39.728162570390964,
+                0
+            ],
+            "wireless_delay": 0,
+            "max_connection_range": 1500,
+            "relationships": {
+                "users": [],
+                "process_unit": null
+            }
+        },
+        {
+            "id": 9,
+            "coordinates": [
+                -7.658005542159803,
+                -35.400771497555375,
+                0
+            ],
+            "wireless_delay": 0,
+            "max_connection_range": 1500,
+            "relationships": {
+                "users": [],
+                "process_unit": null
+            }
+        },
+        {
+            "id": 10,
+            "coordinates": [
+                -10.526752177037316,
+                -48.96901274276921,
+                0
+            ],
+            "wireless_delay": 0,
+            "max_connection_range": 1500,
+            "relationships": {
+                "users": [],
+                "process_unit": [
+                    {
+                        "id": 1,
                         "class": "ProcessUnit"
                     }
                 ]
