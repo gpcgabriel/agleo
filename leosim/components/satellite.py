@@ -210,30 +210,20 @@ class Satellite(ComponentManager):
 
     @staticmethod
     def export_satellites() -> Dict:
-        """
-        Exports a dictionary representing the state of each satellite, 
-        including the previous, current, and next 5 future coordinates.
-        """
         satellite_data = {}
         for sat in Satellite._instances:
-            current_step = sat.model.scheduler.steps
-
-            prev_coords = None
-            if current_step > 0 and len(sat.coordinates_trace) >= current_step:
-                prev_coords = sat.coordinates_trace[current_step - 1]
-
-            current_coords = sat.coordinates
-
-            start_idx = current_step + 1
-            end_idx = current_step + 1
-            future_coordinates = sat.coordinates_trace[start_idx:end_idx]
-
-            satellite_data[f'ID: {sat.id}'] = {
-                "Previous Coordinates": prev_coords,
-                "Current Coordinates": current_coords,
-                "Future Coordinates": future_coordinates,
-                "Max Connection Range": sat.max_connection_range,
-                "Status": "Available" if not sat.failure_occurred else "Failure"
+            step = sat.model.scheduler.steps
+            future = [
+                (round(c[0], 1), round(c[1], 1)) if c else None
+                for c in sat.coordinates_trace[step + 1:step + 6]
+            ]
+            sat_pos = sat.coordinates
+            satellite_data[f"Sat_{sat.id}"] = {
+                "pos": (round(sat_pos[0], 1), round(sat_pos[1], 1)) if sat_pos else None,
+                "future": future,
+                "range": sat.max_connection_range,
+                "active": not sat.failure_occurred,
+                "pu": sat.process_unit.id if sat.process_unit else None,
+                "gateway": sat.is_gateway,
             }
-
         return satellite_data

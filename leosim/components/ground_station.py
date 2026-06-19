@@ -3,12 +3,14 @@ from ..component_manager import ComponentManager
 from .network_link import NetworkLink
 from .satellite import Satellite
 from .user import User
+from .application import Application
+from .process_unit import ProcessUnit
 from typing import List, Tuple, Optional, Dict, Any
-from json import dump
+from json import dump, dumps
 import os
+import traceback
 from agno.agent import Agent
 from agno.models.ollama import Ollama
-from leosim.components.application import Application
 
 class GroundStation(ComponentManager):
     """Represents a ground station providing wireless connectivity.
@@ -68,30 +70,31 @@ class GroundStation(ComponentManager):
         self.llm_params = None
 
         self.offloading_agent = Agent(
-            model=Ollama(id="deepseek-coder:33b", options={"temperature": 0}),
+            model=Ollama(id="llama3.2", host="http://localhost:11434", options={"temperature": 0}),
             tools=[self.apply_offloading_strategy],
             instructions=[
-                "You are an expert Resource Management Controller for a LEO Satellite Network.",
-                "Below is the source code for the heuristics you can use. READ THEM to understand their logic:",
-                self.get_algorithms_code(),
-                "1. Analyze the current network state provided (CPU, load, visibility).",
-                "2. Choose the best algorithm based on the source code logic provided above.",
-                "3. Call 'apply_offloading_strategy' with the chosen strategy_name.",
+                "You are a Resource Management Controller for a LEO Satellite Network.",
+                "You must choose ONE heuristic to run on the provided network state:",
+                self.get_algorithms_descriptions(),
+                "Call 'apply_offloading_strategy' with exactly 'best_fit_allocation' or 'longest_duration_allocation'.",
             ],
             markdown=True
         )
 
-    def get_algorithms_code(self):
-        code_context = ""
-        path = "leosim/components/allocation_algorithms"
-        files = ["best_fit_allocation.py", "longest_duration_allocation.py"]
-        
-        for file in files:
-            full_path = os.path.join(path, file)
-            if os.path.exists(full_path):
-                with open(full_path, "r", encoding="utf-8") as f:
-                    code_context += f"\n--- SOURCE CODE FOR {file} ---\n{f.read()}\n"
-        return code_context
+    def get_algorithms_descriptions(self):
+        return """
+**best_fit_allocation** — Minimizes resource fragmentation.
+- For each pending app, finds the satellite ProcessUnit directly connected to user access points.
+- If none available, falls back to ground station ProcessUnits reachable via terrestrial path.
+- Picks the unit with smallest remaining capacity that still fits (tightest packing).
+- Best when: CPU/memory/storage are scarce, many small apps pending, fragmentation is the main bottleneck.
+
+**longest_duration_allocation** — Maximizes connection stability.
+- Sorts pending apps by remaining required time (longest-duration apps allocated first).
+- For satellite ProcessUnits: picks the one whose satellite has the longest future exposure time to the user (checks next N steps of orbital trace).
+- For ground station ProcessUnits: picks first available with capacity and terrestrial path (infinite duration).
+- Best when: satellite orbits are predictable (visible in 'future' coords), users have short satellite visibility windows, connection stability matters more than packing density.
+"""
 
     def apply_offloading_strategy(self, strategy_name: str) -> str:
         """
@@ -209,49 +212,64 @@ class GroundStation(ComponentManager):
         parameters['ground_station'] = self
         self.llm_params = parameters
 
-        current_state = f"""
-        ### Current Simulation State
-        - **Step**: {model.scheduler.steps}
+        scenario = parameters.get('scenario', 'hybrid')
 
-        **Users:** {self.users}
-        **Ground Station Coordinates:** {self.coordinates}
-        **Ground Station Max Connection Range:** {self.max_connection_range} km
-        **Ground Station Wireless Delay:** {self.wireless_delay} ms
-        **Available Process Units for this Ground Station:**"
-        """
+        state = {
+            "step": model.scheduler.steps,
+            "scenario": scenario,
+            "ground_station": GroundStation.export_groundstations().get(f"GS_{self.id}", {}),
+            "satellites": Satellite.export_satellites(),
+            "users": User.export_users(),
+            "process_units": ProcessUnit.export_processunits(),
+            "applications": Application.export_applications(),
+            "topology": model.topology.export_topology(),
+        }
 
-        if self.process_unit:
-            for i in self.process_unit:
-                current_state += f"- ID: {i.id}\n"
-                current_state += f"- CPU: {i.cpu}, Memory: {i.memory} GB\n"
+        state_json = dumps(state, default=str)
 
-        for i in Application.all():
-            current_state += f"- ID: {i.id}\n"
-            current_state += f"\t- Demand:\n"
-            current_state += f"\t\t- CPU: {i.cpu_demand}, Memory: {i.memory_demand} GB\n"
-
-        response = self.offloading_agent.run(
-            f"Current State:\n{current_state}\n\nApply the best heuristic.",
-            expected_output="The result of the tool call only."
+        choice_criteria = (
+            "Decision criteria:\n"
+            "- If satellite future coords vary widely or users have short visibility windows (check topology.user_sat margin_pct), "
+            "use 'longest_duration_allocation' to maximize connection duration.\n"
+            "- If many apps compete for tight CPU/memory (check process_units cpu/mem surplus vs applications demands), "
+            "use 'best_fit_allocation' to minimize fragmentation.\n"
+            "- In 'terrestrial' scenario, prefer 'best_fit_allocation' (no satellite exposure windows exist).\n"
+            "Call 'apply_offloading_strategy' with the best choice."
         )
+
+        prompt = f"Network State (JSON):\n{state_json}\n\n{choice_criteria}"
+
+        try:
+            response = self.offloading_agent.run(
+                prompt,
+                expected_output="The result of the tool call only."
+            )
+        except Exception:
+            traceback.print_exc()
+            from leosim.components.allocation_algorithms import best_fit_allocation
+            best_fit_allocation(model, parameters)
+            return
 
         output_data = {
             "step": model.scheduler.steps,
-            "agent_response": response.to_dict()
+            "ground_station": self.id,
+            "agent_response": response.to_dict(),
         }
-        
-        with open("logs/agent_log.json", "w", encoding="utf-8") as json_file:
-            dump(output_data, json_file, indent=4)
+
+        os.makedirs("logs", exist_ok=True)
+        with open("logs/agent_log.jsonl", "a", encoding="utf-8") as f:
+            f.write(dumps(output_data, default=str) + "\n")
 
     @staticmethod
     def export_groundstations() -> Dict:
-        """Exports a summary of the ground station's current state (to LLM)."""
-        grounds_data = {}
+        gs_data = {}
         for gs in GroundStation._instances:
-            grounds_data[f'ID: {gs.id}'] = {
-                "Coordinates": gs.coordinates,
-                "Max Connection Range (km)": gs.max_connection_range,
-                "Process Units Connected (IDs)": [unit.id for unit in (gs.process_unit or [])]
+            gpos = gs.coordinates
+            gs_data[f"GS_{gs.id}"] = {
+                "pos": (round(gpos[0], 1), round(gpos[1], 1)) if gpos else None,
+                "range": gs.max_connection_range,
+                "delay": gs.wireless_delay,
+                "pus": [unit.id for unit in (gs.process_unit or [])],
+                "users": [user.id for user in gs.users],
             }
-
-        return grounds_data
+        return gs_data

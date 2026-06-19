@@ -223,15 +223,14 @@ class User(ComponentManager):
 
     @staticmethod
     def export_users() -> Dict:
-        """Exports a summary of the users current state."""
         users_data = {}
         for user in User._instances:
-            # print(f"User {user.id}:")
-            # print(f"  Coordinates: {user.coordinates}")
-            # print(f"  Max connection range: {user.max_connection_range} km")
-
-            users_data[f'ID: {user.id}'] = {
-                "Coordinates": user.coordinates,
-                "Max Connection Range (km)": user.max_connection_range
+            upos = user.coordinates
+            users_data[f"User_{user.id}"] = {
+                "pos": (round(upos[0], 1), round(upos[1], 1)) if upos else None,
+                "range": user.max_connection_range,
+                "access_points": [
+                    f"{type(ap).__name__}_{ap.id}" for ap in user.network_access_points
+                ],
             }
         return users_data

@@ -238,17 +238,14 @@ class Application(ComponentManager):
 
     @staticmethod
     def export_applications() -> Dict:
-        """Exports a summary of the applications current state."""
-        applications_data = {}
+        apps = {}
         for app in Application._instances:
-            # print(f"Application {app.id}:")
-            # print(f"  CPU Demand: {app.cpu_demand}")
-            # print(f"  Memory Demand: {app.memory_demand}")
-            # print(f"  User associated (IDs): {app.user.id if app.user else None}")
-
-            applications_data[f'ID: {app.id}'] = {
-                "CPU Demand": app.cpu_demand,
-                "Memory Demand": app.memory_demand,
-                "User associated (IDs)": app.user.id if app.user else None
+            apps[f"App_{app.id}"] = {
+                "cpu": app.cpu_demand,
+                "mem": app.memory_demand,
+                "sto": app.storage_demand,
+                "available": app.available,
+                "user": app.user.id if app.user else None,
+                "provisioned_on": app.process_unit.id if app.process_unit else None,
             }
-        return applications_data
+        return apps

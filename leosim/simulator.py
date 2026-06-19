@@ -196,13 +196,15 @@ class Simulator(ComponentManager):
             topology=self.topology, 
             **self.topology_management_parameters
         )
-        # self.resource_management_algorithm(
-        #     self, 
-        #     self.resource_management_algorithm_parameters
-        # )
 
-        for gs in GroundStation.all():
-            gs.resource_management_algorithm(self, self.resource_management_algorithm_parameters)
+        if self.resource_management_algorithm is True:
+            for gs in GroundStation.all():
+                gs.resource_management_algorithm(self, self.resource_management_algorithm_parameters)
+        elif callable(self.resource_management_algorithm):
+            for gs in GroundStation.all():
+                params = dict(self.resource_management_algorithm_parameters)
+                params['ground_station'] = gs
+                self.resource_management_algorithm(self, params)
             
     def monitor(self) -> None:
         """Collects metrics from all tracked components.
