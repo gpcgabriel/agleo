@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 
 markers = ['o', 'x', 's', '^', 'D', '*', 'v', '+']
+linestyles = ['-', '--', '-.', ':']
+linewidths = [2.5, 2.0, 1.8, 1.5]
 
 # ==========================================================
 # UTILITY FUNCTIONS
@@ -33,7 +35,10 @@ def plot(data_dict, steps_dict, xlabel, ylabel, filename, current_path):
             steps_dict[label],
             data_dict[label],
             label=label,
-            marker=markers[i % len(markers)]
+            marker=markers[i % len(markers)],
+            linestyle=linestyles[i % len(linestyles)],
+            linewidth=linewidths[i % len(linewidths)],
+            alpha=0.85,
         )
 
     plt.xlabel(xlabel, fontsize=18)

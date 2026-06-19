@@ -140,12 +140,15 @@ def main(args):
     # =============
     # Plot results
     # =============
-    compare_algorithms_averaged(["best_fit_allocation", "llm_orchestrator"], ["hybrid"], 1, "logs")
-    plot_migrations(["best_fit_allocation", "llm_orchestrator"], ["hybrid"], 1, "logs")
-    plot_avg_resource_consumption(["best_fit_allocation", "llm_orchestrator"], ["hybrid"], 1, "logs")
-    # plot_provisioned_in_topology([args.algorithm], [str(args.scenario)], args.repetitions, args.logs_dir)
-    # plot_delay_by_groundstation([args.algorithm], [str(args.scenario)], args.repetitions, args.logs_dir, ground_station_id=1)
-    # plot_avg_resource_consumption([args.algorithm], [str(args.scenario)], args.repetitions, args.logs_dir)
+    algs = ["best_fit_allocation", "longest_duration_allocation", "llm_orchestrator"]
+    scenarios = [str(args.scenario)]
+
+    compare_algorithms_averaged(algs, scenarios, args.repetitions, args.logs_dir)
+    plot_migrations(algs, scenarios, args.repetitions, args.logs_dir)
+    plot_avg_topology(algs, scenarios, args.repetitions, args.logs_dir)
+    plot_provisioned_in_topology(algs, scenarios, args.repetitions, args.logs_dir)
+    plot_delay_by_groundstation(algs, scenarios, args.repetitions, args.logs_dir, ground_station_id=1)
+    plot_avg_resource_consumption(algs, scenarios, args.repetitions, args.logs_dir)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="LEO Simulation Runner")
