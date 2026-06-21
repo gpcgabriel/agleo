@@ -5,6 +5,7 @@ from .process_unit import ProcessUnit
 from geopy.distance import geodesic
 from .satellite import Satellite
 from .user import User
+from .ground_station import GroundStation
 import networkx as nx
 import math
 from typing import Dict, List, Any, Optional, Tuple
@@ -253,6 +254,17 @@ class Topology(ComponentManager, nx.Graph):
                         "margin_pct": margin,
                     })
 
+        gs_sat_edges = []
+        for gs in GroundStation.all():
+            for sat in Satellite.all():
+                if self.has_edge(gs, sat):
+                    link = self[gs][sat]
+                    gs_sat_edges.append({
+                        "gs": gs.id,
+                        "sat": sat.id,
+                        "delay": link.get("delay", 0),
+                    })
+
         link_count = sum(1 for _ in self.edges())
         active_flows = sum(1 for f in NetworkFlow.all() if f.status == "active")
         waiting_flows = sum(1 for f in NetworkFlow.all() if f.status == "waiting")
@@ -260,6 +272,7 @@ class Topology(ComponentManager, nx.Graph):
         return {
             "link_count": link_count,
             "user_sat": user_sat_links,
+            "gs_sat": gs_sat_edges,
             "flows_active": active_flows,
             "flows_waiting": waiting_flows,
         }

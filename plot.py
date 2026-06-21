@@ -46,7 +46,7 @@ def plot(data_dict, steps_dict, xlabel, ylabel, filename, current_path):
     plt.xticks(fontsize=18)
     plt.yticks(fontsize=18)
     plt.grid(True)
-    plt.legend(fontsize=15)
+    plt.legend(fontsize=15, frameon=True, edgecolor="black", facecolor="white", framealpha=1)
 
     plt.savefig(os.path.join(current_path, filename))
     plt.close()

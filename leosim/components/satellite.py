@@ -215,15 +215,26 @@ class Satellite(ComponentManager):
             step = sat.model.scheduler.steps
             future = [
                 (round(c[0], 1), round(c[1], 1)) if c else None
-                for c in sat.coordinates_trace[step + 1:step + 6]
+                for c in sat.coordinates_trace[step + 1:step + 16]
             ]
+            pu = sat.process_unit
+            pu_avail = pu.available if pu else None
+            pu_info = None
+            if pu:
+                pu_info = {
+                    "id": pu.id,
+                    "cpu_free": pu.cpu - pu.cpu_demand,
+                    "mem_free": pu.memory - pu.memory_demand,
+                    "sto_free": pu.storage - pu.storage_demand,
+                    "available": pu.available,
+                }
             sat_pos = sat.coordinates
             satellite_data[f"Sat_{sat.id}"] = {
                 "pos": (round(sat_pos[0], 1), round(sat_pos[1], 1)) if sat_pos else None,
                 "future": future,
                 "range": sat.max_connection_range,
                 "active": not sat.failure_occurred,
-                "pu": sat.process_unit.id if sat.process_unit else None,
+                "pu": pu_info,
                 "gateway": sat.is_gateway,
             }
         return satellite_data

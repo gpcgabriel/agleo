@@ -226,11 +226,16 @@ class User(ComponentManager):
         users_data = {}
         for user in User._instances:
             upos = user.coordinates
+            pending_apps = []
+            for am in user.applications_access_models:
+                if am.request_provisioning and not am.application.available:
+                    pending_apps.append(am.application.id)
             users_data[f"User_{user.id}"] = {
                 "pos": (round(upos[0], 1), round(upos[1], 1)) if upos else None,
                 "range": user.max_connection_range,
                 "access_points": [
                     f"{type(ap).__name__}_{ap.id}" for ap in user.network_access_points
                 ],
+                "pending_apps": pending_apps,
             }
         return users_data

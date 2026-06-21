@@ -816,6 +816,178 @@
             }
         }
     ],
+    "Application": [
+        {
+            "id": 1,
+            "cpu_demand": 34,
+            "memory_demand": 37,
+            "storage_demand": 0,
+            "state": 0,
+            "sla": 0,
+            "dependency_labels": [],
+            "architectural_demands": {},
+            "relationships": {
+                "user": {
+                    "id": 1,
+                    "class": "User"
+                },
+                "process_unit": null
+            }
+        },
+        {
+            "id": 2,
+            "cpu_demand": 24,
+            "memory_demand": 39,
+            "storage_demand": 0,
+            "state": 0,
+            "sla": 0,
+            "dependency_labels": [],
+            "architectural_demands": {},
+            "relationships": {
+                "user": {
+                    "id": 2,
+                    "class": "User"
+                },
+                "process_unit": null
+            }
+        },
+        {
+            "id": 3,
+            "cpu_demand": 42,
+            "memory_demand": 35,
+            "storage_demand": 0,
+            "state": 0,
+            "sla": 0,
+            "dependency_labels": [],
+            "architectural_demands": {},
+            "relationships": {
+                "user": {
+                    "id": 3,
+                    "class": "User"
+                },
+                "process_unit": null
+            }
+        },
+        {
+            "id": 4,
+            "cpu_demand": 47,
+            "memory_demand": 47,
+            "storage_demand": 0,
+            "state": 0,
+            "sla": 0,
+            "dependency_labels": [],
+            "architectural_demands": {},
+            "relationships": {
+                "user": {
+                    "id": 4,
+                    "class": "User"
+                },
+                "process_unit": null
+            }
+        },
+        {
+            "id": 5,
+            "cpu_demand": 18,
+            "memory_demand": 43,
+            "storage_demand": 0,
+            "state": 0,
+            "sla": 0,
+            "dependency_labels": [],
+            "architectural_demands": {},
+            "relationships": {
+                "user": {
+                    "id": 5,
+                    "class": "User"
+                },
+                "process_unit": null
+            }
+        },
+        {
+            "id": 6,
+            "cpu_demand": 45,
+            "memory_demand": 26,
+            "storage_demand": 0,
+            "state": 0,
+            "sla": 0,
+            "dependency_labels": [],
+            "architectural_demands": {},
+            "relationships": {
+                "user": {
+                    "id": 6,
+                    "class": "User"
+                },
+                "process_unit": null
+            }
+        },
+        {
+            "id": 7,
+            "cpu_demand": 29,
+            "memory_demand": 34,
+            "storage_demand": 0,
+            "state": 0,
+            "sla": 0,
+            "dependency_labels": [],
+            "architectural_demands": {},
+            "relationships": {
+                "user": {
+                    "id": 7,
+                    "class": "User"
+                },
+                "process_unit": null
+            }
+        },
+        {
+            "id": 8,
+            "cpu_demand": 38,
+            "memory_demand": 24,
+            "storage_demand": 0,
+            "state": 0,
+            "sla": 0,
+            "dependency_labels": [],
+            "architectural_demands": {},
+            "relationships": {
+                "user": {
+                    "id": 8,
+                    "class": "User"
+                },
+                "process_unit": null
+            }
+        },
+        {
+            "id": 9,
+            "cpu_demand": 23,
+            "memory_demand": 46,
+            "storage_demand": 0,
+            "state": 0,
+            "sla": 0,
+            "dependency_labels": [],
+            "architectural_demands": {},
+            "relationships": {
+                "user": {
+                    "id": 9,
+                    "class": "User"
+                },
+                "process_unit": null
+            }
+        },
+        {
+            "id": 10,
+            "cpu_demand": 30,
+            "memory_demand": 46,
+            "storage_demand": 0,
+            "state": 0,
+            "sla": 0,
+            "dependency_labels": [],
+            "architectural_demands": {},
+            "relationships": {
+                "user": {
+                    "id": 10,
+                    "class": "User"
+                },
+                "process_unit": null
+            }
+        }
+    ],
     "NetworkFlow": [],
     "DynamicDurationAccessModel": [],
     "FixedDurationAccessModel": [
@@ -1471,178 +1643,6 @@
                     "class": "Application"
                 },
                 "flow": null
-            }
-        }
-    ],
-    "Application": [
-        {
-            "id": 1,
-            "cpu_demand": 34,
-            "memory_demand": 37,
-            "storage_demand": 0,
-            "state": 0,
-            "sla": 0,
-            "dependency_labels": [],
-            "architectural_demands": {},
-            "relationships": {
-                "user": {
-                    "id": 1,
-                    "class": "User"
-                },
-                "process_unit": null
-            }
-        },
-        {
-            "id": 2,
-            "cpu_demand": 24,
-            "memory_demand": 39,
-            "storage_demand": 0,
-            "state": 0,
-            "sla": 0,
-            "dependency_labels": [],
-            "architectural_demands": {},
-            "relationships": {
-                "user": {
-                    "id": 2,
-                    "class": "User"
-                },
-                "process_unit": null
-            }
-        },
-        {
-            "id": 3,
-            "cpu_demand": 42,
-            "memory_demand": 35,
-            "storage_demand": 0,
-            "state": 0,
-            "sla": 0,
-            "dependency_labels": [],
-            "architectural_demands": {},
-            "relationships": {
-                "user": {
-                    "id": 3,
-                    "class": "User"
-                },
-                "process_unit": null
-            }
-        },
-        {
-            "id": 4,
-            "cpu_demand": 47,
-            "memory_demand": 47,
-            "storage_demand": 0,
-            "state": 0,
-            "sla": 0,
-            "dependency_labels": [],
-            "architectural_demands": {},
-            "relationships": {
-                "user": {
-                    "id": 4,
-                    "class": "User"
-                },
-                "process_unit": null
-            }
-        },
-        {
-            "id": 5,
-            "cpu_demand": 18,
-            "memory_demand": 43,
-            "storage_demand": 0,
-            "state": 0,
-            "sla": 0,
-            "dependency_labels": [],
-            "architectural_demands": {},
-            "relationships": {
-                "user": {
-                    "id": 5,
-                    "class": "User"
-                },
-                "process_unit": null
-            }
-        },
-        {
-            "id": 6,
-            "cpu_demand": 45,
-            "memory_demand": 26,
-            "storage_demand": 0,
-            "state": 0,
-            "sla": 0,
-            "dependency_labels": [],
-            "architectural_demands": {},
-            "relationships": {
-                "user": {
-                    "id": 6,
-                    "class": "User"
-                },
-                "process_unit": null
-            }
-        },
-        {
-            "id": 7,
-            "cpu_demand": 29,
-            "memory_demand": 34,
-            "storage_demand": 0,
-            "state": 0,
-            "sla": 0,
-            "dependency_labels": [],
-            "architectural_demands": {},
-            "relationships": {
-                "user": {
-                    "id": 7,
-                    "class": "User"
-                },
-                "process_unit": null
-            }
-        },
-        {
-            "id": 8,
-            "cpu_demand": 38,
-            "memory_demand": 24,
-            "storage_demand": 0,
-            "state": 0,
-            "sla": 0,
-            "dependency_labels": [],
-            "architectural_demands": {},
-            "relationships": {
-                "user": {
-                    "id": 8,
-                    "class": "User"
-                },
-                "process_unit": null
-            }
-        },
-        {
-            "id": 9,
-            "cpu_demand": 23,
-            "memory_demand": 46,
-            "storage_demand": 0,
-            "state": 0,
-            "sla": 0,
-            "dependency_labels": [],
-            "architectural_demands": {},
-            "relationships": {
-                "user": {
-                    "id": 9,
-                    "class": "User"
-                },
-                "process_unit": null
-            }
-        },
-        {
-            "id": 10,
-            "cpu_demand": 30,
-            "memory_demand": 46,
-            "storage_demand": 0,
-            "state": 0,
-            "sla": 0,
-            "dependency_labels": [],
-            "architectural_demands": {},
-            "relationships": {
-                "user": {
-                    "id": 10,
-                    "class": "User"
-                },
-                "process_unit": null
             }
         }
     ],

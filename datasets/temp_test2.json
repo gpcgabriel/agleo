@@ -1,0 +1,561 @@
+{
+    "ProcessUnit": [
+        {
+            "id": 1,
+            "cpu": 73,
+            "memory": 62,
+            "storage": 88,
+            "power": 0,
+            "model_name": "",
+            "architecture": {},
+            "coordinates": [
+                -21.052044812064608,
+                -54.26774327064675,
+                0
+            ],
+            "available": true,
+            "power_generation_model_parameters": {},
+            "power_consumption_model_parameters": {},
+            "relationships": {
+                "power_generation_model": null,
+                "power_consumption_model": null,
+                "failure_model": null,
+                "applications": []
+            }
+        },
+        {
+            "id": 2,
+            "cpu": 69,
+            "memory": 54,
+            "storage": 52,
+            "power": 0,
+            "model_name": "",
+            "architecture": {},
+            "coordinates": [
+                -13.536158652582206,
+                -39.133945669785206,
+                0
+            ],
+            "available": true,
+            "power_generation_model_parameters": {},
+            "power_consumption_model_parameters": {},
+            "relationships": {
+                "power_generation_model": null,
+                "power_consumption_model": null,
+                "failure_model": null,
+                "applications": []
+            }
+        }
+    ],
+    "User": [
+        {
+            "id": 1,
+            "coordinates": [
+                4.4044,
+                -59.2775,
+                454.7817
+            ],
+            "coordinates_trace": [],
+            "mobility_model_parameters": {},
+            "relationships": {
+                "mobility_model": "random_mobility_model",
+                "applications_access_models": [
+                    {
+                        "class": "FixedDurationAccessModel",
+                        "id": 1
+                    }
+                ],
+                "applications": []
+            }
+        },
+        {
+            "id": 2,
+            "coordinates": [
+                5.279,
+                -58.6892,
+                454.7005
+            ],
+            "coordinates_trace": [],
+            "mobility_model_parameters": {},
+            "relationships": {
+                "mobility_model": "random_mobility_model",
+                "applications_access_models": [
+                    {
+                        "class": "FixedDurationAccessModel",
+                        "id": 2
+                    }
+                ],
+                "applications": []
+            }
+        }
+    ],
+    "Satellite": [
+        {
+            "id": 1,
+            "coordinates": [
+                2.6542,
+                -60.4495,
+                454.9697
+            ],
+            "coordinates_trace": [
+                [
+                    2.6542,
+                    -60.4495,
+                    454.9697
+                ],
+                [
+                    3.5298,
+                    -59.864,
+                    454.8714
+                ],
+                [
+                    4.4044,
+                    -59.2775,
+                    454.7817
+                ],
+                [
+                    5.279,
+                    -58.6892,
+                    454.7005
+                ],
+                [
+                    6.1013,
+                    -58.1339,
+                    454.632
+                ],
+                [
+                    6.9739,
+                    -57.542,
+                    454.5675
+                ],
+                [
+                    7.8461,
+                    -56.9473,
+                    454.5115
+                ],
+                [
+                    8.6658,
+                    -56.3851,
+                    454.4665
+                ],
+                [
+                    9.5353,
+                    -55.7851,
+                    454.4269
+                ],
+                [
+                    10.4039,
+                    -55.1812,
+                    454.3955
+                ]
+            ],
+            "active": true,
+            "power": 0,
+            "min_power": 0,
+            "wireless_delay": 0,
+            "is_gateway": true,
+            "max_connection_range": 1500,
+            "mobility_model_parameters": {
+                "len": 10
+            },
+            "power_consumption_model_parameters": {},
+            "power_generate_model_parameters": {},
+            "failure_model_parameters": {},
+            "relationships": {
+                "mobility_model": "coordinates_history",
+                "power_consumption_model": null,
+                "power_generate_model": null,
+                "failure_model": null,
+                "process_unit": null
+            }
+        },
+        {
+            "id": 2,
+            "coordinates": [
+                -21.9062,
+                -68.5487,
+                553.7671
+            ],
+            "coordinates_trace": [
+                [
+                    -21.9062,
+                    -68.5487,
+                    553.7671
+                ],
+                [
+                    -21.0878,
+                    -67.8807,
+                    553.4757
+                ],
+                [
+                    -20.2666,
+                    -67.2211,
+                    553.1882
+                ],
+                [
+                    -19.4418,
+                    -66.5687,
+                    552.9046
+                ],
+                [
+                    -18.6629,
+                    -65.9614,
+                    552.6416
+                ],
+                [
+                    -17.8329,
+                    -65.323,
+                    552.3667
+                ],
+                [
+                    -16.9998,
+                    -64.6908,
+                    552.0965
+                ],
+                [
+                    -16.2135,
+                    -64.1015,
+                    551.8468
+                ],
+                [
+                    -15.3761,
+                    -63.4812,
+                    551.5867
+                ],
+                [
+                    -14.536,
+                    -62.8661,
+                    551.3321
+                ]
+            ],
+            "active": true,
+            "power": 0,
+            "min_power": 0,
+            "wireless_delay": 0,
+            "is_gateway": true,
+            "max_connection_range": 1500,
+            "mobility_model_parameters": {
+                "len": 10
+            },
+            "power_consumption_model_parameters": {},
+            "power_generate_model_parameters": {},
+            "failure_model_parameters": {},
+            "relationships": {
+                "mobility_model": "coordinates_history",
+                "power_consumption_model": null,
+                "power_generate_model": null,
+                "failure_model": null,
+                "process_unit": null
+            }
+        }
+    ],
+    "Application": [
+        {
+            "id": 1,
+            "cpu_demand": 45,
+            "memory_demand": 31,
+            "storage_demand": 0,
+            "state": 0,
+            "sla": 0,
+            "dependency_labels": [],
+            "architectural_demands": {},
+            "relationships": {
+                "user": {
+                    "id": 1,
+                    "class": "User"
+                },
+                "process_unit": null
+            }
+        },
+        {
+            "id": 2,
+            "cpu_demand": 37,
+            "memory_demand": 17,
+            "storage_demand": 0,
+            "state": 0,
+            "sla": 0,
+            "dependency_labels": [],
+            "architectural_demands": {},
+            "relationships": {
+                "user": {
+                    "id": 2,
+                    "class": "User"
+                },
+                "process_unit": null
+            }
+        }
+    ],
+    "NetworkFlow": [],
+    "DynamicDurationAccessModel": [],
+    "FixedDurationAccessModel": [
+        {
+            "id": 1,
+            "history": [
+                {
+                    "start": 1,
+                    "end": 13,
+                    "provisioned_time": 0,
+                    "is_provisioned": false,
+                    "waiting_provisioning": 0,
+                    "access_time": 0,
+                    "connection_failure_time": 0,
+                    "making_request": {
+                        "1": true,
+                        "2": true,
+                        "3": true,
+                        "4": true,
+                        "5": true,
+                        "6": true,
+                        "7": true,
+                        "8": true,
+                        "9": true,
+                        "10": true,
+                        "11": true,
+                        "12": true
+                    },
+                    "next_access": 29
+                }
+            ],
+            "request_provisioning": false,
+            "duration_values": [
+                12,
+                13,
+                7,
+                6,
+                17
+            ],
+            "interval_values": [
+                16,
+                10,
+                18,
+                5,
+                12
+            ],
+            "connection_duration_values": [
+                12,
+                14,
+                11,
+                3,
+                6
+            ],
+            "connection_interval_values": [
+                3,
+                14,
+                15,
+                11,
+                14
+            ],
+            "relationships": {
+                "user": {
+                    "id": 1,
+                    "class": "User"
+                },
+                "application": {
+                    "id": 1,
+                    "class": "Application"
+                },
+                "flow": null
+            }
+        },
+        {
+            "id": 2,
+            "history": [
+                {
+                    "start": 1,
+                    "end": 8,
+                    "provisioned_time": 0,
+                    "is_provisioned": false,
+                    "waiting_provisioning": 0,
+                    "access_time": 0,
+                    "connection_failure_time": 0,
+                    "making_request": {
+                        "1": true,
+                        "2": true,
+                        "3": true,
+                        "4": true,
+                        "5": true
+                    },
+                    "next_access": 24
+                }
+            ],
+            "request_provisioning": false,
+            "duration_values": [
+                7,
+                17,
+                19,
+                13,
+                16
+            ],
+            "interval_values": [
+                16,
+                4,
+                14,
+                15,
+                12
+            ],
+            "connection_duration_values": [
+                5,
+                12,
+                3,
+                15,
+                7
+            ],
+            "connection_interval_values": [
+                10,
+                12,
+                14,
+                4,
+                18
+            ],
+            "relationships": {
+                "user": {
+                    "id": 2,
+                    "class": "User"
+                },
+                "application": {
+                    "id": 2,
+                    "class": "Application"
+                },
+                "flow": null
+            }
+        }
+    ],
+    "NetworkLink": [
+        {
+            "id": 1,
+            "delay": 1,
+            "active": true,
+            "bandwidth": 1450.0,
+            "type": "static",
+            "relationships": {
+                "topology": {
+                    "class": "Topology",
+                    "id": 0
+                },
+                "flows": [],
+                "nodes": [
+                    {
+                        "class": "GroundStation",
+                        "id": 1
+                    },
+                    {
+                        "class": "GroundStation",
+                        "id": 2
+                    }
+                ]
+            }
+        },
+        {
+            "id": 2,
+            "delay": 1,
+            "active": true,
+            "bandwidth": 100000,
+            "type": "static",
+            "relationships": {
+                "topology": {
+                    "class": "Topology",
+                    "id": 0
+                },
+                "flows": [],
+                "nodes": [
+                    {
+                        "class": "Satellite",
+                        "id": 2
+                    },
+                    {
+                        "class": "GroundStation",
+                        "id": 1
+                    }
+                ]
+            }
+        },
+        {
+            "id": 3,
+            "delay": 10,
+            "active": true,
+            "bandwidth": 100000,
+            "type": "static",
+            "relationships": {
+                "topology": {
+                    "class": "Topology",
+                    "id": 0
+                },
+                "flows": [],
+                "nodes": [
+                    {
+                        "class": "ProcessUnit",
+                        "id": 1
+                    },
+                    {
+                        "class": "GroundStation",
+                        "id": 1
+                    }
+                ]
+            }
+        },
+        {
+            "id": 4,
+            "delay": 10,
+            "active": true,
+            "bandwidth": 100000,
+            "type": "static",
+            "relationships": {
+                "topology": {
+                    "class": "Topology",
+                    "id": 0
+                },
+                "flows": [],
+                "nodes": [
+                    {
+                        "class": "ProcessUnit",
+                        "id": 2
+                    },
+                    {
+                        "class": "GroundStation",
+                        "id": 2
+                    }
+                ]
+            }
+        }
+    ],
+    "GroundStation": [
+        {
+            "id": 1,
+            "coordinates": [
+                -21.052044812064608,
+                -54.26774327064675,
+                0
+            ],
+            "wireless_delay": 0,
+            "max_connection_range": 1500,
+            "relationships": {
+                "users": [],
+                "process_unit": [
+                    {
+                        "id": 1,
+                        "class": "ProcessUnit"
+                    }
+                ]
+            }
+        },
+        {
+            "id": 2,
+            "coordinates": [
+                -13.536158652582206,
+                -39.133945669785206,
+                0
+            ],
+            "wireless_delay": 0,
+            "max_connection_range": 1500,
+            "relationships": {
+                "users": [],
+                "process_unit": [
+                    {
+                        "id": 2,
+                        "class": "ProcessUnit"
+                    }
+                ]
+            }
+        }
+    ]
+}

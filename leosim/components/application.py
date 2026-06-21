@@ -1,5 +1,6 @@
 # Simulator components
 from ..component_manager import ComponentManager
+from .user import User
 from typing import List, Dict, Any, Optional
 
 class Application(ComponentManager):
@@ -240,11 +241,28 @@ class Application(ComponentManager):
     def export_applications() -> Dict:
         apps = {}
         for app in Application._instances:
+            remaining = 0
+            pending = False
+            for user in User.all():
+                for am in user.applications_access_models:
+                    if am.application.id == app.id and am.history:
+                        pending = am.request_provisioning
+                        last = am.history[-1]
+                        if last.get('required_provisioning_time'):
+                            remaining = last['required_provisioning_time'] - last['provisioned_time']
+                        elif last.get('end'):
+                            remaining = last['end'] - app.model.scheduler.steps
+                        break
+                if pending:
+                    break
+
             apps[f"App_{app.id}"] = {
                 "cpu": app.cpu_demand,
                 "mem": app.memory_demand,
                 "sto": app.storage_demand,
                 "available": app.available,
+                "pending": pending,
+                "remaining_time": max(remaining, 0),
                 "user": app.user.id if app.user else None,
                 "provisioned_on": app.process_unit.id if app.process_unit else None,
             }
