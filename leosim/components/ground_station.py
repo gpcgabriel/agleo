@@ -226,6 +226,7 @@ class GroundStation(ComponentManager):
         }
 
         state_json = dumps(state, default=str)
+        prompt_length = len(state_json)
 
         choice_criteria = (
             "Decision criteria:\n"
@@ -239,13 +240,31 @@ class GroundStation(ComponentManager):
 
         prompt = f"Network State (JSON):\n{state_json}\n\n{choice_criteria}"
 
+        unprovisioned = sum(1 for a in Application.all() if not a.available)
+        print(f"\n  [LLM] Step {model.scheduler.steps} | GS_{self.id} | "
+              f"{unprovisioned} apps pending | "
+              f"prompt ~{prompt_length} chars")
+
         try:
             response = self.offloading_agent.run(
                 prompt,
                 expected_output="The result of the tool call only."
             )
+
+            response_dict = response.to_dict()
+            tool_calls = response_dict.get("tool_calls") or response_dict.get("messages", [])
+            chosen = "unknown"
+            for item in tool_calls:
+                if isinstance(item, dict) and item.get("function", {}).get("name") == "apply_offloading_strategy":
+                    chosen = item["function"].get("arguments", {}).get("strategy_name", "unknown")
+                    break
+
+            print(f"  [LLM] Step {model.scheduler.steps} | GS_{self.id} | "
+                  f"-> chosen: {chosen}")
         except Exception:
             traceback.print_exc()
+            print(f"  [LLM] Step {model.scheduler.steps} | GS_{self.id} | "
+                  f"-> FALLBACK to best_fit_allocation")
             from leosim.components.allocation_algorithms import best_fit_allocation
             best_fit_allocation(model, parameters)
             return
