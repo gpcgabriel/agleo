@@ -2,6 +2,22 @@
 venv/
 README.md
 __pycache__/
+
+logs/
+
+.agents
+CLAUDE.md
+CONTEXT.md
+PLANNING.md
+
 *.pyc
 *.pyo
 *.pyd
+
+# Node.js dependencies
+node_modules/
+
+# Temp files
+datasets/temp_dashboard_scenary.json
+planning-draft.md
+output.log

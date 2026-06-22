@@ -68,7 +68,7 @@ class GroundStation(ComponentManager):
         self.llm_params = None
 
         self.offloading_agent = Agent(
-            model=Ollama(id="deepseek-coder:33b", options={"temperature": 0}),
+            model=Ollama(id="llama3.1", options={"temperature": 0}),
             tools=[self.apply_offloading_strategy],
             instructions=[
                 "You are an expert Resource Management Controller for a LEO Satellite Network.",
@@ -206,6 +206,9 @@ class GroundStation(ComponentManager):
                 topology._adj[self][satellite] = link
 
     def resource_management_algorithm(self, model, parameters):
+        if not self.users:
+            return
+            
         parameters['ground_station'] = self
         self.llm_params = parameters
 

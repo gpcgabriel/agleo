@@ -1,0 +1,428 @@
+/* Import Inter font */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f7f7f8;
+    --bg-surface: #ffffff;
+    --bg-elevated: #ececf1;
+    --text-primary: #1a1a2e;
+    --text-secondary: #6e6e80;
+    --accent-primary: #0ea5e9;
+    --accent-secondary: #0284c7;
+    --accent-glow: rgba(14, 165, 233, 0.1);
+    --border-subtle: #e5e5e5;
+    --border-active: #0ea5e9;
+    --danger: #ef4444;
+    --success: #22c55e;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 20px;
+    --radius-pill: 28px;
+    --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+    --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+    --font-family: 'Inter', sans-serif;
+}
+
+/* Global Font override */
+.stApp, [data-testid="stSidebar"], input, button, select, textarea, div[role="listbox"], li[role="option"] {
+    font-family: var(--font-family) !important;
+}
+
+/* Viewport-Fit Layout Rules (No Page Scroll) */
+html, body, .stApp, [data-testid="stAppViewContainer"] {
+    height: 100vh !important;
+    max-height: 100vh !important;
+    overflow: hidden !important;
+}
+
+/* Main block container */
+.main .block-container {
+    max-height: 100vh !important;
+    height: 100vh !important;
+    overflow: hidden !important;
+    padding-top: 1.5rem !important;
+    padding-bottom: 1.5rem !important;
+}
+
+/* Hide default streamlit header */
+header[data-testid="stHeader"] {
+    visibility: hidden !important;
+    height: 0px !important;
+}
+
+/* Base surface colors */
+.stApp {
+    background-color: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+}
+[data-testid="stSidebar"] {
+    background-color: var(--bg-secondary) !important;
+    border-right: 1px solid var(--border-subtle) !important;
+}
+
+[data-testid="stMainBlockContainer"] {
+    padding-top: 0rem;
+    padding-bottom: 0rem;
+}
+/* Ensure the app header is hidden to maximize viewport space */
+.stAppHeader {
+    display: none !important;
+}
+
+
+/* Columns layout */
+div.stColumn {
+    /*height: calc(100vh - 70px) !important;
+    max-height: calc(100vh - 70px) !important;*/
+    overflow-y: auto !important; /* Allow internal scrolling if content overflows */
+    padding: 10px !important;
+}
+
+/* Hide standard column scrollbars for cleaner grid layout */
+div.stColumn::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+div.stColumn::-webkit-scrollbar-track {
+    background: transparent;
+}
+div.stColumn::-webkit-scrollbar-thumb {
+    background: var(--border-subtle);
+    border-radius: var(--radius-sm);
+}
+
+/* Typography */
+.stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6,
+.stApp p, .stApp li, .stApp span, .stApp label, .stApp strong,
+[data-testid="stMarkdownContainer"] p, [data-testid="stMarkdownContainer"] li, [data-testid="stMarkdownContainer"] span,
+[data-testid="stSidebar"] label, [data-testid="stSidebar"] p, [data-testid="stSidebar"] span, [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
+    color: var(--text-primary) !important;
+}
+
+.stApp h1, [data-testid="stSidebar"] h1 { font-size: 1.5rem !important; font-weight: 700 !important; color: var(--text-primary) !important; margin-bottom: 12px !important; }
+.stApp h2, [data-testid="stSidebar"] h2 { font-size: 1.25rem !important; font-weight: 600 !important; color: var(--text-primary) !important; }
+.stApp h3, [data-testid="stSidebar"] h3 { font-size: 1.1rem !important; font-weight: 500 !important; color: var(--accent-primary) !important; }
+.stApp h4 { font-size: 1.0rem !important; font-weight: 500 !important; color: var(--accent-primary) !important; }
+
+.system-msg {
+    color: var(--text-secondary) !important;
+    font-style: italic;
+    font-size: 0.9rem;
+    padding: 6px 0;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+/* Metrics Cards */
+div[data-testid="stMetric"] {
+    background-color: var(--bg-surface) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: var(--radius-md) !important;
+    padding: 10px 14px !important;
+    box-shadow: var(--shadow-sm) !important;
+}
+div[data-testid="stMetricValue"] {
+    color: var(--accent-primary) !important;
+    font-size: 1.6rem !important;
+    font-weight: 700 !important;
+}
+div[data-testid="stMetricLabel"] {
+    color: var(--text-secondary) !important;
+    font-size: 0.8rem !important;
+    font-weight: 500 !important;
+}
+
+/* Proposed Action Box (Confirmation Gate) */
+.proposed-box {
+    background-color: var(--bg-surface) !important;
+    border: 1px solid var(--accent-primary) !important;
+    border-radius: var(--radius-md) !important;
+    padding: 16px;
+    margin-bottom: 12px;
+    color: var(--text-primary) !important;
+    box-shadow: var(--shadow-md) !important;
+    border-left: 4px solid var(--accent-primary) !important;
+}
+.proposed-box h4 {
+    color: var(--accent-primary) !important;
+    margin-top: 0 !important;
+    margin-bottom: 6px !important;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Form inputs & interactive widgets */
+input, textarea, select {
+    background-color: var(--bg-surface) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: var(--radius-sm) !important;
+}
+
+/* Select box custom styling */
+div[data-baseweb="select"] {
+    background-color: var(--bg-surface) !important;
+    border-radius: var(--radius-sm) !important;
+}
+div[data-baseweb="select"] > div {
+    background-color: var(--bg-surface) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: var(--radius-sm) !important;
+}
+div[data-baseweb="select"] span, div[data-baseweb="select"] div {
+    color: var(--text-primary) !important;
+}
+
+/* Dropdown Menu */
+div[data-testid="stSelectboxVirtualDropdown"], div[role="listbox"], ul[role="listbox"], div[data-baseweb="menu"] {
+    background-color: var(--bg-surface) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: var(--radius-sm) !important;
+}
+div[data-testid="stSelectboxVirtualDropdown"] li, ul[role="listbox"] li, div[role="option"] {
+    background-color: transparent !important;
+    color: var(--text-primary) !important;
+}
+div[data-testid="stSelectboxVirtualDropdown"] li:hover, ul[role="listbox"] li:hover, div[role="option"]:hover,
+div[data-testid="stSelectboxVirtualDropdown"] li[aria-selected="true"], ul[role="listbox"] li[aria-selected="true"] {
+    background-color: var(--bg-elevated) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Number Input */
+div[data-testid="stNumberInput"] div[data-baseweb="input"],
+div[data-testid="stNumberInput"] div[data-baseweb="input"] > div {
+    background-color: var(--bg-surface) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: var(--radius-sm) !important;
+}
+div[data-testid="stNumberInput"] input {
+    background-color: transparent !important;
+    color: var(--text-primary) !important;
+    border: none !important;
+}
+div[data-testid="stNumberInput"] button {
+    background-color: var(--bg-elevated) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-subtle) !important;
+}
+
+/* Expanders (Telemetry Detail) */
+div[data-testid="stExpander"] {
+    background-color: var(--bg-surface) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: var(--radius-md) !important;
+    overflow: hidden !important;
+}
+div[data-testid="stExpander"] summary {
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+    font-weight: 500 !important;
+    padding: 10px 15px !important;
+}
+div[data-testid="stExpander"] summary:hover {
+    background-color: var(--bg-elevated) !important;
+}
+
+/* Viewport-Fit Telemetry Expander Scroll */
+div[data-testid="stExpander"] [data-testid="stExpanderDetails"] {
+    max-height: 250px !important;
+    overflow-y: auto !important;
+}
+
+/* Tabs */
+div[role="tablist"] {
+    border-bottom: 1px solid var(--border-subtle) !important;
+}
+button[role="tab"] {
+    background-color: transparent !important;
+    color: var(--text-secondary) !important;
+    border: none !important;
+    font-weight: 500 !important;
+}
+button[role="tab"][aria-selected="true"] {
+    color: var(--accent-primary) !important;
+}
+div[data-baseweb="tab-highlight"] {
+    background-color: var(--accent-primary) !important;
+}
+
+/* Chat Interface (Starlink x ChatGPT Hybrid) */
+
+/* Chatbot container box */
+div.stColumn:has([data-testid="stChatInput"]) {
+    background-color: var(--bg-secondary) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: var(--radius-lg) !important;
+    padding: 16px !important;
+    box-shadow: var(--shadow-md) !important;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Viewport-Fit Chat Container Scroll */
+div.stColumn:has([data-testid="stChatInput"]) div[data-testid="stChatMessageContainer"] {
+    max-height: calc(100vh - 260px) !important;
+    height: calc(100vh - 260px) !important;
+    overflow-y: auto !important;
+    padding-right: 4px;
+}
+
+/* Chat container scrollbars */
+div[data-testid="stChatMessageContainer"]::-webkit-scrollbar {
+    width: 6px;
+}
+div[data-testid="stChatMessageContainer"]::-webkit-scrollbar-track {
+    background: transparent;
+}
+div[data-testid="stChatMessageContainer"]::-webkit-scrollbar-thumb {
+    background: var(--border-subtle);
+    border-radius: var(--radius-sm);
+}
+
+/* User chat bubble */
+[data-testid="stChatMessage"]:has([data-testid*="user"]),
+[data-testid="stChatMessage"]:has(img[alt*="user"]) {
+    flex-direction: row-reverse !important;
+    background-color: transparent !important;
+}
+[data-testid="stChatMessage"]:has([data-testid*="user"]) [data-testid="stChatMessageContent"],
+[data-testid="stChatMessage"]:has(img[alt*="user"]) [data-testid="stChatMessageContent"] {
+    background-color: var(--accent-glow) !important;
+    color: var(--text-primary) !important;
+    border-radius: 18px 18px 4px 18px !important;
+    padding: 10px 14px !important;
+    border: 1px solid var(--accent-primary) !important;
+    margin-left: 15% !important;
+    box-shadow: var(--shadow-sm) !important;
+}
+[data-testid="stChatMessage"]:has([data-testid*="user"]) [data-testid="stChatMessageContent"] p,
+[data-testid="stChatMessage"]:has([data-testid*="user"]) [data-testid="stChatMessageContent"] li,
+[data-testid="stChatMessage"]:has([data-testid*="user"]) [data-testid="stChatMessageContent"] span {
+    color: var(--text-primary) !important;
+}
+
+/* Assistant chat bubble */
+[data-testid="stChatMessage"]:has([data-testid*="assistant"]),
+[data-testid="stChatMessage"]:has(img[alt*="assistant"]) {
+    background-color: transparent !important;
+}
+[data-testid="stChatMessage"]:has([data-testid*="assistant"]) [data-testid="stChatMessageContent"],
+[data-testid="stChatMessage"]:has(img[alt*="assistant"]) [data-testid="stChatMessageContent"] {
+    background-color: var(--bg-surface) !important;
+    color: var(--text-primary) !important;
+    border-radius: 18px 18px 18px 4px !important;
+    padding: 10px 14px !important;
+    border: 1px solid var(--border-subtle) !important;
+    margin-right: 15% !important;
+    box-shadow: var(--shadow-sm) !important;
+}
+[data-testid="stChatMessage"]:has([data-testid*="assistant"]) [data-testid="stChatMessageContent"] p,
+[data-testid="stChatMessage"]:has([data-testid*="assistant"]) [data-testid="stChatMessageContent"] li,
+[data-testid="stChatMessage"]:has([data-testid*="assistant"]) [data-testid="stChatMessageContent"] span {
+    color: var(--text-primary) !important;
+}
+
+/* Chat Input Styling */
+[data-testid="stChatInput"] {
+    background-color: var(--bg-surface) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: var(--radius-pill) !important;
+    padding: 4px 10px !important;
+    box-shadow: var(--shadow-sm) !important;
+}
+[data-testid="stChatInput"] textarea {
+    background-color: transparent !important;
+    color: var(--text-primary) !important;
+    border: none !important;
+    font-size: 0.95rem !important;
+}
+[data-testid="stChatInput"] button {
+    background-color: var(--accent-primary) !important;
+    border-radius: 50% !important;
+    width: 32px !important;
+    height: 32px !important;
+    border: none !important;
+}
+[data-testid="stChatInput"] button svg {
+    color: var(--bg-primary) !important;
+}
+
+/* Buttons Styling */
+button, button p, button span, button div {
+    transition: all 0.2s ease !important;
+}
+button {
+    border-radius: var(--radius-pill) !important;
+    font-weight: 600 !important;
+    padding: 6px 16px !important;
+}
+
+/* Secondary buttons */
+button[data-testid="stBaseButton-secondary"] {
+    background-color: var(--bg-surface) !important;
+    border: 1px solid var(--border-subtle) !important;
+}
+button[data-testid="stBaseButton-secondary"],
+button[data-testid="stBaseButton-secondary"] p,
+button[data-testid="stBaseButton-secondary"] span,
+button[data-testid="stBaseButton-secondary"] div {
+    color: var(--accent-primary) !important;
+}
+button[data-testid="stBaseButton-secondary"]:hover {
+    background-color: var(--bg-elevated) !important;
+    border-color: var(--accent-primary) !important;
+}
+button[data-testid="stBaseButton-secondary"]:hover p,
+button[data-testid="stBaseButton-secondary"]:hover span,
+button[data-testid="stBaseButton-secondary"]:hover div {
+    color: var(--accent-secondary) !important;
+}
+
+/* Primary buttons */
+button[data-testid="stBaseButton-primary"] {
+    background-color: var(--accent-primary) !important;
+    border: none !important;
+}
+button[data-testid="stBaseButton-primary"],
+button[data-testid="stBaseButton-primary"] p,
+button[data-testid="stBaseButton-primary"] span,
+button[data-testid="stBaseButton-primary"] div {
+    color: #ffffff !important;
+}
+button[data-testid="stBaseButton-primary"]:hover {
+    background-color: var(--accent-secondary) !important;
+    box-shadow: var(--shadow-sm) !important;
+}
+
+/* Map visual styling container */
+div[key="simulation_map"] {
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: var(--radius-md) !important;
+    overflow: hidden !important;
+}
+
+/* Theme Toggle Button custom styles */
+div[data-testid="element-container"]:has(.theme-toggle-marker) + div[data-testid="element-container"] button {
+    background-color: var(--bg-surface) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: 50% !important;
+    width: 38px !important;
+    height: 38px !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: var(--shadow-sm) !important;
+}
+div[data-testid="element-container"]:has(.theme-toggle-marker) + div[data-testid="element-container"] button:hover {
+    background-color: var(--bg-elevated) !important;
+    border-color: var(--accent-primary) !important;
+}
