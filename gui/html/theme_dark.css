@@ -269,6 +269,20 @@ div.stColumn:has([data-testid="stChatInput"]) {
     flex-direction: column;
 }
 
+/* Override default focus styles for chat input */
+[data-testid="stChatInput"]:focus-within {
+    border-color: var(--border-active) !important;
+    box-shadow: 0 0 0 1px var(--border-active) !important;
+}
+
+.st-emotion-cache-jchovf {
+  background-color: transparent !important;
+}
+
+.st-emotion-cache-jchovf:focus-within {
+  border: unset !important;
+}
+
 /* Viewport-Fit Chat Container Scroll */
 div.stColumn:has([data-testid="stChatInput"]) div[data-testid="stChatMessageContainer"] {
     max-height: calc(100vh - 260px) !important;
@@ -342,7 +356,7 @@ div[data-testid="stChatMessageContainer"]::-webkit-scrollbar-thumb {
 }
 [data-testid="stChatInput"] textarea {
     background-color: transparent !important;
-    color: var(--bg-surface) !important;
+    color: var(--text-primary) !important;
     border: none !important;
     font-size: 0.95rem !important;
 }
