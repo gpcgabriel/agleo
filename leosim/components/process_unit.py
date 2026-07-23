@@ -176,19 +176,16 @@ class ProcessUnit(ComponentManager):
     
     @staticmethod
     def export_processunits() -> Dict:
-        """Exports a summary of the PUs current state."""
-        process_units_data = {}
+        pu_data = {}
         for pu in ProcessUnit._instances:
-            # print(f"Process Unit {pu.id}:")
-            # print(f"  Coordinates: {pu.coordinates}")
-            # print(f"  CPU: {pu.cpu}")
-            # print(f"  Memory: {pu.memory}")
-            # print(f"  Applications hosted (IDs): {[app.id for app in pu.applications]}")
-            process_units_data[f'ID: {pu.id}'] = {
-                "Coordinates": pu.coordinates,
-                "CPU": pu.cpu,
-                "Memory": pu.memory,
-                "Storage": pu.storage,
-                "Applications hosted (IDs)": [app.id for app in pu.applications]
+            pu_data[f"PU_{pu.id}"] = {
+                "cpu_total": pu.cpu,
+                "cpu_used": pu.cpu_demand,
+                "mem_total": pu.memory,
+                "mem_used": pu.memory_demand,
+                "sto_total": pu.storage,
+                "sto_used": pu.storage_demand,
+                "available": pu.available,
+                "apps": [app.id for app in pu.applications],
             }
-        return process_units_data
+        return pu_data

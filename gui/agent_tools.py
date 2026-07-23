@@ -1,3 +1,6 @@
+from typing import Union
+import ast
+from random import randint
 import streamlit as st
 
 def propose_run_simulation(steps: int) -> str:
@@ -14,13 +17,58 @@ def propose_run_simulation(steps: int) -> str:
     }
     return f"Proposal registered: advance simulation by {steps} steps. Please confirm in the control panel."
 
+def propose_add_node(node_type: str, reference_coordinates: Union[list, str], cpu: float, memory: float):
+    """
+    Proposes adding a new node to the network.
+    
+    Args:
+        node_type: "Satellite" or "GroundStation"
+        reference_coordinates: A flat 3-element list or string representation containing [latitude, longitude, altitude]. Example: [-15.6, -48.0, 500.0]
+        cpu: CPU capacity
+        memory: Memory capacity
+    """
+
+    # If the LLM passes reference_coordinates as a string, attempt to parse it
+    if isinstance(reference_coordinates, str):
+        try:
+            reference_coordinates = ast.literal_eval(reference_coordinates)
+        except (ValueError, SyntaxError) as e:
+            raise ValueError(
+                f"Invalid format for reference_coordinates: '{reference_coordinates}'. "
+                "You must provide a valid list of 3 numerical coordinates: [latitude, longitude, altitude]."
+            ) from e
+
+    # Ensure it's a valid list of 3 elements
+    if not isinstance(reference_coordinates, list) or len(reference_coordinates) != 3:
+        raise ValueError(
+            f"reference_coordinates must be a list containing exactly 3 elements, got: {reference_coordinates}"
+        )
+
+    reference_coordinates = [float(coord) for coord in reference_coordinates]
+    cpu = int(cpu) if cpu is not None else randint(20, 100)
+    memory = int(memory) if memory is not None else randint(20, 100)
+
+    st.session_state["pending_action"] = {
+        "action": "add_process_unit",
+        "description": f"Add {node_type} (CPU={cpu}, Mem={memory})",
+        "parameters": {
+            "target_type": node_type,
+            "reference_coordinates": reference_coordinates,
+            "cpu": cpu,
+            "memory": memory
+        }
+    }
+    return f"Proposal registered: add {node_type} (CPU={cpu}, Mem={memory}). Please confirm in the control panel."
+
 def propose_add_process_unit(target_type: str, target_id: int, cpu: int, memory: int) -> str:
     """
     Proposes to add a new processing unit (ProcessUnit/Server) to a satellite or ground station.
     
     Args:
         target_type (str): Target node type ('Satellite' or 'GroundStation').
-        target_id (int): ID of the target satellite or ground station.
+        target_id (int): The integer ID of the target. If the user specifies a name 
+                         like "GroundStation 1" or "Satellite 2", you MUST extract 
+                         and pass ONLY the integer value (e.g., 1 or 2).
         cpu (int): CPU capacity (e.g., 50 to 100).
         memory (int): Memory capacity (e.g., 50 to 100).
     """

@@ -3,8 +3,6 @@ import folium
 from streamlit_folium import st_folium
 import glob
 import os
-import random
-import json
 import time
 import streamlit.components.v1 as components
 
@@ -22,7 +20,8 @@ from gui.agent_tools import (
     propose_restart_simulation,
     propose_add_process_unit,
     propose_add_user,
-    propose_add_app_to_user
+    propose_add_app_to_user,
+    propose_add_node
 )
 # Import Ollama manager utilities
 from gui.ollama_manager import (
@@ -446,96 +445,96 @@ else:
             chat_disabled = False
             
         if prompt := st.chat_input(placeholder, disabled=chat_disabled, key="agent_chat_input"):
-            # Check if user requested help commands
-            if prompt.lower().strip() in ("/", "/help"):
-                help_message = get_help_message()
-                st.session_state["chat_messages"].append({"role": "user", "content": prompt})
-                st.session_state["chat_messages"].append({"role": "assistant", "content": help_message})
-                st.rerun()
-
-            # Check if user typed an unrecognized slash command
-            elif prompt.strip().startswith("/") and not any(prompt.strip().startswith(c["cmd"].strip()) for c in SLASH_COMMANDS):
-                # Unrecognized slash command
-                help_message = get_help_message()
-                error_msg = f"**Unknown command:** `{prompt.strip()}`\n\n{help_message}"
-                st.session_state["chat_messages"].append({"role": "user", "content": prompt})
-                st.session_state["chat_messages"].append({"role": "assistant", "content": error_msg})
-                st.rerun()
-
-            # Check if user is looking at history instead of current step
-            elif curr_idx != len(history) - 1:
-                st.error("⚠️ You are viewing a historical step. To send commands, drag the slider to the most recent step.")
-            elif st.session_state["pending_action"] is not None:
-                st.warning("⚠️ Resolve the pending proposed action in the upper panel before continuing the conversation.")
-            else:
-                st.session_state["chat_messages"].append({"role": "user", "content": prompt})
+            
+            # Save and display the user's message immediately in the chat container
+            st.session_state["chat_messages"].append({"role": "user", "content": prompt})
+            
+            with chat_container:
                 with st.chat_message("user"):
                     st.markdown(prompt)
-                    
-                # Run Agno Agent
+                
+                # Open assistant message space inside the chat container
                 with st.chat_message("assistant"):
-                    with st.spinner("🤖 Agent calculating response (Inference)..."):
-                        from agno.agent import Agent
-                        from agno.models.ollama import Ollama
+                    response_content = "" # Variable to storage the final reponse
+                    
+                    if prompt.lower().strip() in ("/", "/help"):
+                        response_content = get_help_message()
+                        st.markdown(response_content)
+
+                    elif prompt.strip().startswith("/") and not any(prompt.strip().startswith(c["cmd"].strip()) for c in SLASH_COMMANDS):
+                        help_message = get_help_message()
+                        response_content = f"**Unknown command:** `{prompt.strip()}`\n\n{help_message}"
+                        st.markdown(response_content)
+
+                    elif curr_idx != len(history) - 1:
+                        response_content = "⚠️ You are viewing a historical step. To send commands, drag the slider to the most recent step."
+                        st.error(response_content)
                         
-                        tools = []
-                        if agent_tools_enabled:
-                            tools = [
-                                propose_run_simulation,
-                                propose_restart_simulation,
-                                propose_add_process_unit,
-                                propose_add_user,
-                                propose_add_app_to_user
-                            ]
+                    elif st.session_state["pending_action"] is not None:
+                        response_content = "⚠️ Resolve the pending proposed action in the upper panel before continuing the conversation."
+                        st.warning(response_content)
+
+                    else:
+                        with st.spinner("🤖 Agent calculating response (Inference)..."):
+                            from agno.agent import Agent
+                            from agno.models.ollama import Ollama
                             
-                        # Contextual state injection (Detailed state summary or minimal optimized summary)
-                        if prompt.startswith("/") and not prompt.lower().startswith("/review"):
-                            context_state = (
-                                "Quick Command Mode (Slash Command). "
-                                "Execute the corresponding action immediately by calling the appropriate tool."
+                            tools = []
+                            if agent_tools_enabled:
+                                tools = [
+                                    propose_run_simulation, propose_restart_simulation,
+                                    propose_add_process_unit, propose_add_user, propose_add_app_to_user, propose_add_node
+                                ]
+                                
+                            # Contextual state injection (Detailed state summary or minimal optimized summary)
+                            if prompt.startswith("/") and not prompt.lower().startswith("/review"):
+                                context_state = (
+                                    "Quick Command Mode (Slash Command). "
+                                    "Execute the corresponding action immediately by calling the appropriate tool."
+                                )
+                            else:
+                                detailed_summary = get_simulation_state_summary(snapshot)
+                                context_state = (
+                                    "You have access to the current detailed simulation state below:\n\n"
+                                    f"{detailed_summary}\n\n"
+                                    "Use this data to answer informational questions about the network, "
+                                    "satellites, ground stations, users, connections, and application allocations."
+                                )
+                            
+                            agent = Agent(
+                                model=Ollama(
+                                    id=st.session_state.get("selected_model", DEFAULT_MODEL),
+                                    options={"temperature": 0.1}
+                                ),
+                                description=(
+                                    "You are the LEOSim Dashboard Virtual Assistant, a simulator for LEO (Low Earth Orbit) satellite networks. "
+                                    "You ALWAYS respond in natural language using formatted Markdown. "
+                                    "NEVER return JSON, XML, code, or structured data objects as a response. "
+                                    "Your responses must be textual, clear, and in English."
+                                ),
+                                tools=tools,
+                                instructions=[
+                                    "CRITICAL FORMAT RULE: ALWAYS respond in natural prose with Markdown formatting. NEVER generate JSON, XML, code blocks, or data structures as your response. If you feel the urge to generate JSON, stop and rephrase as running text.",
+                                    "Your task is to help the operator monitor, obtain information about, and control the LEO satellite network simulation.",
+                                    "When receiving an informational question (e.g., 'how many applications are allocated?', 'what is user 3's lat/lon?', 'were there allocations on GS 28?'), respond clearly in natural language text based solely on the information provided in the context (Current Simulation State). DO NOT call tools to answer informational questions.",
+                                    "You must only use proposal tools when the operator explicitly requests a change to the simulation.",
+                                    "If the operator uses '/step <n>' (or variations like 'advance <n> steps'), call the 'propose_run_simulation' tool with steps=n.",
+                                    "If the operator uses '/restart', call the 'propose_restart_simulation' tool.",
+                                    "If the operator uses '/review' or '/review <region>', DO NOT call any tools. Perform a detailed textual analysis of the current topology using context data to identify issues like disconnected users, overloaded stations, missing servers, etc. Organize the analysis with Markdown headings and lists.",
+                                    "To add a node (Satellite or GroundStation), use the 'propose_add_node' tool. For satellites, you MUST provide the 'coordinates' as flat 3-element arrays: [latitude, longitude, altitude] (e.g., [45.0, -90.0, 500.0]). Never use nested arrays.",
+                                    "Your tools DO NOT execute actions directly; they create a proposal (Confirmation Gate) that the user must confirm or cancel in the panel.",
+                                    "If the operator asks to perform an action but tools are disabled, inform them they need to enable tools in the sidebar."
+                                ],
+                                markdown=True
                             )
-                        else:
-                            detailed_summary = get_simulation_state_summary(snapshot)
-                            context_state = (
-                                "You have access to the current detailed simulation state below:\n\n"
-                                f"{detailed_summary}\n\n"
-                                "Use this data to answer informational questions about the network, "
-                                "satellites, ground stations, users, connections, and application allocations."
-                            )
-                        
-                        # Use selected model from session state
-                        agent = Agent(
-                            model=Ollama(
-                                id=st.session_state.get("selected_model", DEFAULT_MODEL),
-                                options={"temperature": 0.1}
-                            ),
-                            description=(
-                                "You are the LEOSim Dashboard Virtual Assistant, a simulator for LEO (Low Earth Orbit) satellite networks. "
-                                "You ALWAYS respond in natural language using formatted Markdown. "
-                                "NEVER return JSON, XML, code, or structured data objects as a response. "
-                                "Your responses must be textual, clear, and in English."
-                            ),
-                            tools=tools,
-                            instructions=[
-                                "CRITICAL FORMAT RULE: ALWAYS respond in natural prose with Markdown formatting. NEVER generate JSON, XML, code blocks, or data structures as your response. If you feel the urge to generate JSON, stop and rephrase as running text.",
-                                "Your task is to help the operator monitor, obtain information about, and control the LEO satellite network simulation.",
-                                "When receiving an informational question (e.g., 'how many applications are allocated?', 'what is user 3's lat/lon?', 'were there allocations on GS 28?'), respond clearly in natural language text based solely on the information provided in the context (Current Simulation State). DO NOT call tools to answer informational questions.",
-                                "You must only use proposal tools when the operator explicitly requests a change to the simulation.",
-                                "If the operator uses '/step <n>' (or variations like 'advance <n> steps'), call the 'propose_run_simulation' tool with steps=n.",
-                                "If the operator uses '/restart', call the 'propose_restart_simulation' tool.",
-                                "If the operator uses '/review' or '/review <region>', DO NOT call any tools. Perform a detailed textual analysis of the current topology using context data to identify issues like disconnected users, overloaded stations, missing servers, etc. Organize the analysis with Markdown headings and lists.",
-                                "Your tools DO NOT execute actions directly; they create a proposal (Confirmation Gate) that the user must confirm or cancel in the panel.",
-                                "If the operator asks to perform an action but tools are disabled, inform them they need to enable tools in the sidebar."
-                            ],
-                            markdown=True
-                        )
-                        
-                        response = agent.run(
-                            f"{context_state}\n\nOperator Command: {prompt}"
-                        )
-                        st.markdown(response.content)
-                        st.session_state["chat_messages"].append({"role": "assistant", "content": response.content})
-                        st.rerun()
+                            
+                            response = agent.run(f"{context_state}\n\nOperator Command: {prompt}")
+                            response_content = response.content
+                            st.markdown(response_content)
+                            
+            # Save the generated response in the general history and reload the page
+            st.session_state["chat_messages"].append({"role": "assistant", "content": response_content})
+            st.rerun()
 
     # Format and escape all button SVGs for CSS url() injection
     play_svg = icon_play(16).replace('#', '%23')

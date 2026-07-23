@@ -16,6 +16,73 @@ const init = function(isDark, commands) {
             mc.setAttribute('role', 'main');
             mc.setAttribute('aria-label', 'Main Content');
         }
+
+        // ==========================================
+        // BULLETPROOF: "Toggle Sidebar" Button
+        // ==========================================
+        let sidebarBtn = doc.getElementById('custom-show-sidebar-btn');
+        if (!sidebarBtn) {
+            sidebarBtn = doc.createElement('button');
+            sidebarBtn.id = 'custom-show-sidebar-btn';
+            sidebarBtn.innerHTML = '☰ Toggle Sidebar';
+            
+            // Using cssText with !important prevents Streamlit from hiding or overriding it
+            sidebarBtn.style.cssText = `
+                position: fixed !important;
+                top: 10px !important;
+                left: 50% !important;
+                transform: translateX(-50%) !important;
+                z-index: 9999999 !important;
+                padding: 8px 16px !important;
+                background-color: ${isDark ? '#1a1b24' : '#ffffff'} !important;
+                color: ${isDark ? '#e8eaed' : '#1a1a2e'} !important;
+                border: 1px solid ${isDark ? '#2a2b36' : '#e5e5e5'} !important;
+                border-radius: 20px !important;
+                cursor: pointer !important;
+                font-family: 'Inter', sans-serif !important;
+                font-size: 13px !important;
+                font-weight: 600 !important;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
+                display: block !important;
+                transition: background-color 0.2s !important;
+            `;
+
+            // Aggressive click handler to find Streamlit's exact buttons
+            sidebarBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                // Find the wrapper for the collapsed "open" button
+                const expandWrapper = doc.querySelector('[data-testid="collapsedControl"]') || 
+                                      doc.querySelector('[data-testid="stSidebarCollapsedControl"]');
+                
+                // Find the close button inside the sidebar
+                const collapseBtn = doc.querySelector('[data-testid="stSidebarCollapseButton"]') || 
+                                    doc.querySelector('button[aria-label="Collapse sidebar"]') ||
+                                    doc.querySelector('[data-testid="stSidebar"] button');
+
+                // If expand wrapper is visible, click the button inside it
+                if (expandWrapper && expandWrapper.offsetParent !== null) {
+                    const actualBtn = expandWrapper.querySelector('button') || expandWrapper;
+                    actualBtn.click();
+                } 
+                // Otherwise, close the sidebar
+                else if (collapseBtn) {
+                    collapseBtn.click();
+                }
+            });
+
+            sidebarBtn.addEventListener('mouseenter', () => {
+                sidebarBtn.style.backgroundColor = isDark ? '#22232e' : '#ececf1';
+            });
+            sidebarBtn.addEventListener('mouseleave', () => {
+                sidebarBtn.style.backgroundColor = isDark ? '#1a1b24' : '#ffffff';
+            });
+
+            // Append directly to the highest body element so it's never trapped inside a hidden div
+            doc.body.appendChild(sidebarBtn);
+        }
+        // ==========================================
         
         // Setup Autocomplete Slash Commands Menu
         const chatInput = doc.querySelector('[data-testid=stChatInput] textarea');

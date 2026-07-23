@@ -12,7 +12,7 @@ def apply_theme(is_dark: bool):
     """
     Applies custom Material design aesthetics for both light and dark themes using custom CSS.
     """
-    theme_file = "theme_dark.css" if is_dark else "theme_light.css"
+    theme_file = "theme_dark.css" #if is_dark else "theme_light.css"
     filepath = os.path.join(HTML_DIR, theme_file)
     
     try:

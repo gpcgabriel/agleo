@@ -37,7 +37,8 @@
 
 /* Ensure the app header is hidden to maximize viewport space */
 .stAppHeader {
-    display: none !important;
+    /* display: none !important; */
+    background-color: transparent !important;
 }
 
 /* Viewport-Fit Layout Rules (No Page Scroll) */
@@ -58,8 +59,9 @@ html, body, .stApp, [data-testid="stAppViewContainer"] {
 
 /* Hide default streamlit header */
 header[data-testid="stHeader"] {
-    visibility: hidden !important;
-    height: 0px !important;
+    /* visibility: hidden !important;
+    height: 0px !important; */
+    background-color: transparent !important;
 }
 
 /* Base surface colors */

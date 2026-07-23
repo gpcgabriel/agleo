@@ -1,5 +1,6 @@
 # Simulator components
 from ..component_manager import ComponentManager
+from .user import User
 from typing import List, Dict, Any, Optional
 
 class Application(ComponentManager):
@@ -198,7 +199,7 @@ class Application(ComponentManager):
             process_unit (object): The target host where the application 
                 will be provisioned.
         """
-        if self.completed:
+        if self.completed or self.being_provisioned:
             return
 
         self.being_provisioned = True
@@ -238,17 +239,31 @@ class Application(ComponentManager):
 
     @staticmethod
     def export_applications() -> Dict:
-        """Exports a summary of the applications current state."""
-        applications_data = {}
+        apps = {}
         for app in Application._instances:
-            # print(f"Application {app.id}:")
-            # print(f"  CPU Demand: {app.cpu_demand}")
-            # print(f"  Memory Demand: {app.memory_demand}")
-            # print(f"  User associated (IDs): {app.user.id if app.user else None}")
+            remaining = 0
+            pending = False
+            for user in User.all():
+                for am in user.applications_access_models:
+                    if am.application.id == app.id and am.history:
+                        pending = am.request_provisioning
+                        last = am.history[-1]
+                        if last.get('required_provisioning_time'):
+                            remaining = last['required_provisioning_time'] - last['provisioned_time']
+                        elif last.get('end'):
+                            remaining = last['end'] - app.model.scheduler.steps
+                        break
+                if pending:
+                    break
 
-            applications_data[f'ID: {app.id}'] = {
-                "CPU Demand": app.cpu_demand,
-                "Memory Demand": app.memory_demand,
-                "User associated (IDs)": app.user.id if app.user else None
+            apps[f"App_{app.id}"] = {
+                "cpu": app.cpu_demand,
+                "mem": app.memory_demand,
+                "sto": app.storage_demand,
+                "available": app.available,
+                "pending": pending and not app.being_provisioned,
+                "remaining_time": max(remaining, 0),
+                "user": app.user.id if app.user else None,
+                "provisioned_on": app.process_unit.id if app.process_unit else None,
             }
-        return applications_data
+        return apps

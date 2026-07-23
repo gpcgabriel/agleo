@@ -1,8 +1,56 @@
+from json import load
 import streamlit as st
 import random
 import dataset as ds
 from leosim import ComponentManager, Simulator, default_topology_management
 from leosim.components import Satellite
+from geopy.distance import geodesic
+
+def get_coordinates_trace(id_reference, coords):
+        with open("datasets/satellites_brazil.json", 'r', encoding='UTF-8') as file:
+                data = load(file)
+
+        coords_trace = [coords]
+        flag = False
+
+        for list_sats in data:
+                for sat in list_sats:
+                        if flag and sat['satid'] == id_reference:
+                                coords_trace.extend([(sat['satlat'], sat['satlng'], sat['satalt'])])
+                                break
+                        
+                        if coords[0] == sat['satlat'] and coords[1] == sat['satlng'] and coords[2] == sat['satalt']:
+                                flag = True
+
+        return coords_trace
+
+def id_not_in_satellites_list(id) -> bool:
+        for sat in Satellite.all():
+                if id == sat.id:
+                        return False
+        return True
+
+def get_closest_satellite(target_coord):
+    target_lat_lon = (target_coord[0], target_coord[1])
+    
+    with open('datasets/satellites_brazil.json', 'r') as file:
+        satellites = load(file)
+        
+    closest_satid = None
+    closest_coords = None
+    min_distance = float('inf')
+    
+    for list_sats in satellites:
+        for sat in list_sats:
+                sat_lat_lon = (sat['satlat'], sat['satlng'])
+                distance = geodesic(target_lat_lon, sat_lat_lon).kilometers
+
+                if distance < min_distance:
+                        min_distance = distance
+                        closest_satid = sat['satid']
+                        closest_coords = (sat['satlat'], sat['satlng'], sat['satalt'])
+            
+    return closest_satid, closest_coords
 
 def serialize_state(sim):
     """
@@ -163,9 +211,6 @@ def initialize_simulation(dataset_gml, satellites_json, num_users, num_satellite
     """
     Configures and initializes the LEO simulator from topology files.
     """
-    import dataset as ds
-    from leosim import ComponentManager, Simulator, default_topology_management
-    from leosim.components import Satellite
     from leosim.components.allocation_algorithms import best_fit_allocation, longest_duration_allocation
     
     # Clear previous simulator components
@@ -266,27 +311,43 @@ def execute_pending_action():
         elif action == "add_process_unit":
             from leosim.components import ProcessUnit, Satellite, GroundStation, NetworkLink
             from dataset_generator.create_components import create_link
+
             target_type = params["target_type"]
-            target_id = params["target_id"]
+            target_id = params["target_id"] if "target_id" in params else None
+            reference_coordinates = params["reference_coordinates"] if "reference_coordinates" in params else None
             cpu = params["cpu"]
             memory = params["memory"]
             
             unit = ProcessUnit(cpu=cpu, memory=memory, storage=memory)
             
             if target_type == "Satellite":
-                satellite = Satellite.find_by("id", target_id)
-                if satellite:
-                    unit.coordinates = satellite.coordinates
-                    create_link(unit, satellite, 1, bandwidth=NetworkLink.default_bandwidth, topology=sim.topology)
-                    satellite.process_unit = unit
-                    sim.topology.add_node(unit)
+                satellite = Satellite.find_by("id", target_id) if target_id is not None else None
+                if not satellite:
+                    id_reference, coords = get_closest_satellite(reference_coordinates)
+                    trace = [coords]
+                    if id_not_in_satellites_list(id_reference):
+                        trace = get_coordinates_trace(id_reference, coords)
+
+                    satellite = Satellite(id=id_reference, name=f"SATELLITE-{id_reference}", coordinates=reference_coordinates, is_gateway=True)
+                    satellite.active = True
+                    satellite.coordinates_trace = trace
+                    sim.topology.add_node(satellite)
+                
+                unit.coordinates = satellite.coordinates
+                create_link(unit, satellite, 1, bandwidth=NetworkLink.default_bandwidth, topology=sim.topology)
+                satellite.process_unit = unit
+                sim.topology.add_node(unit)
+
             else:
                 station = GroundStation.find_by("id", target_id)
-                if station:
-                    unit.coordinates = station.coordinates
-                    create_link(unit, station, 10, bandwidth=NetworkLink.default_bandwidth, topology=sim.topology)
-                    station.connect_server(unit)
-                    sim.topology.add_node(unit)
+                
+                if not station:
+                    station = GroundStation(coordinates=reference_coordinates)
+
+                unit.coordinates = station.coordinates
+                create_link(unit, station, 10, bandwidth=NetworkLink.default_bandwidth, topology=sim.topology)
+                station.connect_server(unit)
+                sim.topology.add_node(unit)
                     
             sim.step()
             snapshot = serialize_state(sim)
@@ -308,7 +369,8 @@ def execute_pending_action():
             connection_range = params["connection_range"]
             
             user = create_user((lat, lon, 0), connection_range)
-            user.mobility_model = None
+            # Function to move user (static for now, can be updated if needed)
+            user.mobility_model = lambda u: u.coordinates_trace.append(u.coordinates)
             
             sim.step()
             snapshot = serialize_state(sim)

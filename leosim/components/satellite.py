@@ -35,7 +35,7 @@ class Satellite(ComponentManager):
             name: str = "",
             coordinates: Optional[Tuple[float, float, float]] = None,
             wireless_delay: int = 0,
-            max_connection_range: int = 300,
+            max_connection_range: int = 1000,
             is_gateway: bool = False,
         ) -> None: 
         """Initializes a Satellite instance.
@@ -210,30 +210,31 @@ class Satellite(ComponentManager):
 
     @staticmethod
     def export_satellites() -> Dict:
-        """
-        Exports a dictionary representing the state of each satellite, 
-        including the previous, current, and next 5 future coordinates.
-        """
         satellite_data = {}
         for sat in Satellite._instances:
-            current_step = sat.model.scheduler.steps
-
-            prev_coords = None
-            if current_step > 0 and len(sat.coordinates_trace) >= current_step:
-                prev_coords = sat.coordinates_trace[current_step - 1]
-
-            current_coords = sat.coordinates
-
-            start_idx = current_step + 1
-            end_idx = current_step + 1
-            future_coordinates = sat.coordinates_trace[start_idx:end_idx]
-
-            satellite_data[f'ID: {sat.id}'] = {
-                "Previous Coordinates": prev_coords,
-                "Current Coordinates": current_coords,
-                "Future Coordinates": future_coordinates,
-                "Max Connection Range": sat.max_connection_range,
-                "Status": "Available" if not sat.failure_occurred else "Failure"
+            step = sat.model.scheduler.steps
+            future = [
+                (round(c[0], 1), round(c[1], 1)) if c else None
+                for c in sat.coordinates_trace[step + 1:step + 16]
+            ]
+            pu = sat.process_unit
+            pu_avail = pu.available if pu else None
+            pu_info = None
+            if pu:
+                pu_info = {
+                    "id": pu.id,
+                    "cpu_free": pu.cpu - pu.cpu_demand,
+                    "mem_free": pu.memory - pu.memory_demand,
+                    "sto_free": pu.storage - pu.storage_demand,
+                    "available": pu.available,
+                }
+            sat_pos = sat.coordinates
+            satellite_data[f"Sat_{sat.id}"] = {
+                "pos": (round(sat_pos[0], 1), round(sat_pos[1], 1)) if sat_pos else None,
+                "future": future,
+                "range": sat.max_connection_range,
+                "active": not sat.failure_occurred,
+                "pu": pu_info,
+                "gateway": sat.is_gateway,
             }
-
         return satellite_data
