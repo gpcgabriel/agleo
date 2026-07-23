@@ -291,6 +291,15 @@ div.stColumn:has([data-testid="stChatInput"]) div[data-testid="stChatMessageCont
     padding-right: 4px;
 }
 
+.st-emotion-cache-17zstxb{
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 100%;
+    min-width: 1rem;
+    flex: 1 1 auto;
+}
+
 /* Chat container scrollbars */
 div[data-testid="stChatMessageContainer"]::-webkit-scrollbar {
     width: 6px;
@@ -358,7 +367,7 @@ div[data-testid="stChatMessageContainer"]::-webkit-scrollbar-thumb {
     background-color: transparent !important;
     color: var(--text-primary) !important;
     border: none !important;
-    font-size: 0.95rem !important;
+    /* font-size: 0.95rem !important; */
 }
 [data-testid="stChatInput"] button {
     background-color: var(--accent-primary) !important;
