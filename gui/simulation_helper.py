@@ -45,7 +45,7 @@ def get_closest_satellite(target_coord):
                 sat_lat_lon = (sat['satlat'], sat['satlng'])
                 distance = geodesic(target_lat_lon, sat_lat_lon).kilometers
 
-                if distance < min_distance:
+                if distance < min_distance and sat['satid'] not in [s.id for s in Satellite.all()]:
                         min_distance = distance
                         closest_satid = sat['satid']
                         closest_coords = (sat['satlat'], sat['satlng'], sat['satalt'])
@@ -56,7 +56,7 @@ def serialize_state(sim):
     """
     Serializes the simulator's current state into a JSON-compatible dictionary.
     """
-    from leosim.components import Satellite, GroundStation, User, NetworkLink
+    from leosim.components import Satellite, GroundStation, User
     state = {
         "step": sim.scheduler.steps,
         "satellites": [],
@@ -312,42 +312,43 @@ def execute_pending_action():
             from leosim.components import ProcessUnit, Satellite, GroundStation, NetworkLink
             from dataset_generator.create_components import create_link
 
-            target_type = params["target_type"]
-            target_id = params["target_id"] if "target_id" in params else None
-            reference_coordinates = params["reference_coordinates"] if "reference_coordinates" in params else None
-            cpu = params["cpu"]
-            memory = params["memory"]
-            
-            unit = ProcessUnit(cpu=cpu, memory=memory, storage=memory)
-            
-            if target_type == "Satellite":
-                satellite = Satellite.find_by("id", target_id) if target_id is not None else None
-                if not satellite:
-                    id_reference, coords = get_closest_satellite(reference_coordinates)
-                    trace = [coords]
-                    if id_not_in_satellites_list(id_reference):
-                        trace = get_coordinates_trace(id_reference, coords)
-
-                    satellite = Satellite(id=id_reference, name=f"SATELLITE-{id_reference}", coordinates=reference_coordinates, is_gateway=True)
-                    satellite.active = True
-                    satellite.coordinates_trace = trace
-                    sim.topology.add_node(satellite)
+            for param in params:
+                target_type = param["target_type"]
+                target_id = param["target_id"] if "target_id" in param else None
+                reference_coordinates = param["reference_coordinates"] if "reference_coordinates" in param else None
+                cpu = param["cpu"]
+                memory = param["memory"]
                 
-                unit.coordinates = satellite.coordinates
-                create_link(unit, satellite, 1, bandwidth=NetworkLink.default_bandwidth, topology=sim.topology)
-                satellite.process_unit = unit
-                sim.topology.add_node(unit)
-
-            else:
-                station = GroundStation.find_by("id", target_id)
+                unit = ProcessUnit(cpu=cpu, memory=memory, storage=memory)
                 
-                if not station:
-                    station = GroundStation(coordinates=reference_coordinates)
+                if target_type == "Satellite":
+                    satellite = Satellite.find_by("id", target_id) if target_id is not None else None
+                    if not satellite:
+                        id_reference, coords = get_closest_satellite(reference_coordinates)
+                        trace = [coords]
+                        if id_not_in_satellites_list(id_reference):
+                            trace = get_coordinates_trace(id_reference, coords)
 
-                unit.coordinates = station.coordinates
-                create_link(unit, station, 10, bandwidth=NetworkLink.default_bandwidth, topology=sim.topology)
-                station.connect_server(unit)
-                sim.topology.add_node(unit)
+                        satellite = Satellite(id=id_reference, name=f"SATELLITE-{id_reference}", coordinates=reference_coordinates, is_gateway=True)
+                        satellite.active = True
+                        satellite.coordinates_trace = trace
+                        sim.topology.add_node(satellite)
+                    
+                    unit.coordinates = satellite.coordinates
+                    create_link(unit, satellite, 1, bandwidth=NetworkLink.default_bandwidth, topology=sim.topology)
+                    satellite.process_unit = unit
+                    sim.topology.add_node(unit)
+
+                else:
+                    station = GroundStation.find_by("id", target_id)
+                    
+                    if not station:
+                        station = GroundStation(coordinates=reference_coordinates)
+
+                    unit.coordinates = station.coordinates
+                    create_link(unit, station, 10, bandwidth=NetworkLink.default_bandwidth, topology=sim.topology)
+                    station.connect_server(unit)
+                    sim.topology.add_node(unit)
                     
             sim.step()
             snapshot = serialize_state(sim)

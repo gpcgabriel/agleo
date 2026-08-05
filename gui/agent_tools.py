@@ -1,7 +1,7 @@
-from typing import Union
-import ast
+from typing import List, Dict, Union
 from random import randint
 import streamlit as st
+import json
 
 def propose_run_simulation(steps: int) -> str:
     """
@@ -17,48 +17,59 @@ def propose_run_simulation(steps: int) -> str:
     }
     return f"Proposal registered: advance simulation by {steps} steps. Please confirm in the control panel."
 
-def propose_add_node(node_type: str, reference_coordinates: Union[list, str], cpu: float, memory: float):
+def propose_add_node(nodes: Union[str, List[Dict]]):
     """
-    Proposes adding a new node to the network.
+    Registers a proposal to add one or multiple process units to the simulation.
     
     Args:
-        node_type: "Satellite" or "GroundStation"
-        reference_coordinates: A flat 3-element list or string representation containing [latitude, longitude, altitude]. Example: [-15.6, -48.0, 500.0]
-        cpu: CPU capacity
-        memory: Memory capacity
+        nodes: A list of nodes to create. For plural requests (e.g., 'add 2 satellites'), generate one object in this array for each requested unit. Each object must contain 'node_type' (string). Optional fields include 'cpu' (number), 'memory' (number), and 'reference_coordinates' (an array of exactly 3 numbers representing [latitude, longitude, altitude]).
     """
-
-    # If the LLM passes reference_coordinates as a string, attempt to parse it
-    if isinstance(reference_coordinates, str):
+    if isinstance(nodes, str):
         try:
-            reference_coordinates = ast.literal_eval(reference_coordinates)
-        except (ValueError, SyntaxError) as e:
-            raise ValueError(
-                f"Invalid format for reference_coordinates: '{reference_coordinates}'. "
-                "You must provide a valid list of 3 numerical coordinates: [latitude, longitude, altitude]."
-            ) from e
+            nodes = json.loads(nodes)
+        except json.JSONDecodeError:
+            return "Error: The agent provided malformed JSON data. Please try again."
 
-    # Ensure it's a valid list of 3 elements
-    if not isinstance(reference_coordinates, list) or len(reference_coordinates) != 3:
-        raise ValueError(
-            f"reference_coordinates must be a list containing exactly 3 elements, got: {reference_coordinates}"
-        )
+    if not nodes or not isinstance(nodes, list):
+        return "Error: No valid nodes provided in the proposal."
 
-    reference_coordinates = [float(coord) for coord in reference_coordinates]
-    cpu = int(cpu) if cpu is not None else randint(20, 100)
-    memory = int(memory) if memory is not None else randint(20, 100)
-
-    st.session_state["pending_action"] = {
-        "action": "add_process_unit",
-        "description": f"Add {node_type} (CPU={cpu}, Mem={memory})",
-        "parameters": {
-            "target_type": node_type,
-            "reference_coordinates": reference_coordinates,
-            "cpu": cpu,
-            "memory": memory
+    if st.session_state.get("pending_action") is None:
+        st.session_state["pending_action"] = {
+            "action": "add_process_unit", 
+            "description": f"Add {len(nodes)} new node(s)",
+            "parameters": [] 
         }
-    }
-    return f"Proposal registered: add {node_type} (CPU={cpu}, Mem={memory}). Please confirm in the control panel."
+
+    summary_descriptions = []
+
+    for node in nodes:
+        node_type = node.get("node_type", "Unknown")
+        raw_coords = node.get("reference_coordinates")
+        
+        # Defensively parse coordinates into a guaranteed 3D [lat, lon, alt] vector
+        if raw_coords and isinstance(raw_coords, list):
+            if len(raw_coords) == 2:
+                reference_coordinates = [float(raw_coords[0]), float(raw_coords[1]), 0.0]
+            elif len(raw_coords) >= 3:
+                reference_coordinates = [float(c) for c in raw_coords[:3]]
+            else:
+                reference_coordinates = [0.0, 0.0, 0.0]
+        else:
+            reference_coordinates = [0.0, 0.0, 0.0]
+        cpu = int(node.get("cpu")) if node.get("cpu") is not None else randint(20, 100)
+        memory = int(node.get("memory")) if node.get("memory") is not None else randint(20, 100)
+
+        st.session_state["pending_action"]["parameters"].append({
+            "target_type": node_type, 
+            "reference_coordinates": reference_coordinates, 
+            "cpu": cpu, 
+            "memory": memory
+        })
+        
+        summary_descriptions.append(f"{node_type} (CPU={cpu}, Mem={memory})")
+
+    summary_str = ", ".join(summary_descriptions)
+    return f"Proposal registered for {len(nodes)} node(s): {summary_str}. Please confirm in the control panel."
 
 def propose_add_process_unit(target_type: str, target_id: int, cpu: int, memory: int) -> str:
     """

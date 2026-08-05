@@ -4,7 +4,6 @@ from streamlit_folium import st_folium
 import glob
 import os
 import time
-import streamlit.components.v1 as components
 
 # Import modular styles, helper functions, and agent tools
 from gui.styles import apply_theme, inject_accessibility_script
@@ -381,7 +380,7 @@ else:
     with col_chat:
         st.markdown(f"<h3>{wrap_icon(icon_bot(20))} Agent Orchestrator</h3>", unsafe_allow_html=True)
         
-        # --- 1. RENDER CONFIRMATION GATE (Top) ---
+        # Render Confirmation Gate
         pending = st.session_state["pending_action"]
         if pending:
             st.markdown(
@@ -407,8 +406,8 @@ else:
                 st.session_state["toast_message"] = f"Action cancelled: {pending['description']}"
                 st.session_state["pending_action"] = None
                 st.rerun()
-
-        # --- 2. RENDER CHAT CONTAINER (Middle) ---
+                
+        # Render Chat History
         chat_container = st.container(height=450)
         with chat_container:
             for msg in st.session_state["chat_messages"]:
@@ -417,12 +416,45 @@ else:
                 else:
                     with st.chat_message(msg["role"]):
                         st.markdown(msg["content"])
+                        
 
-            if "pending_prompt" in st.session_state:
-                prompt = st.session_state["pending_prompt"]
+        # --- DYNAMIC CHAT INPUT STATUS & PLACEHOLDER ---
+        steps_active = st.session_state.get("steps_remaining", 0) > 0
+        local_models = list_local_models() if ollama_ok else []
+        selected_model = st.session_state.get("selected_model", DEFAULT_MODEL)
+        
+        # Check if the currently selected model is downloaded
+        model_downloaded = any(
+            m == selected_model or m.startswith(selected_model + ":") or selected_model.startswith(m + ":") 
+            for m in local_models
+        ) if ollama_ok else False
+        
+        # Set dynamic parameters for single chat_input widget
+        if steps_active:
+            placeholder = "⏳ Simulation in progress..."
+            chat_disabled = True
+        elif not ollama_ok:
+            placeholder = "⚠️ Agent unavailable — Ollama not running"
+            chat_disabled = True
+        elif not model_downloaded:
+            placeholder = f"⚠️ Agent unavailable — Model '{selected_model}' not downloaded"
+            chat_disabled = True
+        else:
+            placeholder = "Type a command for the agent (e.g., 'Advance simulation by 3 steps')"
+            chat_disabled = False
             
+        if prompt := st.chat_input(placeholder, disabled=chat_disabled, key="agent_chat_input"):
+            
+            # Save and display the user's message immediately in the chat container
+            st.session_state["chat_messages"].append({"role": "user", "content": prompt})
+            
+            with chat_container:
+                with st.chat_message("user"):
+                    st.markdown(prompt)
+                
+                # Open assistant message space inside the chat container
                 with st.chat_message("assistant"):
-                    response_content = "" 
+                    response_content = "" # Variable to storage the final reponse
                     
                     if prompt.lower().strip() in ("/", "/help"):
                         response_content = get_help_message()
@@ -453,6 +485,7 @@ else:
                                     propose_add_process_unit, propose_add_user, propose_add_app_to_user, propose_add_node
                                 ]
                                 
+                            # Contextual state injection (Detailed state summary or minimal optimized summary)
                             if prompt.startswith("/") and not prompt.lower().startswith("/review"):
                                 context_state = (
                                     "Quick Command Mode (Slash Command). "
@@ -497,137 +530,10 @@ else:
                             response = agent.run(f"{context_state}\n\nOperator Command: {prompt}")
                             response_content = response.content
                             st.markdown(response_content)
-                        
-                # Save the generated response in the general history and reload the page
-                st.session_state["chat_messages"].append({"role": "assistant", "content": response_content})
-                del st.session_state["pending_prompt"]
-                st.rerun()
-
-        # --- 3. RENDER CHAT INPUT (Bottom) ---
-        steps_active = st.session_state.get("steps_remaining", 0) > 0
-        local_models = list_local_models() if ollama_ok else []
-        selected_model = st.session_state.get("selected_model", DEFAULT_MODEL)
-        
-        model_downloaded = any(
-            m == selected_model or m.startswith(selected_model + ":") or selected_model.startswith(m + ":") 
-            for m in local_models
-        ) if ollama_ok else False
-        
-        if steps_active:
-            placeholder = "⏳ Simulation in progress..."
-            chat_disabled = True
-        elif not ollama_ok:
-            placeholder = "⚠️ Agent unavailable — Ollama not running"
-            chat_disabled = True
-        elif not model_downloaded:
-            placeholder = f"⚠️ Agent unavailable — Model '{selected_model}' not downloaded"
-            chat_disabled = True
-        else:
-            placeholder = "Type a command for the agent (e.g., 'Advance simulation by 3 steps')"
-            chat_disabled = False
-            
-        if prompt := st.chat_input(placeholder, disabled=chat_disabled, key="agent_chat_input"):
-            
-            st.session_state["chat_messages"].append({"role": "user", "content": prompt})
-            st.session_state["pending_prompt"] = prompt
+                            
+            # Save the generated response in the general history and reload the page
+            st.session_state["chat_messages"].append({"role": "assistant", "content": response_content})
             st.rerun()
-            
-            # # Render Chat History
-            # chat_container = st.container(height=450)
-            # with chat_container:
-            #     for msg in st.session_state["chat_messages"]:
-            #         if msg["role"] == "system":
-            #             st.markdown(f'<div class="system-msg">{wrap_icon(icon_bot(16))} {msg["content"]}</div>', unsafe_allow_html=True)
-            #         else:
-            #             with st.chat_message(msg["role"]):
-            #                 st.markdown(msg["content"])
-
-            #     if "pending_prompt" in st.session_state:
-            #         prompt = st.session_state["pending_prompt"]
-                
-            #         # Open assistant message space inside the chat container
-            #         with st.chat_message("assistant"):
-            #             response_content = "" # Variable to storage the final reponse
-                        
-            #             if prompt.lower().strip() in ("/", "/help"):
-            #                 response_content = get_help_message()
-            #                 st.markdown(response_content)
-
-            #             elif prompt.strip().startswith("/") and not any(prompt.strip().startswith(c["cmd"].strip()) for c in SLASH_COMMANDS):
-            #                 help_message = get_help_message()
-            #                 response_content = f"**Unknown command:** `{prompt.strip()}`\n\n{help_message}"
-            #                 st.markdown(response_content)
-
-            #             elif curr_idx != len(history) - 1:
-            #                 response_content = "⚠️ You are viewing a historical step. To send commands, drag the slider to the most recent step."
-            #                 st.error(response_content)
-                            
-            #             elif st.session_state["pending_action"] is not None:
-            #                 response_content = "⚠️ Resolve the pending proposed action in the upper panel before continuing the conversation."
-            #                 st.warning(response_content)
-
-            #             else:
-            #                 with st.spinner("🤖 Agent calculating response (Inference)..."):
-            #                     from agno.agent import Agent
-            #                     from agno.models.ollama import Ollama
-                                
-            #                     tools = []
-            #                     if agent_tools_enabled:
-            #                         tools = [
-            #                             propose_run_simulation, propose_restart_simulation,
-            #                             propose_add_process_unit, propose_add_user, propose_add_app_to_user, propose_add_node
-            #                         ]
-                                    
-            #                     # Contextual state injection (Detailed state summary or minimal optimized summary)
-            #                     if prompt.startswith("/") and not prompt.lower().startswith("/review"):
-            #                         context_state = (
-            #                             "Quick Command Mode (Slash Command). "
-            #                             "Execute the corresponding action immediately by calling the appropriate tool."
-            #                         )
-            #                     else:
-            #                         detailed_summary = get_simulation_state_summary(snapshot)
-            #                         context_state = (
-            #                             "You have access to the current detailed simulation state below:\n\n"
-            #                             f"{detailed_summary}\n\n"
-            #                             "Use this data to answer informational questions about the network, "
-            #                             "satellites, ground stations, users, connections, and application allocations."
-            #                         )
-                                
-            #                     agent = Agent(
-            #                         model=Ollama(
-            #                             id=st.session_state.get("selected_model", DEFAULT_MODEL),
-            #                             options={"temperature": 0.1}
-            #                         ),
-            #                         description=(
-            #                             "You are the LEOSim Dashboard Virtual Assistant, a simulator for LEO (Low Earth Orbit) satellite networks. "
-            #                             "You ALWAYS respond in natural language using formatted Markdown. "
-            #                             "NEVER return JSON, XML, code, or structured data objects as a response. "
-            #                             "Your responses must be textual, clear, and in English."
-            #                         ),
-            #                         tools=tools,
-            #                         instructions=[
-            #                             "CRITICAL FORMAT RULE: ALWAYS respond in natural prose with Markdown formatting. NEVER generate JSON, XML, code blocks, or data structures as your response. If you feel the urge to generate JSON, stop and rephrase as running text.",
-            #                             "Your task is to help the operator monitor, obtain information about, and control the LEO satellite network simulation.",
-            #                             "When receiving an informational question (e.g., 'how many applications are allocated?', 'what is user 3's lat/lon?', 'were there allocations on GS 28?'), respond clearly in natural language text based solely on the information provided in the context (Current Simulation State). DO NOT call tools to answer informational questions.",
-            #                             "You must only use proposal tools when the operator explicitly requests a change to the simulation.",
-            #                             "If the operator uses '/step <n>' (or variations like 'advance <n> steps'), call the 'propose_run_simulation' tool with steps=n.",
-            #                             "If the operator uses '/restart', call the 'propose_restart_simulation' tool.",
-            #                             "If the operator uses '/review' or '/review <region>', DO NOT call any tools. Perform a detailed textual analysis of the current topology using context data to identify issues like disconnected users, overloaded stations, missing servers, etc. Organize the analysis with Markdown headings and lists.",
-            #                             "To add a node (Satellite or GroundStation), use the 'propose_add_node' tool. For satellites, you MUST provide the 'coordinates' as flat 3-element arrays: [latitude, longitude, altitude] (e.g., [45.0, -90.0, 500.0]). Never use nested arrays.",
-            #                             "Your tools DO NOT execute actions directly; they create a proposal (Confirmation Gate) that the user must confirm or cancel in the panel.",
-            #                             "If the operator asks to perform an action but tools are disabled, inform them they need to enable tools in the sidebar."
-            #                         ],
-            #                         markdown=True
-            #                     )
-                                
-            #                     response = agent.run(f"{context_state}\n\nOperator Command: {prompt}")
-            #                     response_content = response.content
-            #                     st.markdown(response_content)
-                            
-            #         # Save the generated response in the general history and reload the page
-            #         st.session_state["chat_messages"].append({"role": "assistant", "content": response_content})
-            #         del st.session_state["pending_prompt"]
-            #         st.rerun()
 
     # Format and escape all button SVGs for CSS url() injection
     play_svg = icon_play(16).replace('#', '%23')

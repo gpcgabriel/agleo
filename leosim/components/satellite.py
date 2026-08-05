@@ -1,7 +1,8 @@
 # Simulator components
 from ..component_manager import ComponentManager
 from .user import User
-from typing import List, Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional, Tuple
+from ..orbit_models.linear_estimation import linear_estimation
 
 class Satellite(ComponentManager):
     """Represents a satellite in the aerial segment of the topology.
@@ -71,7 +72,7 @@ class Satellite(ComponentManager):
         self.coordinates_trace = []
         
         # Satellite models
-        self.mobility_model = None
+        self.mobility_model = linear_estimation
         self.mobility_model_parameters = {}
         
         self.power_generation_model = None
@@ -113,7 +114,8 @@ class Satellite(ComponentManager):
 
         # Activates the mobility model if necessary
         if len(self.coordinates_trace) <= self.model.scheduler.steps:
-            self.mobility_model(self)
+            new_position = self.mobility_model(self)
+            self.coordinates_trace.append(new_position)
             
         # Updates the coordinates
         if self.coordinates != self.coordinates_trace[self.model.scheduler.steps]:
