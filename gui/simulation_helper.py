@@ -350,7 +350,7 @@ def execute_pending_action():
                     station.connect_server(unit)
                     sim.topology.add_node(unit)
                     
-            sim.step()
+            # sim.step()
             snapshot = serialize_state(sim)
             st.session_state["simulation_history"].append(snapshot)
             st.session_state["current_step_index"] = len(st.session_state["simulation_history"]) - 1

@@ -496,8 +496,8 @@ else:
                                 context_state = (
                                     "You have access to the current detailed simulation state below:\n\n"
                                     f"{detailed_summary}\n\n"
-                                    "Use this data to answer informational questions about the network, "
-                                    "satellites, ground stations, users, connections, and application allocations."
+                                    "Use this data to answer informational questions. "
+                                    "If the operator explicitly requests a change or advancement to the simulation in natural language, you MUST use the appropriate tool to propose the action."
                                 )
                             
                             agent = Agent(
@@ -506,21 +506,22 @@ else:
                                     options={"temperature": 0.1}
                                 ),
                                 description=(
-                                    "You are the LEOSim Dashboard Virtual Assistant, a simulator for LEO (Low Earth Orbit) satellite networks. "
-                                    "You ALWAYS respond in natural language using formatted Markdown. "
-                                    "NEVER return JSON, XML, code, or structured data objects as a response. "
+                                    "You are the LEOSim Dashboard Virtual Assistant, a simulator for LEO satellite networks. "
+                                    "You ALWAYS respond user using the provided tools. Except when you need to provide information in natural language, in which case you should use formatted Markdown."
                                     "Your responses must be textual, clear, and in English."
                                 ),
                                 tools=tools,
                                 instructions=[
-                                    "CRITICAL FORMAT RULE: ALWAYS respond in natural prose with Markdown formatting. NEVER generate JSON, XML, code blocks, or data structures as your response. If you feel the urge to generate JSON, stop and rephrase as running text.",
+                                    "CRITICAL FORMAT RULE: When generating text for the user, respond in natural prose with Markdown formatting. Do not output raw JSON or code blocks in the chat. However, you are explicitly authorized and required to use standard JSON structuring internally when invoking provided tools.",
                                     "Your task is to help the operator monitor, obtain information about, and control the LEO satellite network simulation.",
-                                    "When receiving an informational question (e.g., 'how many applications are allocated?', 'what is user 3's lat/lon?', 'were there allocations on GS 28?'), respond clearly in natural language text based solely on the information provided in the context (Current Simulation State). DO NOT call tools to answer informational questions.",
+                                    "When receiving an informational question (e.g., 'how many applications are allocated?'), respond clearly in natural language text based solely on the context. DO NOT call tools to answer informational questions.",
                                     "You must only use proposal tools when the operator explicitly requests a change to the simulation.",
-                                    "If the operator uses '/step <n>' (or variations like 'advance <n> steps'), call the 'propose_run_simulation' tool with steps=n.",
+                                    "If the operator uses '/step <n>', call the 'propose_run_simulation' tool with steps=n.",
                                     "If the operator uses '/restart', call the 'propose_restart_simulation' tool.",
-                                    "If the operator uses '/review' or '/review <region>', DO NOT call any tools. Perform a detailed textual analysis of the current topology using context data to identify issues like disconnected users, overloaded stations, missing servers, etc. Organize the analysis with Markdown headings and lists.",
-                                    "To add a node (Satellite or GroundStation), use the 'propose_add_node' tool. For satellites, you MUST provide the 'coordinates' as flat 3-element arrays: [latitude, longitude, altitude] (e.g., [45.0, -90.0, 500.0]). Never use nested arrays.",
+                                    "If the operator uses '/review', DO NOT call any tools. Perform a detailed textual analysis of the current topology.",
+                                    "To advance steps in the simulation, call the 'propose_run_simulation' tool with number of steps.",
+                                    "To add nodes (Satellites or GroundStations), call the 'propose_add_node' tool. CRITICAL: To add N nodes you MUST pass parallel lists containing exactly N elements each. For example, to add 2 Satellites, node_types must be ['Satellite', 'Satellite'] with 2 corresponding latitudes, 2 longitudes, and 2 altitudes. CRITICAL: When adding multiple nodes near a specific location, you must mathematically alter the coordinates for each subsequent node. Apply a sequential offset of +0.01 to the latitude of each additional node to prevent collisions.",
+                                    "CRITICAL: When adding multiple nodes near a specific location, you must apply a sequential offset of +0.01 to the latitude of each additional node to prevent collisions. You MUST perform this calculation internally and output ONLY the final resolved numerical float values in your tool call (e.g., output -21.042, NEVER -21.052 + 0.01). Standard JSON does not support mathematical expressions.",
                                     "Your tools DO NOT execute actions directly; they create a proposal (Confirmation Gate) that the user must confirm or cancel in the panel.",
                                     "If the operator asks to perform an action but tools are disabled, inform them they need to enable tools in the sidebar."
                                 ],

@@ -1,6 +1,6 @@
-from typing import List, Dict, Union
 from random import randint
 import streamlit as st
+from typing import List, Union
 import json
 
 def propose_run_simulation(steps: int) -> str:
@@ -17,59 +17,71 @@ def propose_run_simulation(steps: int) -> str:
     }
     return f"Proposal registered: advance simulation by {steps} steps. Please confirm in the control panel."
 
-def propose_add_node(nodes: Union[str, List[Dict]]):
+def propose_add_node(
+    node_types: Union[str, List[str]], 
+    latitudes: Union[str, List[float]], 
+    longitudes: Union[str, List[float]], 
+    altitudes: Union[str, List[float]]
+) -> str:
     """
-    Registers a proposal to add one or multiple process units to the simulation.
+    Registers a proposal to add one or multiple nodes (Process Units / Satellites / Ground Stations) to the simulation.
     
     Args:
-        nodes: A list of nodes to create. For plural requests (e.g., 'add 2 satellites'), generate one object in this array for each requested unit. Each object must contain 'node_type' (string). Optional fields include 'cpu' (number), 'memory' (number), and 'reference_coordinates' (an array of exactly 3 numbers representing [latitude, longitude, altitude]).
+        node_types: List of node types (e.g., ["Satellite"]).
+        latitudes: List of latitudes corresponding to each node.
+        longitudes: List of longitudes corresponding to each node.
+        altitudes: List of altitudes corresponding to each node.
     """
-    if isinstance(nodes, str):
-        try:
-            nodes = json.loads(nodes)
-        except json.JSONDecodeError:
-            return "Error: The agent provided malformed JSON data. Please try again."
+    # Conversão defensiva caso o Ollama envie os arrays como strings JSON
+    try:
+        if isinstance(node_types, str):
+            node_types = json.loads(node_types)
+        if isinstance(latitudes, str):
+            latitudes = json.loads(latitudes)
+        if isinstance(longitudes, str):
+            longitudes = json.loads(longitudes)
+        if isinstance(altitudes, str):
+            altitudes = json.loads(altitudes)
+    except json.JSONDecodeError:
+        return "Error: Failed to parse parameters from string format."
 
-    if not nodes or not isinstance(nodes, list):
-        return "Error: No valid nodes provided in the proposal."
+    num_nodes = len(node_types)
+    
+    if not (num_nodes == len(latitudes) == len(longitudes) == len(altitudes)):
+        return "Error: The parallel arrays provided do not have the same length."
+
+    if num_nodes == 0:
+        return "Error: No valid nodes provided."
 
     if st.session_state.get("pending_action") is None:
         st.session_state["pending_action"] = {
             "action": "add_process_unit", 
-            "description": f"Add {len(nodes)} new node(s)",
+            "description": f"Add {num_nodes} new node(s)",
             "parameters": [] 
         }
 
     summary_descriptions = []
 
-    for node in nodes:
-        node_type = node.get("node_type", "Unknown")
-        raw_coords = node.get("reference_coordinates")
+    for i in range(num_nodes):
+        n_type = node_types[i]
+        lat = float(latitudes[i])
+        lon = float(longitudes[i])
+        alt = float(altitudes[i])
         
-        # Defensively parse coordinates into a guaranteed 3D [lat, lon, alt] vector
-        if raw_coords and isinstance(raw_coords, list):
-            if len(raw_coords) == 2:
-                reference_coordinates = [float(raw_coords[0]), float(raw_coords[1]), 0.0]
-            elif len(raw_coords) >= 3:
-                reference_coordinates = [float(c) for c in raw_coords[:3]]
-            else:
-                reference_coordinates = [0.0, 0.0, 0.0]
-        else:
-            reference_coordinates = [0.0, 0.0, 0.0]
-        cpu = int(node.get("cpu")) if node.get("cpu") is not None else randint(20, 100)
-        memory = int(node.get("memory")) if node.get("memory") is not None else randint(20, 100)
+        cpu = randint(20, 100)
+        memory = randint(20, 100)
 
         st.session_state["pending_action"]["parameters"].append({
-            "target_type": node_type, 
-            "reference_coordinates": reference_coordinates, 
+            "target_type": n_type, 
+            "reference_coordinates": [lat, lon, alt], 
             "cpu": cpu, 
             "memory": memory
         })
         
-        summary_descriptions.append(f"{node_type} (CPU={cpu}, Mem={memory})")
+        summary_descriptions.append(f"{n_type} (CPU={cpu}, Mem={memory})")
 
     summary_str = ", ".join(summary_descriptions)
-    return f"Proposal registered for {len(nodes)} node(s): {summary_str}. Please confirm in the control panel."
+    return f"Proposal registered for {num_nodes} node(s): {summary_str}. Please confirm in the control panel."
 
 def propose_add_process_unit(target_type: str, target_id: int, cpu: int, memory: int) -> str:
     """
