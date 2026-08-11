@@ -261,7 +261,7 @@ def initialize_simulation(dataset_gml, satellites_json, num_users, num_satellite
         stopping_criterion=lambda model: False,
         resource_management_algorithm=selected_alg,
         topology_management_algorithm=default_topology_management,
-        clean_data_in_memory=True,
+        clean_data_in_memory=False,
         logs_directory="logs/dashboard"
     )
     sim.initialize(temp_file)

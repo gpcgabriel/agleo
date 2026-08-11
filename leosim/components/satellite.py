@@ -1,7 +1,7 @@
 # Simulator components
 from ..component_manager import ComponentManager
 from .user import User
-from typing import Dict, Any, Optional, Tuple
+from typing import Callable, Dict, Any, Optional, Tuple
 from ..orbit_models.linear_estimation import linear_estimation
 
 class Satellite(ComponentManager):
@@ -38,6 +38,7 @@ class Satellite(ComponentManager):
             wireless_delay: int = 0,
             max_connection_range: int = 1000,
             is_gateway: bool = False,
+            mobility_model: Callable = linear_estimation
         ) -> None: 
         """Initializes a Satellite instance.
 
@@ -72,7 +73,7 @@ class Satellite(ComponentManager):
         self.coordinates_trace = []
         
         # Satellite models
-        self.mobility_model = linear_estimation
+        self.mobility_model = mobility_model
         self.mobility_model_parameters = {}
         
         self.power_generation_model = None
@@ -112,10 +113,18 @@ class Satellite(ComponentManager):
         # Prepares to check which users will be within range in the next step
         self.users = []
 
-        # Activates the mobility model if necessary
-        if len(self.coordinates_trace) <= self.model.scheduler.steps:
+        # Verify if the index does not exist OR if the value contained in it is invalid (None)
+        needs_calculation = (len(self.coordinates_trace) <= self.model.scheduler.steps) or (self.coordinates_trace[self.model.scheduler.steps] is None)
+
+        if needs_calculation:
+            # The model must RETURN the position, and the class manages the insertion.
             new_position = self.mobility_model(self)
-            self.coordinates_trace.append(new_position)
+            
+            # Garante que a lista cresça ou substitua o None existente
+            if len(self.coordinates_trace) <= self.model.scheduler.steps:
+                self.coordinates_trace.append(new_position)
+            else:
+                self.coordinates_trace[self.model.scheduler.steps] = new_position
             
         # Updates the coordinates
         if self.coordinates != self.coordinates_trace[self.model.scheduler.steps]:
