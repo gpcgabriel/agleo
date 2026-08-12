@@ -35,7 +35,7 @@ def get_exposure_time(user, satellite):
                 break
     return count
 
-def longest_duration_allocation(model, scenario):
+def longest_duration_allocation(model, parameters):
     # Algoritmo de alocação com contagem de provisionamentos por step.
     
     # Criamos um dicionário no objeto model para persistir os dados entre os steps
@@ -78,8 +78,8 @@ def longest_duration_allocation(model, scenario):
         sat = None
 
         # Tenta Ground Stations
-        if scenario['scenario'] == 'terrestrial' or scenario['scenario'] == 'hybrid':
-            for unit in ProcessUnit.all():
+        if parameters['ground_station'].process_unit and (parameters['scenario'] == 'terrestrial' or parameters['scenario'] == 'hybrid'):
+            for unit in parameters['ground_station'].process_unit:
                 if not isinstance(getattr(unit, 'owner', None), Satellite):
                     if unit.has_capacity_to_host(access_model.application) and unit.available:
                         if has_path(model.topology, access_model.user, unit):

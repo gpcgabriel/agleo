@@ -5,9 +5,10 @@ from .process_unit import ProcessUnit
 from geopy.distance import geodesic
 from .satellite import Satellite
 from .user import User
+from .ground_station import GroundStation
 import networkx as nx
 import math
-from typing import List, Any, Optional, Tuple
+from typing import Dict, List, Any
 
 class Topology(ComponentManager, nx.Graph):
     """Manages the network graph and connectivity logic of the simulation.
@@ -238,50 +239,40 @@ class Topology(ComponentManager, nx.Graph):
 
         return math.sqrt(ground_distance**2 + air_distance**2)
     
-    def export_topology(self) -> str:
-        def get_node_id(node):
-            if hasattr(node, 'name'):
-                return node.name
-            elif hasattr(node, 'id'):
-                return f"{node.__class__.__name__}_{node.id}"
-            return str(node)
-
-        topology_report = ["### Network Topology & Connectivity State"]
-
-        topology_report.append("\n**Active Links & Latency:**")
-        for u, v, data in self.edges(data=True):
-            delay = data.get('delay', 0)
-            topology_report.append(f"- {get_node_id(u)} <-> {get_node_id(v)} | Delay: {delay:.2f}ms")
-
-        topology_report.append("\n**User-to-Satellite Proximity (Stability):**")
+    def export_topology(self) -> Dict:
+        user_sat_links = []
         for user in User.all():
-            for satellite in Satellite.all():
-                if self.has_edge(user, satellite):
-                    dist = self.calculate_distance(user, satellite)
-                    max_range = min(user.max_connection_range, satellite.max_connection_range)
-                     
-                    if max_range > 0:
-                        stability_margin = ((max_range - dist) / max_range) * 100
-                    else:
-                        stability_margin = 0.0
+            for sat in Satellite.all():
+                if self.has_edge(user, sat):
+                    dist = self.calculate_distance(user, sat)
+                    max_range = min(user.max_connection_range, sat.max_connection_range)
+                    margin = round(((max_range - dist) / max_range) * 100, 1) if max_range > 0 else 0
+                    user_sat_links.append({
+                        "user": user.id,
+                        "sat": sat.id,
+                        "dist": round(dist, 1),
+                        "margin_pct": margin,
+                    })
 
-                    topology_report.append(
-                        f"- {get_node_id(user)} linked to {get_node_id(satellite)}: "
-                        f"Dist: {dist:.1f}km / Max: {max_range:.1f}km "
-                        f"(Stability Margin: {stability_margin:.1f}%)"
-                    )
+        gs_sat_edges = []
+        for gs in GroundStation.all():
+            for sat in Satellite.all():
+                if self.has_edge(gs, sat):
+                    link = self[gs][sat]
+                    gs_sat_edges.append({
+                        "gs": gs.id,
+                        "sat": sat.id,
+                        "delay": link.get("delay", 0),
+                    })
 
-        waiting_flows = [f for f in NetworkFlow.all() if f.status == 'waiting']
-        active_flows = [f for f in NetworkFlow.all() if f.status == 'active']
-        
-        topology_report.append("\n**Network Flow Status:**")
-        topology_report.append(f"- Active Flows: {len(active_flows)}")
-        topology_report.append(f"- Waiting Flows: {len(waiting_flows)}")
-        
-        if waiting_flows:
-            topology_report.append("- Pending Requests:")
-            for flow in waiting_flows:
-                flow_id = getattr(flow, 'id', 'Unknown')
-                topology_report.append(f"  * Flow {flow_id}: {get_node_id(flow.source)} -> {get_node_id(flow.target)}")
+        link_count = sum(1 for _ in self.edges())
+        active_flows = sum(1 for f in NetworkFlow.all() if f.status == "active")
+        waiting_flows = sum(1 for f in NetworkFlow.all() if f.status == "waiting")
 
-        return "\n".join(topology_report)
+        return {
+            "link_count": link_count,
+            "user_sat": user_sat_links,
+            "gs_sat": gs_sat_edges,
+            "flows_active": active_flows,
+            "flows_waiting": waiting_flows,
+        }

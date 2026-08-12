@@ -115,7 +115,7 @@ class User(ComponentManager):
                 access_model.get_next_access(current_access['next_access'])
                 
         # Mobility update
-        if len(self.coordinates_trace) <= self.model.scheduler.steps:
+        while len(self.coordinates_trace) <= self.model.scheduler.steps:
             self.mobility_model(self)
             
         if self.coordinates != self.coordinates_trace[self.model.scheduler.steps]:
@@ -223,15 +223,19 @@ class User(ComponentManager):
 
     @staticmethod
     def export_users() -> Dict:
-        """Exports a summary of the users current state."""
         users_data = {}
         for user in User._instances:
-            # print(f"User {user.id}:")
-            # print(f"  Coordinates: {user.coordinates}")
-            # print(f"  Max connection range: {user.max_connection_range} km")
-
-            users_data[f'ID: {user.id}'] = {
-                "Coordinates": user.coordinates,
-                "Max Connection Range (km)": user.max_connection_range
+            upos = user.coordinates
+            pending_apps = []
+            for am in user.applications_access_models:
+                if am.request_provisioning and not am.application.available:
+                    pending_apps.append(am.application.id)
+            users_data[f"User_{user.id}"] = {
+                "pos": (round(upos[0], 1), round(upos[1], 1)) if upos else None,
+                "range": user.max_connection_range,
+                "access_points": [
+                    f"{type(ap).__name__}_{ap.id}" for ap in user.network_access_points
+                ],
+                "pending_apps": pending_apps,
             }
         return users_data

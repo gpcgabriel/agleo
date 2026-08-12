@@ -74,5 +74,5 @@ def add_process_unit_to_ground_stations(topology, num_process_units: int):
 
 def configure_mobility_models():   
     for sat in Satellite.all():
-        sat.mobility_model = coordinates_history 
+        sat.mobility_model = linear_estimation 
         sat.mobility_model_parameters = {'len': len(sat.coordinates_trace)}

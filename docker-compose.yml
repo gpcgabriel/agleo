@@ -1,0 +1,20 @@
+services:
+  leosim-dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: leosim-dashboard
+    ports:
+      - "8501:8501"
+    environment:
+      # Redirect Agno/Ollama client calls from localhost (inside container)
+      # to the host system where Ollama runs
+      - OLLAMA_HOST=http://host.docker.internal:11434
+    extra_hosts:
+      # Map host.docker.internal to the host's gateway IP
+      - "host.docker.internal:host-gateway"
+    volumes:
+      # Map datasets and logs to allow persistence and host inspection
+      - ./datasets:/app/datasets
+      - ./logs:/app/logs
+    restart: unless-stopped
