@@ -5,6 +5,7 @@ from typing import List, Callable, Optional
 
 DEFAULT_MODEL = "llama3.1"
 
+
 def is_ollama_running() -> bool:
     """
     Check if the Ollama daemon is reachable at http://localhost:11434/api/tags.
@@ -16,6 +17,7 @@ def is_ollama_running() -> bool:
         return response.status_code == 200
     except requests.exceptions.RequestException:
         return False
+
 
 def start_ollama() -> bool:
     """
@@ -33,7 +35,7 @@ def start_ollama() -> bool:
             ["ollama", "serve"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
-            start_new_session=True  # Ensure it runs independently
+            start_new_session=True,  # Ensure it runs independently
         )
     except Exception:
         return False
@@ -45,6 +47,7 @@ def start_ollama() -> bool:
             return True
 
     return False
+
 
 def list_local_models() -> List[str]:
     """
@@ -63,6 +66,7 @@ def list_local_models() -> List[str]:
         pass
     return []
 
+
 def pull_model(model_name: str, progress_callback: Optional[Callable[[str], None]] = None) -> bool:
     """
     Execute 'ollama pull <model_name>' via subprocess, streaming stdout.
@@ -72,11 +76,7 @@ def pull_model(model_name: str, progress_callback: Optional[Callable[[str], None
     """
     try:
         process = subprocess.Popen(
-            ["ollama", "pull", model_name],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            bufsize=1
+            ["ollama", "pull", model_name], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1
         )
 
         while True:

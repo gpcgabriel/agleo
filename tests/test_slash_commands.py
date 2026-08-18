@@ -1,8 +1,9 @@
 import sys
 import os
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from gui.slash_commands import SLASH_COMMANDS, get_help_message, get_commands_for_js
+from app.helper_functions.slash_commands import SLASH_COMMANDS, get_help_message, get_commands_for_js
 
 
 def test_slash_commands_registry():
@@ -63,6 +64,7 @@ def test_slash_commands_registry():
 
         # Verify JSON serialization works (no circular refs, no non-serializable types)
         import json
+
         serialized = json.dumps(js_cmds, ensure_ascii=False)
         assert len(serialized) > 10
         print(f"JSON serialization OK ({len(serialized)} chars).")

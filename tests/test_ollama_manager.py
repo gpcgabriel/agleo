@@ -4,13 +4,14 @@ from unittest.mock import patch, MagicMock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from gui.ollama_manager import (
+from app.helper_functions.ollama_helper import (
     is_ollama_running,
     start_ollama,
     list_local_models,
     pull_model,
-    DEFAULT_MODEL
+    DEFAULT_MODEL,
 )
+
 
 @patch("requests.get")
 def test_is_ollama_running_success(mock_get):
@@ -21,12 +22,15 @@ def test_is_ollama_running_success(mock_get):
     assert is_ollama_running() is True
     mock_get.assert_called_once_with("http://localhost:11434/api/tags", timeout=2)
 
+
 @patch("requests.get")
 def test_is_ollama_running_failure(mock_get):
     import requests
+
     mock_get.side_effect = requests.exceptions.ConnectionError()
 
     assert is_ollama_running() is False
+
 
 @patch("requests.get")
 def test_is_ollama_running_bad_status(mock_get):
@@ -36,11 +40,13 @@ def test_is_ollama_running_bad_status(mock_get):
 
     assert is_ollama_running() is False
 
+
 @patch("gui.ollama_manager.is_ollama_running")
 def test_start_ollama_already_running(mock_running):
     mock_running.return_value = True
 
     assert start_ollama() is True
+
 
 @patch("gui.ollama_manager.is_ollama_running")
 @patch("subprocess.Popen")
@@ -48,7 +54,7 @@ def test_start_ollama_already_running(mock_running):
 def test_start_ollama_success(mock_sleep, mock_popen, mock_running):
     # First check: False, subsequent checks: True
     mock_running.side_effect = [False, True]
-    
+
     mock_process = MagicMock()
     mock_popen.return_value = mock_process
 
@@ -56,19 +62,21 @@ def test_start_ollama_success(mock_sleep, mock_popen, mock_running):
     mock_popen.assert_called_once()
     mock_running.assert_called()
 
+
 @patch("gui.ollama_manager.is_ollama_running")
 @patch("subprocess.Popen")
 @patch("time.sleep")
 def test_start_ollama_timeout(mock_sleep, mock_popen, mock_running):
     # Always return False for running
     mock_running.return_value = False
-    
+
     mock_process = MagicMock()
     mock_popen.return_value = mock_process
 
     assert start_ollama() is False
     mock_popen.assert_called_once()
     assert mock_sleep.call_count == 20
+
 
 @patch("requests.get")
 def test_list_local_models_success(mock_get):
@@ -77,7 +85,7 @@ def test_list_local_models_success(mock_get):
     mock_response.json.return_value = {
         "models": [
             {"name": "llama3.1:latest", "model": "llama3.1:latest"},
-            {"name": "gemma:latest", "model": "gemma:latest"}
+            {"name": "gemma:latest", "model": "gemma:latest"},
         ]
     }
     mock_get.return_value = mock_response
@@ -85,10 +93,12 @@ def test_list_local_models_success(mock_get):
     models = list_local_models()
     assert models == ["llama3.1:latest", "gemma:latest"]
 
+
 @patch("requests.get")
 def test_list_local_models_failure(mock_get):
     mock_get.side_effect = Exception("HTTP Error")
     assert list_local_models() == []
+
 
 @patch("subprocess.Popen")
 def test_pull_model_success(mock_popen):
@@ -102,6 +112,7 @@ def test_pull_model_success(mock_popen):
     mock_popen.return_value = mock_process
 
     lines = []
+
     def callback(l):
         lines.append(l)
 

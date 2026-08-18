@@ -4,8 +4,8 @@ from agno.models.ollama import Ollama
 from agno.skills import Skills, LocalSkills
 
 # Importing internal modules
-from dashboard_agent.agent_tools import *
-from dashboard_agent.prompts import *
+from app.dashboard_agent.agent_tools import *
+from app.dashboard_agent.prompts import *
 
 
 def instantiate_agent(selected_model, action_mode):
