@@ -9,7 +9,6 @@ from app.helper_functions.ollama_helper import (
     start_ollama,
     list_local_models,
     pull_model,
-    DEFAULT_MODEL,
 )
 
 

@@ -1,121 +1,151 @@
-# LEOSim Architecture Document
+# LEOSim Architecture
 
-Welcome to the LEOSim architecture guide. This document provides a high-level overview of the LEOSim system architecture, state management, components, and interactive agent loops. It is designed to quickly onboard new developers and AI agents to the codebase.
+High-level guide to the LEOSim system: its layers, how state flows through
+them, and the rules that keep them apart.
 
 ---
 
-## 🏗️ High-Level System Architecture
+## Layers
 
-LEOSim is structured into three primary layers:
-1. **Simulation Engine (`leosim`)**: A discrete-event-like simulation engine written in Python that manages satellites, ground stations, users, and network topologies.
-2. **Dashboard UI (`app.py` via Streamlit & Folium)**: A rich, interactive frontend that visualizes the network on a world map and lists full telemetry.
-3. **Agent Orchestration Layer (`Agno` & `Ollama`)**: An LLM-powered assistant (using `llama3.1`) that helps the operator monitor, review, and control the simulation via natural language.
+LEOSim is split into four layers. The structural rule that holds them apart:
+**`streamlit` may only be imported inside `app/ui`**. It is enforced by
+`tests/test_layering.py`, not by convention.
+
+| Layer | Package | Responsibility |
+| --- | --- | --- |
+| Simulation engine | `leosim/` | Satellites, ground stations, users, topology, scheduling |
+| Application domain | `app/core/` | Session state, actions, handlers, snapshots, routing |
+| Agent orchestration | `app/agents/` | Prompts, tools, agent runs, tool-call recovery |
+| Interface | `app/ui/` | Streamlit widgets, map, chat, theme |
+
+`app.py` is the composition root: it wires the interface to the domain and
+owns nothing of the simulation itself.
 
 ```mermaid
 graph TD
-    subgraph UI ["Streamlit Dashboard (app.py)"]
-        Sidebar["Sidebar Controls (Topology, Scenario)"]
-        Map["Folium Map Visualizer"]
-        Chat["Chatbot UI Interface"]
-        Gate["Confirmation Gate (Quarantine Box)"]
+    subgraph UI ["app/ui (Streamlit)"]
+        Sidebar["sidebar.py"]
+        Map["map.py"]
+        Chat["chat/ (gate, history, input)"]
+        State["state.py (session_state bridge)"]
     end
 
-    subgraph State ["st.session_state (Single Source of Truth)"]
-        Hist["simulation_history (Snapshots)"]
-        Idx["current_step_index"]
-        Pending["pending_action"]
+    subgraph Agents ["app/agents"]
+        Runner["runner.py"]
+        Tools["tools.py (ProposalBuffer)"]
+        Recovery["tool_call_recovery.py"]
     end
 
-    subgraph AgentLayer ["Agent Orchestrator (Agno + Ollama)"]
-        Agent["Agno Agent (llama3.1)"]
-        Tools["Proposed Action Tools"]
+    subgraph Core ["app/core"]
+        Session["session.py (SimulationSession)"]
+        Router["router.py"]
+        Actions["actions.py (ProposedAction)"]
+        Handlers["handlers/ (one per action)"]
+        Catalog["catalog.py"]
     end
 
-    subgraph Engine ["LEOSim Simulator Engine"]
-        Sim["Simulator Instance"]
-        Sch["Scheduler (Ticks)"]
-        Comp["Components (Satellite, GS, User, ProcessUnit)"]
+    subgraph Engine ["leosim"]
+        Sim["Simulator"]
+        Sched["Scheduler"]
+        Comp["Components"]
     end
 
-    Sidebar -->|"Initializes"| Engine
-    Engine -->|"Serializes State"| Hist
-    Hist -->|"Reads Snapshot"| Map
-    Idx -->|"Selects Snapshot"| Map
-    Agent -->|"Reads Current Snapshot"| Hist
-    Chat -->|"Sends User Input"| Agent
-    Agent -->|"Invokes Tool"| Tools
-    Tools -->|"Writes Quarantined Action"| Pending
-    Pending -->|"Triggers UI Gate"| Gate
-    Gate -->|"User Confirms"| Engine
-    Gate -->|"User Cancels"| Pending
+    Sidebar -->|"SimulationConfig"| Session
+    Session -->|"builds"| Sim
+    Chat -->|"prompt"| Router
+    Router -->|"context"| Runner
+    Runner -->|"tools record"| Tools
+    Tools -->|"ProposedAction"| State
+    State -->|"on confirm"| Handlers
+    Handlers -->|"mutate"| Sim
+    Handlers -->|"ActionResult"| State
+    Session -->|"snapshot"| Map
 ```
 
 ---
 
-## 📂 Project Directory Structure
+## State ownership
 
-Here are the key directories and files:
-*   [app.py](file:///mnt/shared/projects/agleo/app.py): The main entry point for the Streamlit dashboard and LLM orchestrator agent loop.
-*   [dataset.py](file:///mnt/shared/projects/agleo/dataset.py): Utility functions to generate the initial topology, connect users, and attach process units.
-*   [main.py](file:///mnt/shared/projects/agleo/main.py): CLI interface to run head-to-head simulations of resource allocation algorithms.
-*   [docs/RULES.md](file:///mnt/shared/projects/agleo/docs/RULES.md): The golden operational rules derived from user feedback (strict rules on tests location, informational agent behavior, Streamlit UI stability, and Axe accessibility).
-*   [leosim/](file:///mnt/shared/projects/agleo/leosim/):
-    *   [simulator.py](file:///mnt/shared/projects/agleo/leosim/simulator.py): The main coordinator class of the simulation engine.
-    *   [scheduler.py](file:///mnt/shared/projects/agleo/leosim/scheduler.py): Ticks and triggers scheduling of components.
-    *   [components/](file:///mnt/shared/projects/agleo/leosim/components/): Defines `Satellite`, `GroundStation`, `User`, `ProcessUnit`, `NetworkLink`, `Application`, etc.
-*   [dataset_generator/](file:///mnt/shared/projects/agleo/dataset_generator/):
-    *   [create_components.py](file:///mnt/shared/projects/agleo/dataset_generator/create_components.py): Helper methods to instantiate and link nodes.
-*   [tests/](file:///mnt/shared/projects/agleo/tests/): The centralized test directory.
+A single `SimulationSession` object owns everything about a running
+simulation: the `Simulator`, the snapshot history, the viewed index, the
+scheduled steps and the satellite catalog. Streamlit stores that one object
+under a single key.
 
----
+`app/ui/state.py` is the only module that knows the `st.session_state` key
+names. Everything else reaches the session through its accessors.
 
-## 💾 State Management & Serialization
+### Snapshots
 
-Streamlit's `st.session_state` is the single source of truth for the dashboard UI. The simulation history is kept in memory as a list of JSON-serializable snapshots:
+Every snapshot is a JSON-serializable dictionary produced by
+`app/core/snapshot.py`:
 
-*   `st.session_state["simulation_history"]`: A list of dictionary objects representing the state of all components at each tick.
-*   `st.session_state["current_step_index"]`: The index in the history currently visualized by the user. Scrubbing the timeline slider updates this index, rendering past states.
-*   `st.session_state["pending_action"]`: Holds a quarantined tool proposal that is waiting for explicit user confirmation in the UI.
+* `step` — the simulator tick at capture time
+* `label` — what the capture represents (`"Step 3"`, `"Step 3 · change 1"`)
+* `satellites`, `ground_stations`, `users`, `links` — component telemetry
 
-### Snapshot Structure
-Each step snapshot (created via `serialize_state()` in `app.py`) contains:
-*   `step`: Current simulation tick integer.
-*   `satellites`: Telemetry trace including coordinates, gateway status, activity status, and CPU/Memory of any attached `ProcessUnit`.
-*   `ground_stations`: Server process units, coordinates, and wireless delays.
-*   `users`: Connected access points and demands of all associated applications.
-*   `links`: Bandwidth, delay, source, target, and dynamic/static types of all active network links.
+The history holds two kinds of capture. A **tick** advances the clock. An
+**infrastructure change** does not: it recomputes connectivity and records a
+new snapshot at the same tick, so the operator sees the effect immediately
+without consuming simulation time. The label keeps the two apart.
 
 ---
 
-## 🤖 Orchestrator Agent & Confirmation Gate
+## The action cycle
 
-The `Agno` agent acts as a command orchestrator. It runs locally via `Ollama` using the `llama3.1` model.
+The agent never mutates the engine. Every change goes through the same cycle:
 
-### Informational vs. Mutative Context
-*   **Informational Queries**: If the user asks informational questions (e.g., *"How many users are connected?"*), the agent reads the current snapshot from its system prompt context and responds **textually only**. It must **never** call any tools.
-*   **Mutative Commands**: If the user explicitly asks to control the network (e.g., *"Add a server to GroundStation 28"*, *"Run simulation for 5 steps"*, `/step 5`, `/restart`), the agent invokes the corresponding tool (e.g., `propose_add_process_unit`).
+1. The operator types a command. `app/core/router.py` decides whether to
+   answer locally, refuse, or forward it to the agent.
+2. When forwarded, `app/agents/runner.py` builds an agent whose tools write
+   into a `ProposalBuffer` scoped to that single run.
+3. Each tool records a typed `ProposedAction` (an `ActionType` plus a
+   validated payload) and returns a confirmation sentence to the model.
+4. The interface stores the proposal and renders the confirmation gate.
+5. On **Confirm**, `app/core/executor.py` looks up the handler registered for
+   the action type and runs it. The handler mutates the engine and returns an
+   `ActionResult` carrying messages and, for a restart, a replacement session.
+6. On **Cancel**, the proposal is discarded and the chat is told.
 
-### The Confirmation Gate Mechanics
-When the agent executes a control tool, the tool does **not** directly mutate the backend engine. Instead:
-1.  The tool sets `st.session_state["pending_action"]` to the action payload.
-2.  A visual quarantine block (the Confirmation Gate) is rendered on the UI.
-3.  If the operator clicks **Confirm**:
-    *   The corresponding real execution function (e.g. `execute_pending_action`) is called.
-    *   The simulator engine processes the change and runs the internal `.step()`.
-    *   A new snapshot is appended to `st.session_state["simulation_history"]`.
-    *   The `current_step_index` is updated to point to the new state.
-    *   The buffer is cleared and `st.rerun()` is invoked.
-4.  If the operator clicks **Cancel**:
-    *   `pending_action` is cleared.
-    *   A notification is appended to the chat, allowing the agent to stand down.
+Handlers return what should be said; they never write to the chat or raise a
+toast themselves. `app/ui/state.apply_result` translates the result into
+interface effects.
 
 ---
 
-## ⚠️ Core Operational Rules for Developers/Agents
+## Directory map
 
-When modifying LEOSim, you must respect these rules at all times (registered in [docs/RULES.md](file:///mnt/shared/projects/agleo/docs/RULES.md)):
+* `app.py` — composition root for the Streamlit dashboard
+* `main.py` — CLI for head-to-head runs of allocation algorithms
+* `dataset.py`, `dataset_generator/` — topology and component construction
+* `app/core/`
+  * `session.py` — `SimulationSession`: the owner of simulation state
+  * `config.py` — `SimulationConfig`: validated simulation parameters
+  * `actions.py` — `ProposedAction` and the typed payloads
+  * `handlers/` — one module per action; `executor.py` dispatches to them
+  * `infrastructure.py` — primitives for creating nodes and attaching units
+  * `catalog.py` — indexed satellite traces
+  * `snapshot.py`, `summary.py` — state for the map and for the agent
+  * `router.py` — command routing, free of interface calls
+* `app/agents/`
+  * `tools.py` — `ProposalBuffer` and the `propose_*` tools
+  * `runner.py` — agent assembly and execution
+  * `tool_call_recovery.py` — recovery of tool calls emitted as text
+  * `prompts.py` — system description and instructions
+* `app/ui/`
+  * `state.py` — the only bridge to `st.session_state`
+  * `sidebar.py`, `map.py`, `header.py`, `css.py`, `ollama.py`
+  * `chat/` — `gate.py`, `history.py`, `input.py`
+  * `gui/` — icons, themes, accessibility script
+* `leosim/` — the simulation engine
+* `tests/` — the centralized test directory
 
-1.  **Test Placement**: Keep all testing scripts under `tests/`. Do not run tests in `scratch/`.
-2.  **No Unprompted Action Proposals**: Do not call proposal tools during conversational/informational questions.
-3.  **Visual Stability**: Prevent "widget ghosting" in Streamlit by using static widget calls with dynamic arguments and unique keys.
-4.  **A11y & Contrast**: Run playwright tests ([axe_validation.js](file:///mnt/shared/projects/agleo/tests/axe_validation.js)) to verify contrast and WCAG landmark structures.
+---
+
+## Operational rules
+
+See [RULES.md](RULES.md) for the behavioural rules derived from operator
+feedback. Two structural rules are enforced by tests:
+
+1. **Layer boundary** — `streamlit` only inside `app/ui`
+   (`tests/test_layering.py`).
+2. **Test placement** — every test lives under `tests/`.

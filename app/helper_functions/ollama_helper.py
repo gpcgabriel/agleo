@@ -91,3 +91,26 @@ def pull_model(model_name: str, progress_callback: Optional[Callable[[str], None
         return process.returncode == 0
     except Exception:
         return False
+
+
+def model_is_available(model_name: str, local_models=None) -> bool:
+    """Tells whether a model is available locally, tolerating the tag.
+
+    The sidebar selector works with full names ("llama3.1:8b"), while
+    DEFAULT_MODEL is the untagged name ("llama3.1"). This comparison accepts
+    either form.
+
+    Args:
+        model_name (str): Name of the model being looked for.
+        local_models (list): Local models; queried when not supplied.
+
+    Returns:
+        bool: True if some local model matches.
+    """
+    if local_models is None:
+        local_models = list_local_models()
+
+    return any(
+        name == model_name or name.startswith(model_name + ":") or model_name.startswith(name + ":")
+        for name in local_models
+    )

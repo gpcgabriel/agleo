@@ -1,7 +1,7 @@
-from .ollama_setup import ollama_setup
-from .render_chat_panel import render_chat_panel
-from .render_header import render_header
-from .inject_CSS import inject_CSS
-from .render_map import render_map
-from .render_sidebar import render_sidebar
-from .session_init import session_init
+"""LEOSim application.
+
+This package deliberately re-exports nothing: importing `app` (or anything
+under `app.core` / `app.agents`) must not pull Streamlit in. The interface
+modules live in `app/ui` and are imported explicitly by the `app.py` entry
+point.
+"""

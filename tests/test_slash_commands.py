@@ -3,7 +3,7 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.helper_functions.slash_commands import SLASH_COMMANDS, get_help_message, get_commands_for_js
+from app.core.slash_commands import SLASH_COMMANDS, get_help_message, get_commands_for_js
 
 
 def test_slash_commands_registry():

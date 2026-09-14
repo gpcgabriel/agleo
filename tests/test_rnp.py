@@ -1,86 +1,68 @@
-import sys
+"""Smoke test for loading the RNP scenario.
+
+Checks that the shipped datasets produce a coherent simulation: the loaded
+scenario matches the requested configuration, and the first snapshot carries
+every section the map and the agent read.
+"""
+
 import os
+import sys
 
-# Ensure project root is in python path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import random
-# Mock streamlit and streamlit_folium entirely before any import
-from unittest.mock import MagicMock
-mock_st = MagicMock()
-mock_st.session_state = {}
-# Configure sidebar methods to prevent triggering side effects during import
-mock_st.sidebar.button.return_value = False
-mock_st.sidebar.checkbox.return_value = False
-mock_st.sidebar.selectbox.return_value = "datasets/rnp.gml"
-mock_st.sidebar.number_input.return_value = 20
+from app.core.config import SimulationConfig
+from app.core.session import create_session
+from leosim.components import GroundStation, Satellite, User
 
-sys.modules['streamlit'] = mock_st
-sys.modules['streamlit.components'] = MagicMock()
-sys.modules['streamlit.components.v1'] = MagicMock()
-sys.modules['streamlit_folium'] = MagicMock()
-
-from app import initialize_simulation, serialize_state
+GML = "datasets/rnp.gml"
+TRACES = "datasets/satellites_brazil.json"
+NUM_USERS = 20
+NUM_SATELLITES = 15
 
 
-def test_rnp():
-    import io
-    import sys
-    from contextlib import contextmanager
+def make_session():
+    config = SimulationConfig(
+        gml_path=GML,
+        satellites_path=TRACES,
+        num_users=NUM_USERS,
+        num_satellites=NUM_SATELLITES,
+        scenario="hybrid",
+        algorithm="best_fit_allocation",
+    )
+    return create_session(config)
 
-    @contextmanager
-    def capture_output(test_name):
-        buffer = io.StringIO()
-        old_stdout = sys.stdout
-        old_stderr = sys.stderr
-        sys.stdout = buffer
-        sys.stderr = buffer
-        try:
-            yield buffer
-            sys.stdout = old_stdout
-            sys.stderr = old_stderr
-            print(f"=> {test_name}: SUCCESS")
-        except Exception as e:
-            sys.stdout = old_stdout
-            sys.stderr = old_stderr
-            print(buffer.getvalue(), end="")
-            raise e
 
-    with capture_output("test_rnp"):
-        print("Testing simulation initialization with rnp.gml and satellites_brazil.json...")
-        dataset_gml = "datasets/rnp.gml"
-        satellites_json = "datasets/satellites_brazil.json"
-        
-        sim = initialize_simulation(
-            dataset_gml=dataset_gml,
-            satellites_json=satellites_json,
-            num_users=20,
-            num_satellites=15,
-            scenario="hybrid",
-            algorithm="best_fit_allocation"
-        )
-        
-        print("Simulator initialized successfully!")
-        print(f"Initial steps: {sim.scheduler.steps}")
-        
-        # Check serialization
-        snapshot = serialize_state(sim)
-        print(f"Step {snapshot['step']} snapshot:")
-        print(f"  Satellites: {len(snapshot['satellites'])}")
-        print(f"  Ground Stations: {len(snapshot['ground_stations'])}")
-        print(f"  Users: {len(snapshot['users'])}")
-        print(f"  Links: {len(snapshot['links'])}")
-        
-        # Run a few steps
-        for step in range(1, 4):
-            print(f"Advancing to step {step}...")
-            sim.step()
-            snapshot = serialize_state(sim)
-            print(f"Step {snapshot['step']} snapshot:")
-            print(f"  Active Satellites: {len([s for s in snapshot['satellites'] if s['active']])}")
-            print(f"  Connected Users: {len([u for u in snapshot['users'] if u['connected_aps']])}")
-            print(f"  Links: {len(snapshot['links'])}")
-        print("ALL TESTS PASSED!")
+def test_the_scenario_matches_the_requested_configuration():
+    make_session()
+
+    assert User.count() == NUM_USERS
+    assert Satellite.count() == NUM_SATELLITES
+    assert GroundStation.count() > 0
+
+
+def test_the_first_snapshot_carries_every_section():
+    snapshot = make_session().get_current_snapshot()
+
+    for section in ("step", "label", "satellites", "ground_stations", "users", "links"):
+        assert section in snapshot, f"snapshot is missing '{section}'"
+
+    assert snapshot["step"] == 0
+    assert len(snapshot["users"]) == NUM_USERS
+    assert len(snapshot["satellites"]) > 0
+    assert len(snapshot["links"]) > 0
+
+
+def test_the_hybrid_scenario_places_process_units_on_both_sides():
+    make_session()
+
+    satellites_with_units = [s for s in Satellite.all() if s.process_unit]
+    stations_with_units = [g for g in GroundStation.all() if g.process_unit]
+
+    assert satellites_with_units, "no satellite received a process unit"
+    assert stations_with_units, "no ground station received a process unit"
+
 
 if __name__ == "__main__":
-    test_rnp()
+    from runner import run_module_tests
+
+    sys.exit(1 if run_module_tests(globals()) else 0)

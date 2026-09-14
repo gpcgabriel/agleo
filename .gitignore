@@ -9,6 +9,7 @@ logs/
 CLAUDE.md
 CONTEXT.md
 PLANNING.md
+ROADMAP.md
 
 *.pyc
 *.pyo

@@ -102,13 +102,29 @@ class GroundStation(ComponentManager):
         return dumps(results, default=str)
 
     def connect_server(self, server) -> None:
+        # `export()` writes None when the station has no servers, and
+        # `Simulator.initialize` restores that None. Without this guard,
+        # attaching the first server to an empty station raises AttributeError.
+        if self.process_unit is None:
+            self.process_unit = []
+
         self.process_unit.append(server)
         server.coordinates = self.coordinates
 
     def step(self) -> None:
-        topology = self.model.topology
         self.connection_to_satellites()
+        self.connect_users()
+
+    def connect_users(self) -> None:
+        """Connects every user currently within range to this ground station.
+
+        Kept separate from `step()` so that connectivity can also be
+        recomputed outside a simulation tick, when the operator changes the
+        infrastructure and expects to see the effect right away.
+        """
+        topology = self.model.topology
         self.users = []
+
         for user in User.all():
             if topology.within_range(self, user):
                 user.connect_to_access_point(self)

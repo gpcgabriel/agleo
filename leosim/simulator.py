@@ -30,14 +30,14 @@ class Simulator(ComponentManager):
         id: int = 0,
         stopping_criterion: Optional[Callable] = None,
         resource_management_algorithm: Optional[Callable] = None,
-        resource_management_algorithm_parameters: Dict[str, Any] = {},
+        resource_management_algorithm_parameters: Optional[Dict[str, Any]] = None,
         topology_management_algorithm: Callable = default_topology_management,
-        topology_management_algorithm_parameters: Dict[str, Any] = {},
-        user_defined_functions: List[Callable] = [],
+        topology_management_algorithm_parameters: Optional[Dict[str, Any]] = None,
+        user_defined_functions: Optional[List[Callable]] = None,
         scheduler: Callable = Scheduler, 
         dump_interval: int = 100,
         logs_directory: str = "logs",
-        ignore_list: List[Any] = [], 
+        ignore_list: Optional[List[Any]] = None,
         clean_data_in_memory: bool = False,
         tick_duration: int = 1,
         time_unit: str = 'seconds',
@@ -84,11 +84,15 @@ class Simulator(ComponentManager):
         self.running = False
         
         self.resource_management_algorithm = resource_management_algorithm
-        self.resource_management_algorithm_parameters = resource_management_algorithm_parameters
+
+        # Parameters are copied into a fresh dictionary: using the signature
+        # default directly would make two instances share (and overwrite) the
+        # same dictionary.
+        self.resource_management_algorithm_parameters = dict(resource_management_algorithm_parameters or {})
         self.resource_management_algorithm_parameters['scenario'] = scenario
         
         self.topology_management_algorithm = topology_management_algorithm
-        self.topology_management_parameters = topology_management_algorithm_parameters
+        self.topology_management_parameters = dict(topology_management_algorithm_parameters or {})
         
         self.scheduler = scheduler(self)
         self.topology = Topology()
@@ -98,12 +102,12 @@ class Simulator(ComponentManager):
         self.last_dump = 0
         self.clean_data_in_memory = clean_data_in_memory
         self.agent_metrics = {}
-        self.ignore_list = ignore_list
+        self.ignore_list = list(ignore_list or [])
 
         # Convert time unit using timedelta for standardization
         self.tick_duration = datetime.timedelta(**{time_unit: tick_duration}).total_seconds()
         
-        for function in user_defined_functions:
+        for function in (user_defined_functions or []):
             globals()[function.__name__] = function
         
         ComponentManager.model = self

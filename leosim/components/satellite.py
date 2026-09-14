@@ -179,10 +179,21 @@ class Satellite(ComponentManager):
             self.power_consumption_model(self)
         
         # If operational, provide connections to users within range
-        if self.active:
-            for user in User.all():
-                if self.model.topology.within_range(self, user):
-                    user.connect_to_access_point(self)
+        self.connect_users()
+
+    def connect_users(self) -> None:
+        """Connects every user currently within range to this satellite.
+
+        Kept separate from `step()` so that connectivity can also be
+        recomputed outside a simulation tick, when the operator changes the
+        infrastructure and expects to see the effect right away.
+        """
+        if not self.active:
+            return
+
+        for user in User.all():
+            if self.model.topology.within_range(self, user):
+                user.connect_to_access_point(self)
 
     def export(self) -> Dict[str, Any]:
         """Generates a dictionary representation of the object for context saving.
