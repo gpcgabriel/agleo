@@ -7,29 +7,34 @@ from app.core.catalog import get_catalog
 from app.core.snapshot import serialize_state
 
 
-def create_session(config):
+def create_session(config, allocation_algorithm=None):
     """Builds a new simulation from a configuration.
 
     Args:
         config (SimulationConfig): Simulation parameters.
+        allocation_algorithm (Callable): Allocation strategy to inject; see
+            `app.core.bootstrap.build_simulator`.
 
     Returns:
         SimulationSession: A session sitting at step zero.
     """
-    simulator = build_simulator(config)
-    return SimulationSession(simulator, config)
+    simulator = build_simulator(config, allocation_algorithm=allocation_algorithm)
+    return SimulationSession(simulator, config, allocation_algorithm=allocation_algorithm)
 
 
 class SimulationSession:
     """Holds the simulator, the snapshot history and the viewing position."""
 
-    def __init__(self, simulator, config):
+    def __init__(self, simulator, config, allocation_algorithm=None):
         """Args:
             simulator (Simulator): An initialized simulator.
             config (SimulationConfig): The configuration it was built from.
+            allocation_algorithm (Callable): The injected strategy, kept so a
+                restart can rebuild the simulation with the same one.
         """
         self.simulator = simulator
         self.config = config
+        self.allocation_algorithm = allocation_algorithm
         self.catalog = get_catalog(config.satellites_path)
 
         self.history = []

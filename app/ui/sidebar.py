@@ -5,9 +5,30 @@ import streamlit as st
 
 from app.ui.gui.icons import icon_bot, icon_satellite, wrap_icon
 from app.helper_functions.ollama_helper import DEFAULT_MODEL, list_local_models, model_is_available
+from app.agents.allocation import LLMAllocator
 from app.core.config import SimulationConfig
 from app.core.session import create_session
 from app.ui.state import clear_pending, set_session
+
+
+def build_allocation_algorithm(config):
+    """Builds the allocation strategy the domain layer cannot import itself.
+
+    The LLM-driven allocator lives in the agent package, so it is assembled
+    here — at the composition root — and injected into the simulation.
+
+    Args:
+        config (SimulationConfig): The chosen configuration.
+
+    Returns:
+        Callable or None: The strategy to inject, or None to let the domain
+        resolve a built-in algorithm by name.
+    """
+    if config.algorithm != SimulationConfig.AGENT_ALGORITHM:
+        return None
+
+    model_name = st.session_state.get("selected_model", DEFAULT_MODEL)
+    return LLMAllocator(model_name=model_name).allocate
 
 
 def render_sidebar(ollama_ok: bool) -> dict:
@@ -40,7 +61,7 @@ def render_sidebar(ollama_ok: bool) -> dict:
     )
     scenario = st.sidebar.selectbox("Scenario", ["hybrid", "leo", "terrestrial"], key="scenario_key")
     algorithm = st.sidebar.selectbox(
-        "Allocation Algorithm", ["best_fit_allocation", "longest_duration_allocation"], key="algorithm_key"
+        "Allocation Algorithm", list(SimulationConfig.ALGORITHMS), key="algorithm_key"
     )
 
     st.sidebar.markdown("---")
@@ -89,7 +110,7 @@ def render_sidebar(ollama_ok: bool) -> dict:
     st.sidebar.markdown('<div class="btn-initialize-marker"></div>', unsafe_allow_html=True)
     if st.sidebar.button("Initialize Simulation", key="btn_initialize", use_container_width=True):
         with st.spinner("Initializing simulator..."):
-            set_session(create_session(config))
+            set_session(create_session(config, allocation_algorithm=build_allocation_algorithm(config)))
             clear_pending()
             st.session_state["chat_messages"] = [
                 {

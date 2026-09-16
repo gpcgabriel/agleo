@@ -16,7 +16,10 @@ def handle(session, payload):
         ActionResult: Carrying the new session.
     """
     config = payload.config
-    new_session = SimulationSession(build_simulator(config), config)
+    algorithm = session.allocation_algorithm
+    new_session = SimulationSession(
+        build_simulator(config, allocation_algorithm=algorithm), config, allocation_algorithm=algorithm
+    )
 
     return ActionResult(
         messages=[{"role": "system", "content": "Simulation restarted at Step 0."}],

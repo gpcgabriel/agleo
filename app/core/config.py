@@ -9,7 +9,10 @@ class SimulationConfig:
     """
 
     SCENARIOS = ("hybrid", "leo", "terrestrial")
-    ALGORITHMS = ("best_fit_allocation", "longest_duration_allocation")
+    # "llm_allocation" is resolved by the composition root, not here: the
+    # domain layer must not import the agent package.
+    ALGORITHMS = ("best_fit_allocation", "longest_duration_allocation", "llm_allocation")
+    AGENT_ALGORITHM = "llm_allocation"
 
     def __init__(self, gml_path, satellites_path, num_users, num_satellites, scenario, algorithm):
         """Builds a simulation configuration.

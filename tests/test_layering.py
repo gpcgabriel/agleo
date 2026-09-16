@@ -87,6 +87,44 @@ def test_every_ui_module_lives_under_the_ui_package():
     assert not stray, f"interface modules outside app/ui: {stray}"
 
 
+def test_the_engine_never_imports_the_llm_stack():
+    """`leosim` must run headless, without Ollama or the agent framework."""
+    offenders = []
+
+    for path in (ROOT / "leosim").rglob("*.py"):
+        if any(name.split(".")[0] in ("agno", "ollama") for name in imported_modules(path)):
+            offenders.append(str(path.relative_to(ROOT)))
+
+    assert not offenders, f"the LLM stack is imported by the engine: {offenders}"
+
+
+def test_the_domain_never_imports_the_agent_package():
+    """Strategies that need the agent package are injected by the composition
+    root, so the domain layer never reaches for them itself."""
+    offenders = []
+
+    for path in (ROOT / "app/core").rglob("*.py"):
+        if any(name.startswith("app.agents") for name in imported_modules(path)):
+            offenders.append(str(path.relative_to(ROOT)))
+
+    assert not offenders, f"app/agents imported by app/core: {offenders}"
+
+
+def test_the_domain_imports_without_the_llm_stack_loaded():
+    """Runtime check: building a simulation must not load the agent framework."""
+    script = (
+        "import sys;"
+        "sys.path.insert(0, %r);"
+        "import app.core.session, app.core.bootstrap, app.core.handlers;"
+        "assert 'agno' not in sys.modules, 'agno was loaded';"
+        "print('ok')" % str(ROOT)
+    )
+    completed = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True)
+
+    assert completed.returncode == 0, completed.stderr
+    assert "ok" in completed.stdout
+
+
 def test_the_domain_modules_are_importable():
     for name in ("app.core.session", "app.core.router", "app.core.handlers", "app.agents.runner"):
         assert importlib.import_module(name) is not None

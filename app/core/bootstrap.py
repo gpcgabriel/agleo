@@ -46,7 +46,8 @@ def resolve_algorithm(name):
     """
     if name not in ALLOCATION_ALGORITHMS:
         raise ValueError(
-            f"Unknown allocation algorithm: {name!r}. Available: {sorted(ALLOCATION_ALGORITHMS)}."
+            f"Unknown allocation algorithm: {name!r}. Available: {sorted(ALLOCATION_ALGORITHMS)}. "
+            "Algorithms outside this registry must be passed to build_simulator directly."
         )
     return ALLOCATION_ALGORITHMS[name]
 
@@ -95,18 +96,23 @@ def build_scenario(config, scenary_path=DEFAULT_SCENARY_PATH):
     return scenary_path
 
 
-def build_simulator(config, scenary_path=DEFAULT_SCENARY_PATH, logs_directory=DEFAULT_LOGS_DIRECTORY):
+def build_simulator(config, scenary_path=DEFAULT_SCENARY_PATH, logs_directory=DEFAULT_LOGS_DIRECTORY,
+                    allocation_algorithm=None):
     """Builds a simulator ready to run.
 
     Args:
         config (SimulationConfig): Simulation configuration.
         scenary_path (str): Where to write the intermediate scenario file.
         logs_directory (str): Directory the simulator writes metrics to.
+        allocation_algorithm (Callable): Allocation strategy to inject. When
+            None, it is resolved from `config.algorithm`. The composition root
+            passes strategies this layer must not import, such as the
+            LLM-driven allocator.
 
     Returns:
         Simulator: A simulator initialized at step zero.
     """
-    algorithm = resolve_algorithm(config.algorithm)
+    algorithm = allocation_algorithm or resolve_algorithm(config.algorithm)
     scenary_file = build_scenario(config, scenary_path=scenary_path)
 
     simulator = Simulator(

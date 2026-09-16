@@ -131,6 +131,8 @@ interface effects.
   * `runner.py` — agent assembly and execution
   * `tool_call_recovery.py` — recovery of tool calls emitted as text
   * `prompts.py` — system description and instructions
+  * `allocation/` — the LLM allocation strategy, injected into the simulator
+    like any other allocation algorithm
 * `app/ui/`
   * `state.py` — the only bridge to `st.session_state`
   * `sidebar.py`, `map.py`, `header.py`, `css.py`, `ollama.py`

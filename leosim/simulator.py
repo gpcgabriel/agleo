@@ -201,10 +201,7 @@ class Simulator(ComponentManager):
             **self.topology_management_parameters
         )
 
-        if self.resource_management_algorithm is True:
-            for gs in GroundStation.all():
-                gs.resource_management_algorithm(self, self.resource_management_algorithm_parameters)
-        elif callable(self.resource_management_algorithm):
+        if callable(self.resource_management_algorithm):
             for gs in GroundStation.all():
                 params = dict(self.resource_management_algorithm_parameters)
                 params['ground_station'] = gs
