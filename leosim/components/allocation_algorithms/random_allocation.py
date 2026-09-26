@@ -21,7 +21,7 @@ def random_allocation(model, parameters):
                     applications_to_be_allocated.append(access_model)
                 else:
                     process_unit = access_model.application.process_unit
-                    # If not directly connected to a network access point
+                    # Skipping what is not directly connected to a network access point.
                     if not any(
                         (process_unit in model.topology.neighbors(access_point) for access_point in user.network_access_points)
                     ) or user.network_access_points == []:
@@ -39,11 +39,11 @@ def random_allocation(model, parameters):
                 if process_unit.has_capacity_to_host(access_model.application) and process_unit.available:
                     process_units.append(process_unit)
 
-        # Try to allocate on the ground network
+        # Trying the ground network first.
         if process_units == []:
             process_units = []
             for unit in ProcessUnit.all():
-                # Check if communication with this server is possible
+                # Checking whether communication with this server is possible.
                 if unit.has_capacity_to_host(access_model.application) and unit.available and has_path(model.topology, access_model.user, unit):
                     process_units.append(unit)
 

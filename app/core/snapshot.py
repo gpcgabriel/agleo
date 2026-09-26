@@ -14,7 +14,7 @@ def serialize_state(sim):
     """
     state = {"step": sim.scheduler.steps, "satellites": [], "ground_stations": [], "users": [], "links": []}
 
-    # Export satellites
+    # Exporting the satellites.
     for sat in Satellite.all():
         if sat.coordinates:
             state["satellites"].append(
@@ -40,7 +40,7 @@ def serialize_state(sim):
                 }
             )
 
-    # Export ground stations
+    # Exporting the ground stations.
     for gs in GroundStation.all():
         if gs.coordinates:
             state["ground_stations"].append(
@@ -62,7 +62,7 @@ def serialize_state(sim):
                 }
             )
 
-    # Export users
+    # Exporting the users.
     for user in User.all():
         if user.coordinates:
             state["users"].append(
@@ -90,7 +90,7 @@ def serialize_state(sim):
                 }
             )
 
-    # Export links
+    # Exporting the links.
     for u, v, data in sim.topology.edges(data=True):
         if hasattr(u, "coordinates") and hasattr(v, "coordinates") and u.coordinates and v.coordinates:
             state["links"].append(

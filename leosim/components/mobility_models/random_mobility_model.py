@@ -4,17 +4,17 @@ from geopy.distance import geodesic
 from geopy.point import Point
 from random import choice 
 
-# Calculate bearing between two points
-def calcular_bearing(origem, destino):
-    lat1, lon1 = map(radians, origem)
-    lat2, lon2 = map(radians, destino)
+# Calculating the bearing between two points.
+def calculate_bearing(origin, destination):
+    lat1, lon1 = map(radians, origin)
+    lat2, lon2 = map(radians, destination)
 
     diff_long = lon2 - lon1
     x = sin(diff_long) * cos(lat2)
     y = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(diff_long)
 
     bearing = atan2(x, y)
-    return (degrees(bearing) + 360) % 360 # Convert angle 0 - 360
+    return (degrees(bearing) + 360) % 360  # Converting the angle to the 0-360 range.
 
 def random_mobility_model(user: object):
     parameters = user.mobility_model_parameters
@@ -28,8 +28,8 @@ def random_mobility_model(user: object):
     points = []
     start_point = Point(user.coordinates[:2])
     
-    # Obtaining bearing correctly
-    bearing = calcular_bearing(user.coordinates[:2], station.coordinates[:2])
+    # Obtaining the bearing.
+    bearing = calculate_bearing(user.coordinates[:2], station.coordinates[:2])
 
     for i in range(1, num_steps + 1):
         fraction = i / (num_steps + 1)

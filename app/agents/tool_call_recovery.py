@@ -24,6 +24,10 @@ _ARITHMETIC = {ast.Add: lambda a, b: a + b, ast.Sub: lambda a, b: a - b,
 def _evaluate(node):
     """Evaluates a syntax node, accepting only data and simple arithmetic.
 
+    Private on purpose: this is the security boundary of the module. Calling it
+    from elsewhere would invite evaluating text that never went through
+    `recover_tool_call`.
+
     Raises:
         ValueError: On any construct outside the allowed set, such as function
             calls or attribute access.
@@ -56,7 +60,7 @@ def _evaluate(node):
     raise ValueError(f"Construct not allowed: {type(node).__name__}.")
 
 
-def _find_object_candidates(text):
+def find_object_candidates(text):
     """Extracts the brace-balanced fragments found in the text.
 
     Returns:
@@ -81,7 +85,7 @@ def _find_object_candidates(text):
     return candidates
 
 
-def _first_present(mapping, fields):
+def first_present(mapping, fields):
     for field in fields:
         if field in mapping:
             return mapping[field]
@@ -101,7 +105,7 @@ def parse_tool_call(text):
     if not text or "{" not in text:
         return None
 
-    for candidate in _find_object_candidates(text):
+    for candidate in find_object_candidates(text):
         try:
             parsed = _evaluate(ast.parse(candidate, mode="eval").body)
         except (SyntaxError, ValueError, TypeError, ZeroDivisionError):
@@ -110,8 +114,8 @@ def parse_tool_call(text):
         if not isinstance(parsed, dict):
             continue
 
-        name = _first_present(parsed, NAME_FIELDS)
-        arguments = _first_present(parsed, ARGUMENT_FIELDS)
+        name = first_present(parsed, NAME_FIELDS)
+        arguments = first_present(parsed, ARGUMENT_FIELDS)
 
         if isinstance(name, str) and isinstance(arguments, dict):
             return name, arguments

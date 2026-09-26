@@ -10,7 +10,7 @@ from leosim.components.allocation_algorithms import best_fit_allocation, longest
 DEFAULT_SCENARY_PATH = "datasets/temp_dashboard_scenary.json"
 DEFAULT_LOGS_DIRECTORY = "logs/dashboard"
 
-# Fixed seed so that two runs of the same configuration produce the same
+# Fixing the seed so two runs of the same configuration produce the same
 # scenario. It seeds the process-wide generator, which is what the helpers in
 # `dataset.py` draw from.
 RANDOM_SEED = 42

@@ -30,7 +30,7 @@ def test_slash_commands_registry():
             raise e
 
     with capture_output("test_slash_commands_registry"):
-        # All commands must have required keys
+        # Checking that every command carries the required keys.
         for cmd in SLASH_COMMANDS:
             assert "cmd" in cmd, f"Missing 'cmd' key in {cmd}"
             assert "desc" in cmd, f"Missing 'desc' key in {cmd}"
@@ -44,7 +44,7 @@ def test_slash_commands_registry():
         assert help_cmd["local"] is True, "/help must be a local command"
         print("/help found and marked as local.")
 
-        # get_help_message must mention all commands
+        # Checking that get_help_message mentions every command.
         help_msg = get_help_message()
         assert isinstance(help_msg, str)
         assert len(help_msg) > 0
@@ -53,7 +53,7 @@ def test_slash_commands_registry():
             assert cmd_stripped in help_msg, f"Command '{cmd_stripped}' not found in help message"
         print("get_help_message() includes all commands.")
 
-        # get_commands_for_js must return proper structure
+        # Checking the structure get_commands_for_js returns.
         js_cmds = get_commands_for_js()
         assert len(js_cmds) == len(SLASH_COMMANDS)
         for jc in js_cmds:
@@ -62,7 +62,8 @@ def test_slash_commands_registry():
             assert "autoSubmit" in jc, f"Missing 'autoSubmit' in JS command: {jc}"
         print("get_commands_for_js() returns correct structure.")
 
-        # Verify JSON serialization works (no circular refs, no non-serializable types)
+        # Serializing to JSON, which catches circular references and types that
+        # cannot cross into JavaScript.
         import json
 
         serialized = json.dumps(js_cmds, ensure_ascii=False)

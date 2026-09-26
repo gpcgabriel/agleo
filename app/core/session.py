@@ -41,9 +41,9 @@ class SimulationSession:
         self.current_step_index = 0
         self.steps_remaining = 0
 
-        # A freshly loaded scenario has not gone through a tick yet, so no
-        # access point has connected its users. Without this, step 0 would be
-        # drawn with every user disconnected, including those already in range.
+        # Connecting the access points before the first draw: a freshly loaded
+        # scenario has not gone through a tick yet, so step 0 would otherwise
+        # be drawn with every user disconnected, including those in range.
         self.refresh_connectivity()
         self.commit_snapshot()
 
@@ -56,12 +56,12 @@ class SimulationSession:
             dict: The snapshot just created.
         """
         snapshot = serialize_state(self.simulator)
-        snapshot["label"] = self._build_label(snapshot["step"])
+        snapshot["label"] = self.build_label(snapshot["step"])
         self.history.append(snapshot)
         self.current_step_index = len(self.history) - 1
         return snapshot
 
-    def _build_label(self, step):
+    def build_label(self, step):
         """Names a snapshot after what it represents.
 
         The history holds two kinds of capture: the result of a tick, and the

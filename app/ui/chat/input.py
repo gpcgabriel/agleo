@@ -54,13 +54,13 @@ def render_chat_input(session, agent_mode, ollama_ok, chat_container):
             st.markdown(prompt)
 
         with st.chat_message("assistant"):
-            response = _render_decision(decision, prompt, session, agent_mode)
+            response = render_decision(decision, prompt, session, agent_mode)
 
     push_chat("assistant", response)
     st.rerun()
 
 
-def _render_decision(decision, prompt, session, agent_mode):
+def render_decision(decision, prompt, session, agent_mode):
     """Draws the reply matching the router's decision.
 
     Returns:

@@ -1,4 +1,4 @@
-# Simulator components
+# Importing the simulator components.
 from ..component_manager import ComponentManager
 from .network_link import NetworkLink
 from .satellite import Satellite

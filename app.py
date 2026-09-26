@@ -130,11 +130,11 @@ def main_app():
 
     inject_CSS(is_dark)
 
-    # Accessibility (Axe-core compliance) helper script injection
+    # Injecting the accessibility helper script for axe-core compliance.
     inject_accessibility_script(is_dark=is_dark)
 
-    # Keep re-rendering while scheduled steps remain, so the operator sees
-    # progress and can stop the run between steps.
+    # Re-rendering while scheduled steps remain, so the operator sees progress
+    # and can stop the run between steps.
     if session is not None and session.has_pending_steps():
         time.sleep(STEP_RENDER_DELAY_SECONDS)
         st.rerun()

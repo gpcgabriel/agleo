@@ -28,7 +28,7 @@ class ActionType:
     )
 
 
-def _check_coordinates(lat, lon):
+def check_coordinates(lat, lon):
     """Validates a pair of geographic coordinates.
 
     Returns:
@@ -112,7 +112,7 @@ class NodeSpec:
         if node_type not in self.NODE_TYPES:
             raise ValueError(f"Invalid node_type: {node_type!r}. Expected one of {self.NODE_TYPES}.")
 
-        lat, lon = _check_coordinates(lat, lon)
+        lat, lon = check_coordinates(lat, lon)
         cpu = int(cpu)
         memory = int(memory)
         if cpu < 1:
@@ -153,7 +153,7 @@ class AddUserPayload:
     """Data for creating a new user in the simulation."""
 
     def __init__(self, lat, lon, connection_range):
-        lat, lon = _check_coordinates(lat, lon)
+        lat, lon = check_coordinates(lat, lon)
         connection_range = int(connection_range)
         if connection_range < 1:
             raise ValueError(f"connection_range must be >= 1, got {connection_range}.")

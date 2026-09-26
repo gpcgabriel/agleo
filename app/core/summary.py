@@ -8,7 +8,7 @@ def summarize_snapshot(snapshot):
     summary = []
     summary.append(f"### Simulation State Information (Current Step: {snapshot['step']})")
 
-    # Satellites summary
+    # Summarizing the satellites.
     summary.append("\n🛰️ Satellites in Constellation:")
     active_sats = [s for s in snapshot["satellites"] if s["active"]]
     if active_sats:
@@ -23,7 +23,7 @@ def summarize_snapshot(snapshot):
     else:
         summary.append("  No active satellites at the moment.")
 
-    # Ground Stations summary
+    # Summarizing the ground stations.
     summary.append("\n🏠 Ground Stations:")
     if snapshot["ground_stations"]:
         for gs in snapshot["ground_stations"]:
@@ -37,7 +37,7 @@ def summarize_snapshot(snapshot):
     else:
         summary.append("  No ground stations registered.")
 
-    # Users & Applications allocation summary
+    # Summarizing user and application allocation.
     summary.append("\n👥 Users & Application Demands:")
     if snapshot["users"]:
         for u in snapshot["users"]:
@@ -65,7 +65,7 @@ def summarize_snapshot(snapshot):
     else:
         summary.append("  No active users in the simulation.")
 
-    # Links
+    # Summarizing the links.
     summary.append(f"\n🔗 Active Network Connections: {len(snapshot['links'])}")
 
     return "\n".join(summary)

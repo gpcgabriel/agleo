@@ -25,7 +25,7 @@ from app.core.actions import (
 COLLISION_OFFSET = 0.01
 
 
-def _spread_out_collisions(specs, taken_positions):
+def spread_out_collisions(specs, taken_positions):
     """Spreads apart nodes that would land on exactly the same position.
 
     Two nodes with identical coordinates overlap on the map and compete for
@@ -56,7 +56,7 @@ def _spread_out_collisions(specs, taken_positions):
     return adjusted
 
 
-def _coerce_list(value, field_name):
+def coerce_list(value, field_name):
     """Normalizes an argument that should have been a list.
 
     Local models often send arrays as JSON text (`"[1, 2]"`), or send a scalar
@@ -122,7 +122,7 @@ class ProposalBuffer:
             self.propose_add_node,
         ]
 
-    def _register(self, action):
+    def register(self, action):
         """Stores a proposal and builds the reply returned to the model.
 
         Returns:
@@ -144,7 +144,7 @@ class ProposalBuffer:
         except ValueError as error:
             return f"Error: {error}"
 
-        return self._register(ProposedAction(ActionType.RUN_SIMULATION, payload))
+        return self.register(ProposedAction(ActionType.RUN_SIMULATION, payload))
 
     def propose_restart_simulation(
         self,
@@ -183,7 +183,7 @@ class ProposalBuffer:
         except ValueError as error:
             return f"Error: {error}"
 
-        return self._register(ProposedAction(ActionType.RESTART_SIMULATION, payload))
+        return self.register(ProposedAction(ActionType.RESTART_SIMULATION, payload))
 
     def propose_add_process_unit(self, target_type: str, target_id: int, cpu: int, memory: int) -> str:
         """Proposes to add a new processing unit (ProcessUnit/Server) to an existing node.
@@ -201,7 +201,7 @@ class ProposalBuffer:
         except (ValueError, TypeError) as error:
             return f"Error: {error}"
 
-        return self._register(ProposedAction(ActionType.ADD_PROCESS_UNIT, payload))
+        return self.register(ProposedAction(ActionType.ADD_PROCESS_UNIT, payload))
 
     def propose_add_user(self, lat: float, lon: float, connection_range: int = 1500) -> str:
         """Proposes to create a new mobile user in the simulation.
@@ -216,7 +216,7 @@ class ProposalBuffer:
         except (ValueError, TypeError) as error:
             return f"Error: {error}"
 
-        return self._register(ProposedAction(ActionType.ADD_USER, payload))
+        return self.register(ProposedAction(ActionType.ADD_USER, payload))
 
     def propose_add_app_to_user(self, user_id: int, cpu_demand: int, memory_demand: int) -> str:
         """Proposes to attach a new application with CPU and memory demands to a user.
@@ -231,7 +231,7 @@ class ProposalBuffer:
         except (ValueError, TypeError) as error:
             return f"Error: {error}"
 
-        return self._register(ProposedAction(ActionType.ADD_APP_TO_USER, payload))
+        return self.register(ProposedAction(ActionType.ADD_APP_TO_USER, payload))
 
     def propose_add_node(self, node_types, latitudes, longitudes, altitudes) -> str:
         """Proposes to add one or more new nodes (Satellites or GroundStations).
@@ -243,10 +243,10 @@ class ProposalBuffer:
             altitudes: List of altitudes, one per node.
         """
         try:
-            node_types = _coerce_list(node_types, "node_types")
-            latitudes = _coerce_list(latitudes, "latitudes")
-            longitudes = _coerce_list(longitudes, "longitudes")
-            altitudes = _coerce_list(altitudes, "altitudes")
+            node_types = coerce_list(node_types, "node_types")
+            latitudes = coerce_list(latitudes, "latitudes")
+            longitudes = coerce_list(longitudes, "longitudes")
+            altitudes = coerce_list(altitudes, "altitudes")
         except ValueError as error:
             return f"Error: {error}"
 
@@ -277,15 +277,15 @@ class ProposalBuffer:
             except (ValueError, TypeError) as error:
                 return f"Error on node {index + 1}: {error}"
 
-        # If the model splits one request across several calls, the nodes are
-        # accumulated into a single proposal, so the operator confirms once.
+        # Accumulating the nodes into a single proposal when the model splits one
+        # request across several calls, so the operator confirms once.
         last = self.get_last_proposal()
         if last is not None and last.action_type == ActionType.ADD_NODES:
             taken = {(round(n.lat, 6), round(n.lon, 6)) for n in last.payload.nodes}
-            merged = AddNodesPayload(last.payload.nodes + _spread_out_collisions(specs, taken))
+            merged = AddNodesPayload(last.payload.nodes + spread_out_collisions(specs, taken))
             self.proposals[-1] = ProposedAction(ActionType.ADD_NODES, merged)
             return f"Proposal updated: {self.proposals[-1].description}. Please confirm in the control panel."
 
-        return self._register(
-            ProposedAction(ActionType.ADD_NODES, AddNodesPayload(_spread_out_collisions(specs, set())))
+        return self.register(
+            ProposedAction(ActionType.ADD_NODES, AddNodesPayload(spread_out_collisions(specs, set())))
         )

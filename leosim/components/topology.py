@@ -36,7 +36,7 @@ class Topology(ComponentManager, nx.Graph):
         self.__class__._instances.append(self)
         self.__class__._object_count += 1
         
-        # Note: logic preserved from original (using 'id' check)
+        # Falling back to the class counter when no explicit id is given.
         if id == 0:
             obj_id = self.__class__._object_count
         self.id = obj_id
@@ -102,7 +102,8 @@ class Topology(ComponentManager, nx.Graph):
                     user = flow.source
                     connection_paths = []
 
-                    # Checks all user access points to determine if the application is reachable.
+                    # Checking every user access point to see whether the application is
+                    # reachable.
                     for access_point in user.network_access_points:
                         if nx.has_path(G=self, source=access_point, target=flow.target):
                             new_path = nx.shortest_path(
@@ -133,7 +134,7 @@ class Topology(ComponentManager, nx.Graph):
                 flow.last_path = flow.path 
                 flow.path = path 
 
-                # Cleanup flows from previous links
+                # Cleaning up the flows that belonged to the previous links.
                 for i in range(len(flow.last_path)-1):
                     link = self[flow.last_path[i]].get(flow.last_path[i+1])
                     if link is None:
@@ -143,7 +144,7 @@ class Topology(ComponentManager, nx.Graph):
 
                 flow.bandwidth = {}
 
-                # Register flow on new links
+                # Registering the flow on the new links.
                 for i in range(len(path)-1):
                     link = self[flow.path[i]][flow.path[i+1]]
                     link['flows'].append(flow)

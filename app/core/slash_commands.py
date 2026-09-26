@@ -4,7 +4,7 @@ Single source of truth consumed both by the JavaScript autocomplete menu and
 by the Python command router.
 """
 
-# Each command is a dict with these keys:
+# Describing each command as a dict with these keys:
 #   cmd: str          — The slash command string (e.g. "/step ")
 #   desc: str         — Short human-readable description
 #   auto_submit: bool — If True, the JS menu auto-clicks send after selection

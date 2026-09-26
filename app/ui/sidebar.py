@@ -67,7 +67,7 @@ def render_sidebar(ollama_ok: bool) -> dict:
     st.sidebar.markdown("---")
     st.sidebar.markdown(f"## {wrap_icon(icon_bot(18))} Agent Settings", unsafe_allow_html=True)
 
-    # Model selector inside Agent Settings
+    # Offering the model selector inside Agent Settings.
     if ollama_ok:
         local_models = list_local_models()
         if local_models:
@@ -89,7 +89,7 @@ def render_sidebar(ollama_ok: bool) -> dict:
         st.sidebar.error("Ollama is not running.")
         st.session_state["selected_model"] = DEFAULT_MODEL
 
-    # Checkbox to enable/disable agent actions
+    # Letting the operator enable or disable agent actions.
     agent_actions_enabled = st.sidebar.checkbox("Allow Agent to execute actions", value=True)
 
     if agent_actions_enabled:
@@ -106,7 +106,7 @@ def render_sidebar(ollama_ok: bool) -> dict:
         algorithm=algorithm,
     )
 
-    # Initialize Simulation button with CSS marker
+    # Drawing the Initialize Simulation button with its CSS marker.
     st.sidebar.markdown('<div class="btn-initialize-marker"></div>', unsafe_allow_html=True)
     if st.sidebar.button("Initialize Simulation", key="btn_initialize", use_container_width=True):
         with st.spinner("Initializing simulator..."):

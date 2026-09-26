@@ -1,4 +1,4 @@
-# Simulator components
+# Importing the simulator components.
 from ..component_manager import ComponentManager
 from .user import User
 from typing import Callable, Dict, Any, Optional, Tuple
@@ -68,11 +68,11 @@ class Satellite(ComponentManager):
         self.power = 0
         self.min_power = 0
 
-        # Satellite coordinates
+        # Holding the satellite coordinates.
         self.coordinates = coordinates
         self.coordinates_trace = []
         
-        # Satellite models
+        # Holding the models the satellite runs.
         self.mobility_model = mobility_model
         self.mobility_model_parameters = {}
         
@@ -110,32 +110,32 @@ class Satellite(ComponentManager):
         Updates mobility, manages attached ProcessUnit status, evaluates 
         failure/power models, and handles user connections.
         """
-        # Prepares to check which users will be within range in the next step
+        # Preparing to check which users fall within range on the next step.
         self.users = []
 
-        # Verify if the index does not exist OR if the value contained in it is invalid (None)
+        # Checking whether the index is missing, or holds an invalid value.
         needs_calculation = (len(self.coordinates_trace) <= self.model.scheduler.steps) or (self.coordinates_trace[self.model.scheduler.steps] is None)
 
         if needs_calculation:
-            # The model must RETURN the position, and the class manages the insertion.
+            # Expecting the model to return the position; the class handles insertion.
             new_position = self.mobility_model(self)
             
-            # Garante que a lista cresça ou substitua o None existente
+            # Growing the list, or replacing the None already in that slot.
             if len(self.coordinates_trace) <= self.model.scheduler.steps:
                 self.coordinates_trace.append(new_position)
             else:
                 self.coordinates_trace[self.model.scheduler.steps] = new_position
             
-        # Updates the coordinates
+        # Updating the coordinates.
         if self.coordinates != self.coordinates_trace[self.model.scheduler.steps]:
             self.coordinates = self.coordinates_trace[self.model.scheduler.steps]
         
-        # Updates the coordinates of the attached ProcessUnit (if any)
+        # Updating the coordinates of the attached process unit, if there is one.
         if self.process_unit:
             self.process_unit.coordinates = self.coordinates
             
-        # If coordinates is None, the satellite cannot interact with other components.
-        # Therefore, any linked process unit will be marked as unavailable.
+        # Marking any linked process unit unavailable: with no coordinates the
+        # satellite cannot interact with the other components.
         if self.coordinates is None:
             self.active = False
 
@@ -144,23 +144,23 @@ class Satellite(ComponentManager):
                 process_unit.available = False
             return
 
-        # Execute failure model if implemented
+        # Running the failure model, when one is set.
         if self.failure_model:
             self.failure_occurred = self.failure_model(self)
 
             if self.failure_occurred:
                 self.active = False
 
-                # Remove users from the current list
+                # Removing the users from the current list.
                 for user in User.all():
                     if self in user.network_access_points:
                         user.network_access_points.remove(self)
 
-                # Set ProcessUnit as unavailable
+                # Marking the process unit unavailable.
                 if self.process_unit:
                     self.process_unit.available = False
 
-                # Remove existing network connections
+                # Removing the existing network connections.
                 if self.model.topology.has_node(self):
                     for neighbor in list(self.model.topology.neighbors(self)):
                         self.model.topology.remove_edge(self, neighbor)
@@ -171,14 +171,14 @@ class Satellite(ComponentManager):
                 if self.process_unit:
                     self.process_unit.available = True
         
-        # Trigger power models if present
+        # Triggering the power models, when they are set.
         if self.power_generation_model:
             self.power_generation_model(self)
         
         if self.power_consumption_model:
             self.power_consumption_model(self)
         
-        # If operational, provide connections to users within range
+        # Serving the users within range, as long as the satellite is operational.
         self.connect_users()
 
     def connect_users(self) -> None:

@@ -115,7 +115,7 @@ interface effects.
 ## Directory map
 
 * `app.py` — composition root for the Streamlit dashboard
-* `main.py` — CLI for head-to-head runs of allocation algorithms
+* `main.py`, `plot.py` — CLI for head-to-head runs of allocation algorithms
 * `dataset.py`, `dataset_generator/` — topology and component construction
 * `app/core/`
   * `session.py` — `SimulationSession`: the owner of simulation state
@@ -140,14 +140,18 @@ interface effects.
   * `gui/` — icons, themes, accessibility script
 * `leosim/` — the simulation engine
 * `tests/` — the centralized test directory
+* `docs/` — `ARCHITECTURE.md` (this file), `PROJECT.md`, `ROADMAP.md`
 
 ---
 
 ## Operational rules
 
-See [RULES.md](RULES.md) for the behavioural rules derived from operator
-feedback. Two structural rules are enforced by tests:
+Two structural rules are enforced by tests rather than by convention:
 
 1. **Layer boundary** — `streamlit` only inside `app/ui`
    (`tests/test_layering.py`).
 2. **Test placement** — every test lives under `tests/`.
+
+See [PROJECT.md](PROJECT.md) for the rest: the traps this codebase has already
+sprung, how to run the tests, the agent's behavioural rules and the Streamlit
+pitfalls. Style conventions live in `CLAUDE.md` at the repository root.

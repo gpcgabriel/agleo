@@ -1,4 +1,4 @@
-# Simulator components
+# Importing the simulator components.
 from ..component_manager import ComponentManager
 from .user import User
 from typing import List, Dict, Any, Optional
@@ -88,7 +88,7 @@ class Application(ComponentManager):
         last_migration = self.migrations[-1].copy() if self.migrations else None
         
         if last_migration:
-            # Conversion to string for serializable disk storage
+            # Converting to string so the value can be written to disk.
             last_migration['origin'] = str(last_migration['origin'])
             last_migration['target'] = str(last_migration['target'])
             
@@ -117,17 +117,18 @@ class Application(ComponentManager):
         if len(self.migrations) > 0 and self.migrations[-1]['end'] is None:
             migr = self.migrations[-1]
             # TODO: Implement a formal dependency management system.
-            # The logic below is a placeholder for future state-machine updates.
+            # Standing in for the state machine until that system exists.
             dependencies_on_process_unit = []
             
-            # Currently, migrations are instantaneous in terms of data transfer.
+            # Treating data transfer as instantaneous, which is what the model does today.
             if migr["status"] == 'waiting':
                 if len(dependencies_on_process_unit) > 0 or len(dependencies_on_process_unit) == len(self.dependency_labels):
                     migr['status'] = 'download_dependencies'
 
-            # Transition directly to the next stage as dependency simulation is pending.
+            # Transitioning straight to the next stage while dependency simulation is
+            # still pending.
             if migr['status'] == 'download_dependencies' and len(dependencies_on_process_unit) == len(self.dependency_labels):
-                # Release resources from the source processing unit if migrating.
+                # Releasing the resources held on the source processing unit.
                 if self.process_unit:
                     self.process_unit.cpu_demand -= self.cpu_demand
                     self.process_unit.memory_demand -= self.memory_demand
@@ -139,7 +140,7 @@ class Application(ComponentManager):
                     # TODO: Implement complex state migration logic.
                     migr['status'] = 'application_state_migration'
                 
-            # Log time spent in each migration phase.
+            # Logging the time spent in each migration phase.
             if migr['status'] == 'waiting':
                 migr['waiting_time'] += 1
             elif migr['status'] == 'download_dependencies':
@@ -147,7 +148,7 @@ class Application(ComponentManager):
             elif migr['status'] == 'application_state_migration':
                 migr['application_state_migration_time'] += 1
             elif migr['status'] == "finished":
-                # Terminate migration and update host references.
+                # Terminating the migration and updating the host references.
                 migr["end"] = self.model.scheduler.steps + 1
                 
                 if self.process_unit:
@@ -159,7 +160,7 @@ class Application(ComponentManager):
                 self.being_provisioned = False
                 self.available = True    
 
-        # Update availability flags based on host status.
+        # Updating the availability flags from the host's status.
         if self.process_unit and not self.process_unit.available:
             self.available = False
         elif self.process_unit and not self.available:
@@ -204,7 +205,7 @@ class Application(ComponentManager):
 
         self.being_provisioned = True
         
-        # Immediate resource reservation on target host.
+        # Reserving the resources on the target host immediately.
         process_unit.cpu_demand += self.cpu_demand
         process_unit.memory_demand += self.memory_demand
         process_unit.storage_demand += self.storage_demand

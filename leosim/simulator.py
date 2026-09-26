@@ -1,4 +1,4 @@
-# Simulator components
+# Importing the simulator components.
 import json
 import os
 import datetime
@@ -85,8 +85,8 @@ class Simulator(ComponentManager):
         
         self.resource_management_algorithm = resource_management_algorithm
 
-        # Parameters are copied into a fresh dictionary: using the signature
-        # default directly would make two instances share (and overwrite) the
+        # Copying the parameters into a fresh dictionary: using the signature
+        # default directly would make two instances share, and overwrite, the
         # same dictionary.
         self.resource_management_algorithm_parameters = dict(resource_management_algorithm_parameters or {})
         self.resource_management_algorithm_parameters['scenario'] = scenario
@@ -104,7 +104,7 @@ class Simulator(ComponentManager):
         self.agent_metrics = {}
         self.ignore_list = list(ignore_list or [])
 
-        # Convert time unit using timedelta for standardization
+        # Converting the time unit through timedelta, for a single standard.
         self.tick_duration = datetime.timedelta(**{time_unit: tick_duration}).total_seconds()
         
         for function in (user_defined_functions or []):
@@ -126,7 +126,7 @@ class Simulator(ComponentManager):
             FileNotFoundError: If the dataset path is invalid.
             json.JSONDecodeError: If the file is not a valid JSON.
         """
-        # Clear previous component states
+        # Clearing the previous component states.
         for component_class in ComponentManager.__subclasses__():
             if component_class.__name__ != "Simulator":
                 globals()[component_class.__name__].clear()
@@ -136,7 +136,7 @@ class Simulator(ComponentManager):
             
         created_components = []
         
-        # Instantiate objects based on the dataset schema
+        # Instantiating the objects described by the dataset schema.
         for class_name, components in dataset_data.items():
             for component in components:
                 obj = globals()[class_name]()
@@ -144,24 +144,24 @@ class Simulator(ComponentManager):
                 obj.relationships = component["relationships"]
                 created_components.append(obj)
                 
-        # Resolve inter-object relationships
+        # Resolving the relationships between objects.
         for obj in created_components:
             for key, value in obj.relationships.items():
-                # Global function reference
+                # Resolving a reference to a global function.
                 if isinstance(value, str) and globals().get(value): 
                     setattr(obj, key, globals()[value])
                     
-                # Single object relationship
+                # Resolving a relationship to a single object.
                 elif isinstance(value, dict) and "class" in value and "id" in value: 
                     object_relation = globals()[value['class']].find_by("id", value['id'])
                     setattr(obj, key, object_relation)
                    
-                # Global dictionary mapping
+                # Resolving a mapping held in a global dictionary.
                 elif isinstance(value, dict) and all((globals().get(v) for v in value.values())): 
                     object_relation = {k: globals().get(v) for k, v in value.items()}
                     setattr(obj, key, object_relation)
 
-                # List of object references
+                # Resolving a list of object references.
                 elif isinstance(value, list) and all(('id' in c and 'class' in c for c in value)): 
                     components_list = [
                         globals()[comp['class']].find_by('id', comp['id']) for comp in value 
@@ -171,11 +171,11 @@ class Simulator(ComponentManager):
                 elif value is None: 
                     setattr(obj, key, None)
 
-        # Add network nodes to the topology manager
+        # Adding the network nodes to the topology manager.
         for agent in GroundStation.all() + Satellite.all() + ProcessUnit.all():
             self.topology.add_node(agent)
         
-        # Establish network links
+        # Establishing the network links.
         for link in NetworkLink.all():            
             self.topology.add_edge(link["nodes"][0], link['nodes'][1])
             self.topology._adj[link["nodes"][0]][link["nodes"][1]] = link
@@ -263,7 +263,7 @@ class Simulator(ComponentManager):
             self.step()
             self.monitor()
             
-            # Stop if criterion is met
+            # Stopping once the criterion is met.
             if self.stopping_criterion(self):
                 self.running = False
         

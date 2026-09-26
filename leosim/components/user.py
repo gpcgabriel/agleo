@@ -48,18 +48,18 @@ class User(ComponentManager):
             id = self.__class__._object_count
         self.id = id
         
-        # User applications
+        # Holding the user's applications.
         self.applications = []
         
-        # User coordinates
+        # Holding the user's coordinates.
         self.coordinates = coordinates
         self.coordinates_trace = []
         
-        # User mobility model
+        # Holding the user's mobility model.
         self.mobility_model = None
         self.mobility_model_parameters = {}
         
-        # User application access model
+        # Holding the user's application access model.
         self.applications_access_models = []
         
         self.network_access_points = []
@@ -76,7 +76,7 @@ class User(ComponentManager):
             app = access_model.application    
             current_access = access_model.history[-1] 
 
-            # If the application requests provisioning, update the metrics.   
+            # Updating the metrics when the application requests provisioning.
             if access_model.request_provisioning:
                 if app.available:
                     current_access['is_provisioned'] = True
@@ -99,7 +99,7 @@ class User(ComponentManager):
 
                 access_model.flow = None
 
-            # Sets the flag value according to the model
+            # Setting the flag from the model's answer.
             if current_access['start'] == access_model.model.scheduler.steps + 1:
                 access_model.request_provisioning = True
 
@@ -111,10 +111,10 @@ class User(ComponentManager):
 
                 access_model.flow = None
 
-                # Gets the next access according to the model since the current one has ended.
+                # Getting the next access from the model, the current one having ended.
                 access_model.get_next_access(current_access['next_access'])
                 
-        # Mobility update
+        # Updating the position from the mobility model.
         while len(self.coordinates_trace) <= self.model.scheduler.steps:
             self.mobility_model(self)
             

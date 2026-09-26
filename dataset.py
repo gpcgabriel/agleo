@@ -16,10 +16,6 @@ def load_topology(ground_topology: str, leo_topology, max_satellites) -> Topolog
     for sat in Satellite.all():
         sat.is_gateway = True
 
-    # To control the number of gateways
-    # for sat in sample(Satellite.all(), Satellite.count()):
-    #     sat.is_gateway = True
-
     for station in GroundStation.all():
         for sat in Satellite.all():
             if sat.coordinates is None:
@@ -32,7 +28,7 @@ def load_topology(ground_topology: str, leo_topology, max_satellites) -> Topolog
     return t
 
 def create_users(num_users: int) -> None:
-    # Collect available coordinates from satellite traces
+    # Collecting the available coordinates from the satellite traces.
     coordinates_history = [coor for sat in Satellite.all() for coor in sat.coordinates_trace if coor is not None]
 
     for coordinates in choices(coordinates_history, k=num_users):

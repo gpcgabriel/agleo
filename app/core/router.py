@@ -94,8 +94,8 @@ def route(prompt, session, has_pending_action):
     if stripped.startswith("/") and not is_known_command(stripped):
         return LocalReply(f"**Unknown command:** `{stripped}`\n\n{get_help_message()}")
 
-    # The history check comes first: telling someone to resolve a proposal
-    # they cannot even see would be confusing.
+    # Checking the history first: telling someone to resolve a proposal they
+    # cannot even see would be confusing.
     if not session.is_viewing_latest():
         return Blocked(VIEWING_HISTORY_MESSAGE)
 

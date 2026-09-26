@@ -108,9 +108,9 @@ def run_agent(prompt, model_name, action_mode, context_state, current_config=Non
 
     text = response.content or ""
 
-    # Small local models sometimes write the tool call into the body of the
-    # reply instead of emitting it through the tool channel. Ollama then has
-    # nothing to execute, and without this recovery the operator would see the
+    # Recovering a tool call written into the reply body: small local models
+    # sometimes do that instead of emitting it through the tool channel. Ollama
+    # then has nothing to execute, and without this the operator would see the
     # raw dictionary in the chat.
     if not buffer.get_proposals():
         recovered = recover(buffer, text)

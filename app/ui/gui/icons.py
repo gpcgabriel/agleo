@@ -76,43 +76,6 @@ def icon_cancel(size: int = 20) -> str:
     )
 
 
-def icon_users(size: int = 20) -> str:
-    """Returns an inline SVG string for a users icon (20x20 default)."""
-    return (
-        f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 20 20" '
-        'fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'
-        '<path d="M13 17v-1.5a2.5 2.5 0 0 0-2.5-2.5h-5A2.5 2.5 0 0 0 3 15.5V17" />'
-        '<circle cx="8" cy="7.5" r="3" />'
-        '<path d="M17 17v-1a2.5 2.5 0 0 0-2-2.45" />'
-        '<path d="M13.5 4.1a3 3 0 0 1 0 5.8" />'
-        "</svg>"
-    )
-
-
-def icon_station(size: int = 20) -> str:
-    """Returns an inline SVG string for a ground station icon (20x20 default)."""
-    return (
-        f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 20 20" '
-        'fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'
-        '<path d="M2 10l8-8 8 8" />'
-        '<path d="M10 4v12" />'
-        '<path d="M8 16h4" />'
-        "</svg>"
-    )
-
-
-def icon_chart(size: int = 20) -> str:
-    """Returns an inline SVG string for a chart icon (20x20 default)."""
-    return (
-        f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 20 20" '
-        'fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'
-        '<line x1="15" y1="17" x2="15" y2="8" />'
-        '<line x1="10" y1="17" x2="10" y2="3" />'
-        '<line x1="5" y1="17" x2="5" y2="12" />'
-        "</svg>"
-    )
-
-
 def icon_sun(size: int = 20) -> str:
     """Returns an inline SVG string for a sun icon (20x20 default)."""
     return (

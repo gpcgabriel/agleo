@@ -1,4 +1,4 @@
-# Python modules
+# Importing the Python modules the manager relies on.
 import json
 
 class ComponentManager:
@@ -22,14 +22,14 @@ class ComponentManager:
         return {"id" :  self.id}    
 
     def collect_metrics(self):
-        # Defines the object metrics collection
+        # Defining the object metrics collection.
         metrics = {}
         
         return metrics
     
     @classmethod
     def collect_class_metrics(cls):
-        # Method that collects class metrics
+        # Collecting the metrics of every instance of the class.
         metrics = []
         
         for obj in cls.all():
@@ -42,21 +42,21 @@ class ComponentManager:
         return metrics
     
     def set_attributes(self, **attributes) -> None:
-        # Method that sets the attibutes of a object using values of a dictionary
+        # Setting an object's attributes from the values of a dictionary.
         for attribute_name, attribute_value in attributes.items():
             if attribute_name != 'relationships':
                 setattr(self, attribute_name, attribute_value)
 
     @classmethod
     def find_by(cls, attribute_name : str, value : object) -> object:
-        # Returns an object based on the value of an attribute
+        # Finding an object by the value of one of its attributes.
         obj = next(( obj for obj in cls.all() if getattr(obj, attribute_name) == value), None)
         
         return obj
     
     @classmethod
     def all(cls) -> list:
-        # Returns a copy of the list of instances of the class
+        # Copying the list of instances so callers cannot mutate it.
         return cls._instances.copy()
     
     @classmethod
@@ -65,13 +65,14 @@ class ComponentManager:
     
     @classmethod
     def clear(cls) -> None:
-        # Resets the instance list and object counter of a class to load new scenarios
+        # Resetting the instance list and the object counter so a new scenario can
+        # be loaded.
         cls._instances = []
         cls._object_count = 0
         
     @classmethod
     def remove(cls, obj: object):
-        # Removes an object from the list of instances of a given class
+        # Removing an object from its class's instance list.
         if obj not in cls._instances:
             raise Exception(f"Object {obj} is not in the list of instances of the '{cls.__name__}' class.")
 
@@ -79,7 +80,7 @@ class ComponentManager:
         
     @classmethod
     def save_scenary(cls, ignore_list : list = [], filename : str = "dataset.json") -> dict:
-        # Method that exports the context of components of interest
+        # Exporting the context of the components of interest.
         from .simulator import Simulator, Topology
         
         scenary = {}

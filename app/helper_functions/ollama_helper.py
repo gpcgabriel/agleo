@@ -30,7 +30,8 @@ def start_ollama() -> bool:
         return True
 
     try:
-        # Start Ollama serve in the background. Redirect stdout/stderr to avoid polluting logs.
+        # Starting Ollama serve in the background, redirecting stdout and stderr
+        # so they do not pollute the logs.
         subprocess.Popen(
             ["ollama", "serve"],
             stdout=subprocess.DEVNULL,
@@ -40,7 +41,7 @@ def start_ollama() -> bool:
     except Exception:
         return False
 
-    # Poll for up to 10 seconds (20 retries * 0.5 seconds)
+    # Polling for up to 10 seconds (20 retries * 0.5 seconds).
     for _ in range(20):
         time.sleep(0.5)
         if is_ollama_running():
@@ -60,7 +61,7 @@ def list_local_models() -> List[str]:
         if response.status_code == 200:
             data = response.json()
             models_list = data.get("models", [])
-            # Extract names, handling potential structure variations
+            # Extracting the names, tolerating variations in the response structure.
             return [model["name"] for model in models_list if "name" in model]
     except Exception:
         pass

@@ -1,6 +1,4 @@
-from ..process_unit import ProcessUnit
 from ..satellite import Satellite
-from ..user import User
 from ..application import Application
 from geopy.distance import geodesic
 from math import sqrt
@@ -35,7 +33,7 @@ def get_exposure_time(user, satellite):
     return count
 
 
-def _get_eligible_pus(app, user, model, parameters):
+def get_eligible_pus(app, user, model, parameters):
     process_units = []
     for access_point in user.network_access_points:
         if isinstance(access_point, Satellite) and getattr(access_point, 'process_unit') is not None:
@@ -51,16 +49,16 @@ def _get_eligible_pus(app, user, model, parameters):
     return process_units
 
 
-def _load_ratio(pu):
+def load_ratio(pu):
     cpu_r = pu.cpu_demand / pu.cpu if pu.cpu > 0 else 1.0
     mem_r = pu.memory_demand / pu.memory if pu.memory > 0 else 1.0
     sto_r = pu.storage_demand / pu.storage if pu.storage > 0 else 1.0
     return cpu_r + mem_r + sto_r
 
 
-def _allocate_single_app(app, user, model, parameters, strategy):
+def allocate_single_app(app, user, model, parameters, strategy):
     if strategy == "best_fit":
-        process_units = _get_eligible_pus(app, user, model, parameters)
+        process_units = get_eligible_pus(app, user, model, parameters)
         if not process_units:
             return "failed_no_capacity"
         target = min(process_units, key=lambda u:
@@ -104,7 +102,7 @@ def _allocate_single_app(app, user, model, parameters, strategy):
         return "failed_no_capacity"
 
     elif strategy == "latency_aware":
-        process_units = _get_eligible_pus(app, user, model, parameters)
+        process_units = get_eligible_pus(app, user, model, parameters)
         if not process_units:
             return "failed_no_capacity"
         user_coords = user.coordinates
@@ -115,10 +113,10 @@ def _allocate_single_app(app, user, model, parameters, strategy):
         return "already_provisioned"
 
     elif strategy == "load_balanced":
-        process_units = _get_eligible_pus(app, user, model, parameters)
+        process_units = get_eligible_pus(app, user, model, parameters)
         if not process_units:
             return "failed_no_capacity"
-        target = min(process_units, key=_load_ratio)
+        target = min(process_units, key=load_ratio)
         if target != app.process_unit:
             app.provision(target)
             return "provisioned"
@@ -143,7 +141,7 @@ def hybrid_allocation(model, parameters, best_fit_apps, longest_duration_apps, l
             user = app.user
             if not user:
                 continue
-            result = _allocate_single_app(app, user, model, parameters, strategy_name)
+            result = allocate_single_app(app, user, model, parameters, strategy_name)
             results["details"].append({"app": app_id, "strategy": strategy_name, "result": result})
             if result == "provisioned":
                 results["provisioned"] += 1

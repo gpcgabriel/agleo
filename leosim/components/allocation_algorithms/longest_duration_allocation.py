@@ -1,4 +1,3 @@
-from ..process_unit import ProcessUnit
 from geopy.distance import geodesic
 from ..satellite import Satellite
 from ..user import User 
@@ -26,7 +25,7 @@ def get_exposure_time(user, satellite):
     max_distance = min(user.max_connection_range, satellite.max_connection_range)
     count = 0
     
-    # Simula a trajetória futura para prever a duração da conexão
+    # Simulating the future trajectory to predict how long the connection lasts.
     for coordinates in satellite.coordinates_trace[step:]:
         if coordinates is not None:
             if distance(coordinates1=coordinates, coordinates2=user.coordinates) < max_distance:
@@ -36,9 +35,9 @@ def get_exposure_time(user, satellite):
     return count
 
 def longest_duration_allocation(model, parameters):
-    # Algoritmo de alocação com contagem de provisionamentos por step.
+    # Counting the provisionings made on each step.
     
-    # Criamos um dicionário no objeto model para persistir os dados entre os steps
+    # Keeping a dictionary on the model object so the counts survive between steps.
     if not hasattr(model, 'provisioning_history'):
         model.provisioning_history = {}
     
@@ -77,7 +76,7 @@ def longest_duration_allocation(model, parameters):
         max_duration = -1
         sat = None
 
-        # Tenta Ground Stations
+        # Trying the ground stations.
         if parameters['ground_station'].process_unit and (parameters['scenario'] == 'terrestrial' or parameters['scenario'] == 'hybrid'):
             for unit in parameters['ground_station'].process_unit:
                 if not isinstance(getattr(unit, 'owner', None), Satellite):
@@ -87,7 +86,7 @@ def longest_duration_allocation(model, parameters):
                             max_duration = float('inf')
                             break 
         
-        # Tenta Satélites
+        # Trying the satellites.
         if best_target is None:
             for access_point in access_model.user.network_access_points:
                 if not model.topology.has_node(access_point):
@@ -105,9 +104,9 @@ def longest_duration_allocation(model, parameters):
         if best_target is not None:
             app = access_model.application
             
-            # Executa o provisionamento
+            # Running the provisioning.
             if best_target != app.process_unit:
                 app.provision(best_target)
                 
-                # Incrementa o contador de provisionamentos
+                # Incrementing the provisioning counter.
                 model.provisioning_history[step_atual_str] += 1

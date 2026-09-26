@@ -1,6 +1,6 @@
 from ..component_manager import ComponentManager
 from geopy.distance import geodesic
-from typing import Dict, Any, List, Tuple, Union
+from typing import Dict, Any, List
 
 class NetworkLink(ComponentManager, dict):
     """Represents a network connection between two nodes in the topology.
@@ -93,7 +93,7 @@ class NetworkLink(ComponentManager, dict):
         Returns:
             float: Calculated delay in milliseconds.
         """
-        # Latency (ms) ≈ Distance (km) / 300
+        # Approximating latency in ms as distance in km divided by 300.
         # 
         # 1 ms ≈ 300 km
 

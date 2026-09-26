@@ -12,12 +12,12 @@ from leosim.components import Satellite
 
 EARTH_RADIUS_KM = 6371.0
 
-# A satellite's internal id is sequential (1, 2, 3...), assigned by the class
-# counter. The identifier in the traces file ("satid", from the NORAD
-# catalog) is a different numbering, and it does not survive the
+# Recording the catalog id in its own attribute whenever the operator creates
+# a satellite. A satellite's internal id is sequential (1, 2, 3...), assigned
+# by the class counter; the identifier in the traces file ("satid", from the
+# NORAD catalog) is a different numbering, and it does not survive the
 # export()/Simulator.initialize round trip because `export()` does not keep
-# the name. It is therefore recorded separately, in this attribute, whenever
-# the operator creates a satellite.
+# the name.
 CATALOG_ID_ATTRIBUTE = "catalog_id"
 
 
@@ -40,7 +40,7 @@ class SatelliteCatalog:
     "satid", "satlat", "satlng" and "satalt".
     """
 
-    # How many nearest candidates by the haversine formula go through the
+    # Limiting how many nearest candidates by the haversine formula go through the
     # exact geodesic calculation. The two measures differ by less than 1%
     # (Earth's flattening), so the final pick would only change if more than
     # 25 satellites tied within that margin.
@@ -60,8 +60,8 @@ class SatelliteCatalog:
         altitudes = []
         catalog_ids = []
 
-        # positions_by_id holds each satellite's path in step order; it is
-        # what answers trace lookups.
+        # Indexing each satellite's path in step order; this is what answers
+        # trace lookups.
         self.positions_by_id = {}
 
         for step in steps:
@@ -90,7 +90,7 @@ class SatelliteCatalog:
         """Returns: int: How many positions are indexed in total."""
         return len(self.latitudes)
 
-    def _haversine_to_all(self, target_lat, target_lon):
+    def haversine_to_all(self, target_lat, target_lon):
         """Approximate distance from the target to every indexed position.
 
         Used only to rank candidates; the final distance is computed with
@@ -125,7 +125,7 @@ class SatelliteCatalog:
             (None, None) if every satellite is excluded.
         """
         exclude_ids = set(exclude_ids or ())
-        distances = self._haversine_to_all(target_coord[0], target_coord[1])
+        distances = self.haversine_to_all(target_coord[0], target_coord[1])
 
         if exclude_ids:
             excluded = np.isin(self.catalog_ids, list(exclude_ids))
@@ -189,8 +189,8 @@ class SatelliteCatalog:
         )
 
 
-# The traces file does not change while the app runs and takes a few seconds
-# to index, so each path is loaded once per process.
+# Caching one index per process: the traces file does not change while the app
+# runs, and indexing it takes a few seconds.
 _LOADED_CATALOGS = {}
 
 

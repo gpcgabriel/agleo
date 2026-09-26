@@ -9,7 +9,7 @@ from app.agents.tool_call_recovery import looks_like_tool_call, parse_tool_call,
 from app.agents.tools import ProposalBuffer
 from app.core.actions import ActionType
 
-# The exact text a model returned instead of calling the tool.
+# Holding the exact text a model returned instead of calling the tool.
 OBSERVED_BLOB = (
     '{"name": "propose_add_node", "parameters": {"node_types": ["Satellite"], '
     '"latitudes": [-7.2306 - 0.01], "longitudes": [-35.8811], "altitudes": [500]}}'

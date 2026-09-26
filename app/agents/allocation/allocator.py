@@ -99,9 +99,9 @@ class LLMAllocator:
             "results": results,
         }
         self.get_decisions(station.id).append(entry)
-        self._append_to_log(model, entry)
+        self.append_to_log(model, entry)
 
-    def _append_to_log(self, model, entry):
+    def append_to_log(self, model, entry):
         """Appends one entry to the decision log, honouring the simulator's path."""
         directory = self.logs_directory or getattr(model, "logs_directory", "logs")
         os.makedirs(directory, exist_ok=True)
@@ -139,7 +139,7 @@ class LLMAllocator:
                 model.scheduler.steps, station.id,
             )
             best_fit_allocation(model, parameters)
-            self._append_to_log(
+            self.append_to_log(
                 model,
                 {"step": model.scheduler.steps, "ground_station": station.id, "fallback": True},
             )

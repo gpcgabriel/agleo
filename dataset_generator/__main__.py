@@ -72,7 +72,7 @@ class DatasetGenerator:
             min_users = min_users_per_ground_station * cls.ground_stations
         number_of_users = randint(min_users, max_users)
 
-        # Fulfill the minimum number of users per ground station
+        # Fulfilling the minimum number of users per ground station.
         for ground_station in cls.ground_stations:
             cls.users.extend([ User(coordinates=coordinates_generate_nearby(ground_station.coordinates, max_distance_from_ground_station)) for _ in range(min_users_per_ground_station) ])
 
@@ -96,7 +96,7 @@ class DatasetGenerator:
 
         number_of_process_units = randint(min_process_units, max_process_units)
 
-        # Fulfill the minimum number of servers per ground station
+        # Fulfilling the minimum number of servers per ground station.
         for ground_station in cls.ground_stations:
             cls.servers.extend([ ProcessUnit(cpu=100, memory=100, storage=100, coordinates=coordinates_generate_nearby(ground_station.coordinates, max_distance=max_distance_from_ground_station)) for _ in range(min_process_units_per_ground_station) ])
                 
@@ -182,7 +182,7 @@ class DatasetGenerator:
             if not filepath.endswith(".json"):
                 filepath += ".json"
 
-            # Saves all class attributes in a file
+            # Saving every class attribute to a file.
             with open(filepath, "w") as json_file:
                 json.dump(data, json_file, indent=4)
         return data

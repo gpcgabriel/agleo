@@ -26,23 +26,6 @@ def set_session(session):
     st.session_state[SESSION_KEY] = session
 
 
-def has_session():
-    """Returns: bool: True if a simulation is loaded."""
-    return get_session() is not None
-
-
-def require_session():
-    """Returns: SimulationSession: The active simulation.
-
-    Raises:
-        RuntimeError: If no simulation has been initialized.
-    """
-    session = get_session()
-    if session is None:
-        raise RuntimeError("No simulation has been initialized.")
-    return session
-
-
 # -- Conversation and notices -----------------------------------------------
 
 def push_chat(role, content):

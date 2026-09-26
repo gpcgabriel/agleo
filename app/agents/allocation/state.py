@@ -108,7 +108,7 @@ def build_network_state(model, station, scenario, all_apps, pending_app_ids, rea
     for unit in station.process_unit or []:
         process_unit_ids.add(unit.id)
 
-    # Trimmed after collecting the unit ids, which are read from these fields.
+    # Trimming after collecting the unit ids, which are read from these fields.
     for info in satellites.values():
         info.pop("range", None)
         info.pop("gateway", None)

@@ -9,8 +9,8 @@ class SimulationConfig:
     """
 
     SCENARIOS = ("hybrid", "leo", "terrestrial")
-    # "llm_allocation" is resolved by the composition root, not here: the
-    # domain layer must not import the agent package.
+    # Resolving "llm_allocation" in the composition root, not here: the domain
+    # layer must not import the agent package.
     ALGORITHMS = ("best_fit_allocation", "longest_duration_allocation", "llm_allocation")
     AGENT_ALGORITHM = "llm_allocation"
 

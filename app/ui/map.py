@@ -17,9 +17,9 @@ def render_map(session, is_dark: bool) -> None:
     snapshot = session.get_current_snapshot()
     st.markdown(f"<h3>{wrap_icon(icon_globe(20))} Network Visualization & Telemetry</h3>", unsafe_allow_html=True)
 
-    # Timeline slider. Shows each snapshot's label rather than its position:
-    # an infrastructure change does not advance the clock, so a position
-    # number would read as a step number it does not correspond to.
+    # Labelling the timeline slider with each snapshot's label rather than its
+    # position: an infrastructure change does not advance the clock, so a
+    # position number would read as a step number it does not correspond to.
     if session.get_step_count() > 1:
         labels = session.get_snapshot_labels()
         slider_idx = st.select_slider(
@@ -37,14 +37,14 @@ def render_map(session, is_dark: bool) -> None:
 
     st.subheader(f"Status at {snapshot['label']}")
 
-    # Metrics Row
+    # Rendering the metrics row.
     m_col1, m_col2, m_col3, m_col4 = st.columns(4)
     m_col1.metric("Active Satellites", len([s for s in snapshot["satellites"] if s["active"]]))
     m_col2.metric("Connected Users", len([u for u in snapshot["users"] if u["connected_aps"]]))
     m_col3.metric("Ground Stations", len(snapshot["ground_stations"]))
     m_col4.metric("Network Links", len(snapshot["links"]))
 
-    # Map Construction
+    # Building the map.
     map_center = [-15.669171, -48.013922]  # Default center (Brazil)
 
     tiles_theme = "CartoDB dark_matter" if is_dark else "CartoDB positron"
@@ -53,7 +53,7 @@ def render_map(session, is_dark: bool) -> None:
 
     m = folium.Map(location=map_center, zoom_start=4, tiles=tiles_theme, control_scale=True)
 
-    # Render Connections/Links
+    # Rendering the connections.
     for link in snapshot["links"]:
         folium.PolyLine(
             locations=[
@@ -66,7 +66,7 @@ def render_map(session, is_dark: bool) -> None:
             tooltip=f"Link {link['type']} | Delay: {link['delay']:.1f}ms | Bandwidth: {link['bandwidth']} Mbps",
         ).add_to(m)
 
-    # Render Ground Stations
+    # Rendering the ground stations.
     for gs in snapshot["ground_stations"]:
         popup_html = f"<b>Ground Station {gs['id']}</b><br>Lat/Lon: {gs['lat']:.4f}, {gs['lon']:.4f}<br>Wireless Delay: {gs['wireless_delay']}ms<br>Server Capacity:"
         for pu in gs["process_units"]:
@@ -79,7 +79,7 @@ def render_map(session, is_dark: bool) -> None:
             icon=folium.Icon(color="green", icon="home", prefix="fa"),
         ).add_to(m)
 
-    # Render Satellites & Coverage Footprints
+    # Rendering the satellites and their coverage footprints.
     for sat in snapshot["satellites"]:
         if not sat["active"]:
             continue
@@ -88,7 +88,7 @@ def render_map(session, is_dark: bool) -> None:
         if sat["process_unit"]:
             popup_html += f"<br>- Process Unit {sat['process_unit']['id']} (CPU: {sat['process_unit']['cpu']} | MEM: {sat['process_unit']['memory']})"
 
-        # Circle for coverage footprint
+        # Drawing the coverage footprint as a circle.
         folium.Circle(
             location=[sat["lat"], sat["lon"]],
             radius=sat["max_connection_range"] * 1000,
@@ -106,7 +106,7 @@ def render_map(session, is_dark: bool) -> None:
             icon=folium.Icon(color="blue", icon="rocket", prefix="fa"),
         ).add_to(m)
 
-    # Render Users
+    # Rendering the users.
     for user in snapshot["users"]:
         popup_html = f"<b>User {user['id']}</b><br>Lat/Lon: {user['lat']:.4f}, {user['lon']:.4f}<br>Range: {user['max_connection_range']}km"
         if user["connected_aps"]:
@@ -125,11 +125,11 @@ def render_map(session, is_dark: bool) -> None:
             icon=folium.Icon(color="red", icon="user", prefix="fa"),
         ).add_to(m)
 
-    # Render Map in Streamlit (Configured for standard viewports: 420px height ensures no scrollbar)
+    # Rendering the map; 420px keeps standard viewports free of a scrollbar.
     MAP_HEIGHT = 420
     st_folium(m, width=None, height=MAP_HEIGHT, use_container_width=True, returned_objects=[], key="simulation_map")
 
-    # Telemetry detail tab/expanders (Collapsed by default, English tabs)
+    # Rendering the telemetry detail expanders, collapsed by default.
     with st.expander("Telemetry Details", expanded=False):
         t_sat, t_gs, t_user = st.tabs(["Satellites", "Ground Stations", "Users"])
         with t_sat:

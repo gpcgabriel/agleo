@@ -157,6 +157,6 @@ class DynamicDurationAccessModel(ComponentManager):
                     metadata={'type': 'request_response', 'user': user}
                 )
 
-        # Elastic closure: end is set only when provisioning quota is reached
+        # Closing elastically: end is set only once the provisioning quota is reached.
         if current_access['provisioned_time'] - 1 == current_access['required_provisioning_time'] and app.available:
             current_access['end'] = self.model.scheduler.steps + 1

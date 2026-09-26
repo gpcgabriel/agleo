@@ -36,7 +36,7 @@ def handle(session, payload):
                 attach_process_unit_to_ground_station(session, station, unit)
                 created.append(f"{station}")
         except ValueError as error:
-            # Nodes created before the failure are kept and published, so the
+            # Keeping and publishing the nodes created before the failure, so the
             # dashboard never disagrees with the engine's actual state.
             session.apply_infrastructure_change()
             message = f"Could not add {spec.node_type} at ({spec.lat:.4f}, {spec.lon:.4f}): {error}"

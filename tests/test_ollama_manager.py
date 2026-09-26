@@ -51,7 +51,7 @@ def test_start_ollama_already_running(mock_running):
 @patch("subprocess.Popen")
 @patch("time.sleep")
 def test_start_ollama_success(mock_sleep, mock_popen, mock_running):
-    # First check: False, subsequent checks: True
+    # Returning False on the first check and True on the ones after it.
     mock_running.side_effect = [False, True]
 
     mock_process = MagicMock()
@@ -66,7 +66,7 @@ def test_start_ollama_success(mock_sleep, mock_popen, mock_running):
 @patch("subprocess.Popen")
 @patch("time.sleep")
 def test_start_ollama_timeout(mock_sleep, mock_popen, mock_running):
-    # Always return False for running
+    # Reporting the daemon as never running.
     mock_running.return_value = False
 
     mock_process = MagicMock()
@@ -106,7 +106,7 @@ def test_pull_model_success(mock_popen):
     mock_process.stdout.readline.side_effect = ["downloading layer 1\n", "downloading layer 2\n", "", "", ""]
     mock_process.return_code = 0
     mock_process.return_code = 0
-    # Python mock property trick for returncode
+    # Faking returncode as a property, which a plain attribute cannot do.
     type(mock_process).returncode = property(lambda self: 0)
     mock_popen.return_value = mock_process
 

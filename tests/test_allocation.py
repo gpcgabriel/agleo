@@ -150,9 +150,8 @@ def test_one_station_decides_through_the_model():
 
     session = make_session()
 
-    # Applications only become pending once their access models activate, which
-    # happens on a tick. The session is built with a plain algorithm, so this
-    # step is cheap.
+    # Ticking once so the access models activate and the applications become
+    # pending. The session is built with a plain algorithm, so this is cheap.
     session.advance_one_step()
 
     allocator = LLMAllocator(model_name=model_name, logs_directory="logs/test")

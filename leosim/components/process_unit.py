@@ -59,21 +59,21 @@ class ProcessUnit(ComponentManager):
         self.model_name = model_name
         self.coordinates = coordinates
         
-        # Total computational capacity
+        # Holding the total computational capacity.
         self.cpu = cpu
         self.memory = memory
         self.storage = storage
         self.power = 0
         
-        # Current demands
+        # Tracking the current demands.
         self.cpu_demand = 0
         self.memory_demand = 0
         self.storage_demand = 0
         
-        # Architectural specifications
+        # Describing the architectural specifications.
         self.architecture = architecture
         
-        # Possible integration with relevant models
+        # Allowing integration with the relevant models.
         self.power_generation_model = None
         self.power_generation_model_parameters = {}
         
@@ -83,10 +83,10 @@ class ProcessUnit(ComponentManager):
         self.failure_model = None
         self.failure_model_parameters = {}
         
-        # Applications currently allocated in the unit
+        # Listing the applications currently allocated in the unit.
         self.applications = []
                 
-        # Process Unit availability status
+        # Recording whether the unit is available.
         self.available = True
 
     def collect_metrics(self) -> dict:
@@ -117,8 +117,8 @@ class ProcessUnit(ComponentManager):
         Updates the status of allocated applications. If the unit becomes 
         unavailable, hosted applications are deprovisioned.
         """
-        # Updates the status of applications already allocated and which became 
-        # unavailable for various reasons
+        # Updating the status of applications that were allocated here and have
+        # since become unavailable.
         for app in self.applications:
             if app.process_unit and not app.process_unit.available:
                 app.available = False

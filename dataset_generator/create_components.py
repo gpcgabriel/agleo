@@ -115,7 +115,6 @@ def load_satellites_from_api(
                     is_gateway=True
                 )
                 
-                # satellite.mobility_model = coordinates_history
                 satellite.coordinates_trace.extend([None for _ in range(i)] + [coordinates])
                 
                 sats[id] = satellite
@@ -157,7 +156,6 @@ def load_satellites_from_file(
                     is_gateway=True
                 )
                 
-                # satellite.mobility_model = coordinates_history
                 satellite.coordinates_trace.extend([None for _ in range(i)] + [coordinates])
                 
                 sats[id] = satellite

@@ -38,7 +38,7 @@ class NetworkFlow(ComponentManager):
             metadata (dict): Additional context data for the flow.
         """
         
-        # Adding the object to the instance list
+        # Adding the object to the instance list.
         self.__class__._instances.append(self) 
         self.__class__._object_count += 1
         
@@ -59,7 +59,7 @@ class NetworkFlow(ComponentManager):
         self.path = path
         self.bandwidth = {}
         
-        # Attributes to facilitate change management
+        # Tracking the attributes that make change management easier.
         self.last_path = path.copy()
         self.last_bandwidth = {}
         

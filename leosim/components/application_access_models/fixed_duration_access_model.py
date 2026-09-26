@@ -116,7 +116,7 @@ class FixedDurationAccessModel(ComponentManager):
                 exit()
             setattr(self, 'connection_interval_generator', cycle(self.connection_interval_values))
             
-        # Obtain values for this access cycle
+        # Obtaining the values for this access cycle.
         interval = next(self.interval_generator)
         duration = next(self.duration_generator)
         
@@ -126,23 +126,24 @@ class FixedDurationAccessModel(ComponentManager):
         making_request_times = {}
         request_time = start
         
-        # Define the absolute termination limit
+        # Defining the absolute termination limit.
         end_time = start + duration
 
         while request_time < end_time:
             time_remaining = end_time - request_time
             
-            # Burst time is the minimum between connection duration and remaining time
+            # Taking the burst time as the smaller of the connection duration and the
+            # time remaining.
             time = min(connection_duration, time_remaining)
             
-            # Populate request steps
+            # Populating the request steps.
             for i in range(time):
                 making_request_times[str(i + request_time)] = True
             
-            # Advance time (connection time + silence interval)
+            # Advancing time by the connection time plus the silence interval.
             request_time += time + connection_interval
             
-            # Prepare values for the next loop iteration (if any)
+            # Preparing the values for the next iteration, if there is one.
             connection_duration = next(self.connection_duration_generator)
             connection_interval = next(self.connection_interval_generator)
 
@@ -169,7 +170,7 @@ class FixedDurationAccessModel(ComponentManager):
         current_access = self.history[-1] 
         
         if current_access['making_request'].get(str(self.model.scheduler.steps)):
-            # If the application migrated, finish the outdated flow
+            # Finishing the outdated flow when the application has migrated.
             if self.flow is not None:
                 if self.flow.target != app.process_unit:
                     self.flow.status = 'finished'
@@ -181,7 +182,7 @@ class FixedDurationAccessModel(ComponentManager):
             if self.flow is None:
                 connection_paths = []
                 
-                # Check reachability from user's access points to target PU
+                # Checking reachability from the user's access points to the target unit.
                 for access_point in user.network_access_points:
                     if nx.has_path(G=self.model.topology, source=access_point, target=app.process_unit):
                         path = nx.shortest_path(
@@ -194,7 +195,7 @@ class FixedDurationAccessModel(ComponentManager):
                     
                 path = min(connection_paths, key=lambda p: len(p), default=[])
                 
-                # Create a new dynamic NetworkFlow
+                # Creating a new dynamic network flow.
                 flow = NetworkFlow(
                     start=self.model.scheduler.steps + 1,
                     source=self.user,

@@ -28,7 +28,7 @@ def ollama_setup() -> bool:
                     st.error("Failed to start Ollama daemon. Please run 'ollama serve' in your terminal.")
         return ollama_ok
 
-    # Verify if the default model is available
+    # Checking whether the default model is available.
     if not model_is_available(DEFAULT_MODEL):
         st.info(f"Default model '{DEFAULT_MODEL}' is not available locally. Would you like to download it?")
         if st.button(f"Download {DEFAULT_MODEL}", key="download_default_model_button"):

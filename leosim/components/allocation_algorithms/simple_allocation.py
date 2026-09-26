@@ -20,7 +20,7 @@ def simple_allocation(model, parameters):
         
     applications_to_be_allocated = []
 
-    # Select which applications need provisioning
+    # Selecting the applications that need provisioning.
     for user in User.all():
         for access_model in user.applications_access_models:
             if access_model.request_provisioning:
@@ -28,7 +28,7 @@ def simple_allocation(model, parameters):
                     applications_to_be_allocated.append(access_model)
                 else:
                     process_unit = access_model.application.process_unit
-                    # If not directly connected to a network access point
+                    # Skipping what is not directly connected to a network access point.
                     if not any(
                         process_unit in model.topology.neighbors(access_point)  for access_point in user.network_access_points
                     ) or user.network_access_points == []:
@@ -38,11 +38,11 @@ def simple_allocation(model, parameters):
             elif access_model.application.available:
                 access_model.application.deprovision()
 
-    # Iterate over provisioning demands
+    # Iterating over the provisioning demands.
     for access_model in applications_to_be_allocated:
         process_units = []
 
-        # Look for ProcessUnits directly connected to network access points
+        # Looking for process units directly connected to network access points.
         for access_point in access_model.user.network_access_points:
             if isinstance(access_point, Satellite) and getattr(access_point, 'process_unit') is not None:
                 process_unit = access_point.process_unit
@@ -50,11 +50,11 @@ def simple_allocation(model, parameters):
                 if process_unit.has_capacity_to_host(access_model.application) and process_unit.available:
                     process_units.append(process_unit)
 
-        # Try to allocate in the ground network
+        # Trying the ground network first.
         if process_units == []:
             process_units = []
             for unit in ProcessUnit.all():
-                # Check if communication with this server is possible
+                # Checking whether communication with this server is possible.
                 if unit.has_capacity_to_host(access_model.application) and unit.available and has_path(model.topology, access_model.user, unit):
                     process_units.append(unit)
 
