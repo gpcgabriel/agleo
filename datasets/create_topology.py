@@ -4,8 +4,9 @@ import random
 import re
 
 # =========================================
-# Utils matemáticos
+# Providing the mathematical helpers.
 # =========================================
+
 
 def haversine(lat1, lon1, lat2, lon2):
     R = 6371  # km
@@ -14,8 +15,8 @@ def haversine(lat1, lon1, lat2, lon2):
     dphi = math.radians(lat2 - lat1)
     dlambda = math.radians(lon2 - lon1)
 
-    a = math.sin(dphi/2)**2 + math.cos(phi1)*math.cos(phi2)*math.sin(dlambda/2)**2
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     return R * c
 
 
@@ -23,11 +24,13 @@ def haversine(lat1, lon1, lat2, lon2):
 # Parser GML (somente coordenadas reais)
 # =========================================
 
+
 def parse_gml_locations(gml_text):
     locations = []
-    blocks = re.findall(r'node\s*\[(.*?)\]', gml_text, re.S)
+    blocks = re.findall(r"node\s*\[(.*?)\]", gml_text, re.S)
 
     for b in blocks:
+
         def extract(field):
             m = re.search(rf'{field}\s+"?([^"\n]+)"?', b)
             return m.group(1) if m else None
@@ -37,17 +40,13 @@ def parse_gml_locations(gml_text):
         label = extract("label")
 
         if lat and lon and label:
-            locations.append({
-                "label": label,
-                "Latitude": float(lat),
-                "Longitude": float(lon)
-            })
+            locations.append({"label": label, "Latitude": float(lat), "Longitude": float(lon)})
 
     return locations
 
 
 # =========================================
-# Perfis reais de links (base estatística)
+# Holding measured link profiles, used as the statistical base.
 # =========================================
 
 REAL_LINK_PROFILES = [
@@ -60,13 +59,15 @@ REAL_LINK_PROFILES = [
     {"LinkSpeed": "20", "LinkLabel": "20Gbps", "LinkSpeedUnits": "G", "LinkSpeedRaw": 20000000000.0},
 ]
 
+
 def sample_link_profile():
     return random.choice(REAL_LINK_PROFILES)
 
 
 # =========================================
-# Geração de nós sintéticos
+# Generating the synthetic nodes.
 # =========================================
+
 
 def generate_nodes_from_locations(base_locations, N, noise_km=5, seed=42):
     random.seed(seed)
@@ -84,7 +85,7 @@ def generate_nodes_from_locations(base_locations, N, noise_km=5, seed=42):
             "Latitude": base["Latitude"] + noise_lat,
             "Longitude": base["Longitude"] + noise_lon,
             "Country": "Brazil",
-            "Internal": random.randint(0, 1)  # sintético
+            "Internal": random.randint(0, 1),  # synthetic
         }
 
         nodes.append(node)
@@ -93,8 +94,9 @@ def generate_nodes_from_locations(base_locations, N, noise_km=5, seed=42):
 
 
 # =========================================
-# Criação da topologia
+# Building the topology.
 # =========================================
+
 
 def build_geo_topology(nodes, k_neighbors=3):
     G = nx.Graph()
@@ -108,7 +110,7 @@ def build_geo_topology(nodes, k_neighbors=3):
             Country=n["Country"],
             Longitude=n["Longitude"],
             Latitude=n["Latitude"],
-            Internal=n["Internal"]
+            Internal=n["Internal"],
         )
 
     # ---------- EDGES ----------
@@ -137,7 +139,7 @@ def build_geo_topology(nodes, k_neighbors=3):
                     LinkSpeed=profile["LinkSpeed"],
                     LinkLabel=profile["LinkLabel"],
                     LinkSpeedUnits=profile["LinkSpeedUnits"],
-                    LinkSpeedRaw=profile["LinkSpeedRaw"]
+                    LinkSpeedRaw=profile["LinkSpeedRaw"],
                 )
 
     return G
@@ -147,34 +149,28 @@ def build_geo_topology(nodes, k_neighbors=3):
 # Pipeline completo
 # =========================================
 
+
 def create_topology_from_gml_locations(gml_text, N, k_neighbors=3, noise_km=5):
     base_locations = parse_gml_locations(gml_text)
 
-    synthetic_nodes = generate_nodes_from_locations(
-        base_locations=base_locations,
-        N=N,
-        noise_km=noise_km
-    )
+    synthetic_nodes = generate_nodes_from_locations(base_locations=base_locations, N=N, noise_km=noise_km)
 
     G = build_geo_topology(synthetic_nodes, k_neighbors=k_neighbors)
     return G
 
 
 # =========================================
-# Execução principal
+# Running as a script.
 # =========================================
 
 if __name__ == "__main__":
     with open("datasets/rnp.gml", "r", encoding="utf-8") as f:
         gml_text = f.read()
 
-    N = 10  # número de nós
+    N = 10  # number of nodes
 
     G = create_topology_from_gml_locations(
-        gml_text=gml_text,
-        N=N,
-        k_neighbors=random.randint(2, 5),
-        noise_km=random.randint(50, 200)
+        gml_text=gml_text, N=N, k_neighbors=random.randint(2, 5), noise_km=random.randint(50, 200)
     )
 
     filename = f"topology{N}.gml"

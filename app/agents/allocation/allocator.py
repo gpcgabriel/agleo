@@ -7,6 +7,7 @@ the engine stays free of the LLM stack.
 
 import logging
 import os
+import time
 from json import dumps, loads
 
 from agno.agent import Agent
@@ -15,6 +16,7 @@ from leosim.components.allocation_algorithms import best_fit_allocation
 from leosim.components.allocation_algorithms.hybrid_allocation import hybrid_allocation
 
 from app.agents.allocation.decision import AllocationDecision, split_without_duplicates
+from app.agents.allocation.metrics import AllocationMetrics
 from app.agents.allocation.prompt import INSTRUCTIONS, build_allocation_prompt
 from app.agents.allocation.state import collect_state
 
@@ -44,6 +46,7 @@ class LLMAllocator:
         self.host = host
         self.logs_directory = logs_directory
         self.decisions_by_station = {}
+        self.metrics = AllocationMetrics(logs_directory)
 
         self.agent = Agent(
             model=Ollama(
@@ -120,9 +123,13 @@ class LLMAllocator:
         station = parameters["ground_station"]
         scenario = parameters.get("scenario", "hybrid")
 
+        step = model.scheduler.steps
+
         state, pending_app_ids, skip_reason = collect_state(model, station, scenario)
         if skip_reason:
-            logger.debug("Step %s | GS_%s | skipped: %s", model.scheduler.steps, station.id, skip_reason)
+            logger.debug("Step %s | GS_%s | skipped: %s", step, station.id, skip_reason)
+            self.metrics.add_skip(step, station.id, skip_reason)
+            self.metrics.write(getattr(model, "logs_directory", "logs"))
             return
 
         prompt = build_allocation_prompt(state, pending_app_ids, self.get_decisions(station.id))
@@ -134,20 +141,26 @@ class LLMAllocator:
             len(prompt),
         )
 
+        started = time.monotonic()
         try:
             decision = self.ask_model(prompt)
         except Exception:
             logger.exception(
                 "Step %s | GS_%s | model failed, falling back to best_fit_allocation",
-                model.scheduler.steps,
+                step,
                 station.id,
             )
             best_fit_allocation(model, parameters)
-            self.append_to_log(
-                model,
-                {"step": model.scheduler.steps, "ground_station": station.id, "fallback": True},
+            self.append_to_log(model, {"step": step, "ground_station": station.id, "fallback": True})
+            # `best_fit_allocation` returns nothing, so a fallback row carries no
+            # allocation outcome. The "fallback" mark is what distinguishes it.
+            self.metrics.add_call(
+                step, station.id, "fallback", len(pending_app_ids), len(prompt), time.monotonic() - started, 0, 0
             )
+            self.metrics.write(getattr(model, "logs_directory", "logs"))
             return
+
+        elapsed = time.monotonic() - started
 
         best_fit_ids, longest_duration_ids = split_without_duplicates(decision)
         results = self.apply_decision(model, parameters, best_fit_ids, longest_duration_ids)
@@ -163,3 +176,14 @@ class LLMAllocator:
             results.get("failed", 0),
         )
         self.record(model, station, best_fit_ids, longest_duration_ids, results)
+        self.metrics.add_call(
+            step,
+            station.id,
+            "answered",
+            len(pending_app_ids),
+            len(prompt),
+            elapsed,
+            results.get("provisioned", 0),
+            results.get("failed", 0),
+        )
+        self.metrics.write(getattr(model, "logs_directory", "logs"))

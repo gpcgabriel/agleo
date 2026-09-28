@@ -70,11 +70,12 @@ def test_only_pending_applications_are_collected():
     assert sorted(find_pending_app_ids(all_apps)) == [1, 3]
 
 
-def test_a_station_with_nothing_pending_is_skipped():
+def test_a_station_with_nothing_it_can_serve_is_skipped():
+    """The list `should_skip` receives is the station's own, not the network's."""
     session = make_session()
     station = GroundStation.all()[0]
 
-    assert should_skip(station, [], {1, 2}) == "no pending apps"
+    assert should_skip(station, [], {1, 2}) == "no servable pending apps"
 
 
 def test_a_station_with_no_reach_and_no_server_is_skipped():

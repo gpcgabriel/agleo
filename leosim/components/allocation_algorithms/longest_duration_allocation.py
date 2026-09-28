@@ -6,7 +6,7 @@ import networkx as nx
 
 
 def has_path(topology, origin, target):
-    """Verifica se existe conectividade via rede terrestre."""
+    """Returns whether the terrestrial network provides connectivity."""
     for access_point in origin.network_access_points:
         if nx.has_path(G=topology, source=access_point, target=target):
             return True
@@ -14,16 +14,16 @@ def has_path(topology, origin, target):
 
 
 def distance(coordinates1, coordinates2):
-    """Calcula a distância 3D entre dois pontos."""
+    """Returns the 3D distance in kilometres between two coordinates."""
     if coordinates1 is None or coordinates2 is None:
         return float("inf")
     ground_distance = geodesic(coordinates1[:2], coordinates2[:2]).kilometers
-    air_distance = (coordinates1[2] - coordinates2[2]) / 1000
+    air_distance = coordinates1[2] - coordinates2[2]
     return sqrt(ground_distance**2 + air_distance**2)
 
 
 def get_exposure_time(user, satellite):
-    """Calcula por quantos passos de simulação o satélite ainda estará visível."""
+    """Returns for how many simulation steps the satellite stays visible."""
     step = user.model.scheduler.steps
     max_distance = min(user.max_connection_range, satellite.max_connection_range)
     count = 0
@@ -51,7 +51,7 @@ def longest_duration_allocation(model, parameters):
 
     applications_to_be_allocated = []
 
-    # 1. Identificar aplicações que precisam de provisionamento
+    # Identifying the applications that need provisioning.
     for user in User.all():
         for access_model in user.applications_access_models:
             if not access_model.request_provisioning and access_model.application.available:
@@ -66,7 +66,7 @@ def longest_duration_allocation(model, parameters):
                 ):
                     applications_to_be_allocated.append(access_model)
 
-    # 2. Ordenar aplicações
+    # Ordering the applications.
     def get_remaining_time(access_model):
         last_access = access_model.history[-1]
         if last_access.get("required_provisioning_time"):
@@ -75,7 +75,7 @@ def longest_duration_allocation(model, parameters):
 
     applications_to_be_allocated.sort(key=get_remaining_time, reverse=True)
 
-    # 3. Alocação
+    # Allocating.
     for access_model in applications_to_be_allocated:
         best_target = None
         max_duration = -1

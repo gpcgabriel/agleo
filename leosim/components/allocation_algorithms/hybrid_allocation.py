@@ -16,7 +16,7 @@ def distance(coordinates1, coordinates2):
     if coordinates1 is None or coordinates2 is None:
         return float("inf")
     ground_distance = geodesic(coordinates1[:2], coordinates2[:2]).kilometers
-    air_distance = (coordinates1[2] - coordinates2[2]) / 1000
+    air_distance = coordinates1[2] - coordinates2[2]
     return sqrt(ground_distance**2 + air_distance**2)
 
 

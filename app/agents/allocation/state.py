@@ -1,8 +1,14 @@
 """Selection of the network state an allocation agent needs to see.
 
-The full simulation state is far larger than a small local model can read,
-so each ground station is shown only what bears on the applications it is
-being asked to place.
+The full simulation state is far larger than a small local model can read, so
+each ground station is shown only what bears on the applications it is being
+asked to place.
+
+The narrowing happens twice. `find_servable_app_ids` decides *which*
+applications a station is asked about — those whose user it can actually reach
+— and `build_network_state` then trims the satellites, users, process units and
+topology down to what those applications depend on. Without the first step the
+second one still leaves every station answering the same network-wide question.
 """
 
 from math import sqrt
@@ -37,7 +43,7 @@ def find_reachable_satellite_ids(station):
             continue
 
         ground_distance = geodesic(station.coordinates[:2], satellite.coordinates[:2]).kilometers
-        altitude_difference = (station.coordinates[2] - satellite.coordinates[2]) / 1000
+        altitude_difference = station.coordinates[2] - satellite.coordinates[2]
         distance = sqrt(ground_distance**2 + altitude_difference**2)
 
         if distance < min(station.max_connection_range, satellite.max_connection_range):
@@ -46,19 +52,59 @@ def find_reachable_satellite_ids(station):
     return reachable
 
 
+def find_servable_app_ids(station, pending_app_ids, reachable_satellite_ids):
+    """Narrows the pending applications to the ones this station could place.
+
+    `find_pending_app_ids` answers for the whole network, so without this every
+    station is asked about every application, including those belonging to
+    users on the other side of the country. A station can serve an application
+    when the application's user shares a satellite with it, or is attached to
+    the station itself.
+
+    Args:
+        station (GroundStation): The station asking.
+        pending_app_ids (list): Applications waiting for placement, network wide.
+        reachable_satellite_ids (set): Satellites currently in range of the station.
+
+    Returns:
+        list: The subset of `pending_app_ids` this station could place, ordered.
+    """
+    pending = set(pending_app_ids)
+    servable = set()
+
+    for user in User.all():
+        access_points = user.network_access_points
+        if not access_points:
+            continue
+
+        reaches_user = station in access_points or any(
+            isinstance(access_point, Satellite) and access_point.id in reachable_satellite_ids
+            for access_point in access_points
+        )
+        if not reaches_user:
+            continue
+
+        for access_model in user.applications_access_models:
+            if access_model.application.id in pending:
+                servable.add(access_model.application.id)
+
+    return sorted(servable)
+
+
 def should_skip(station, pending_app_ids, reachable_satellite_ids):
     """Tells whether there is nothing for this station to decide.
 
     Args:
         station (GroundStation): The station asking.
-        pending_app_ids (list): Applications waiting for placement.
+        pending_app_ids (list): Applications this station could place, as
+            narrowed by `find_servable_app_ids`.
         reachable_satellite_ids (set): Satellites currently in range.
 
     Returns:
         str or None: The reason to skip, or None if there is work to do.
     """
     if not pending_app_ids:
-        return "no pending apps"
+        return "no servable pending apps"
 
     if not reachable_satellite_ids and not station.process_unit:
         return "no satellites or process units in range"
@@ -152,12 +198,12 @@ def collect_state(model, station, scenario):
         set, the other two are None.
     """
     all_apps = Application.export_applications()
-    pending_app_ids = find_pending_app_ids(all_apps)
     reachable = find_reachable_satellite_ids(station)
+    servable_app_ids = find_servable_app_ids(station, find_pending_app_ids(all_apps), reachable)
 
-    skip_reason = should_skip(station, pending_app_ids, reachable)
+    skip_reason = should_skip(station, servable_app_ids, reachable)
     if skip_reason:
         return None, None, skip_reason
 
-    state = build_network_state(model, station, scenario, all_apps, pending_app_ids, reachable)
-    return state, pending_app_ids, None
+    state = build_network_state(model, station, scenario, all_apps, servable_app_ids, reachable)
+    return state, servable_app_ids, None

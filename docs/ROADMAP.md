@@ -115,11 +115,12 @@ exact geodesic.
 | H | Tick correctness is untested — tests assert the clock advances, not that allocation is right | Phase 8 |
 | I | The scenario round trip is one-way: after `Simulator.initialize` every link has `topology = None`, so a second `save_scenary` raises and a running simulation cannot be checkpointed | Phase 8 |
 | J | Users attach directly to ground stations, a path that does not exist in a LEO architecture | Phase 10 |
-| ~~K~~ | ~~`within_range` and `calculate_distance` divide altitudes by 1000~~ — fixed 28 September 2026 | done |
+| ~~K~~ | ~~The altitude difference is divided by 1000~~ — fixed 28 September 2026. It was **five occurrences across four files**, not the two in `topology.py` this table claimed | done |
 | ~~L~~ | ~~Users are created at satellite altitudes~~ — fixed 28 September 2026 | done |
 | ~~M~~ | ~~`User.export()` omits `max_connection_range`~~ — fixed 28 September 2026 | done |
 | N | A gateway accepts every satellite in range; real gateway earth stations serve 8 (Gen1) to 32 (Gen2) at a time | Phase 10 |
 | O | An LLM tick costs one model call per ground station — 28 with the RNP topology, minutes of wall clock | Phase 3 |
+| P | The slant-range formula is written five times: `Topology.within_range`, `Topology.calculate_distance`, `hybrid_allocation.distance`, `longest_duration_allocation.distance` and `state.find_reachable_satellite_ids`. This is what let issue K survive a fix | open |
 
 ### What could be fixed now
 
@@ -127,7 +128,16 @@ Every issue above was re-verified against the code on 28 September 2026. This
 is the standing triage; it is not permission to fix anything.
 
 **Fixed on 28 September 2026: K, L and M, together.** They had to move as a
-group. Measured across all eight combinations, averaged over five ticks:
+group.
+
+K was worse than this table said. It listed "two occurrences in `topology.py`";
+there were **five, across four files**, and the three that were nearly missed
+sit in the allocation path itself — `hybrid_allocation.distance` is what
+`LLMAllocator.apply_decision` runs, and `state.find_reachable_satellite_ids` is
+what decides which satellites a station is told about. Fixing only the engine
+pair would have left the agent and the engine disagreeing about what is in
+range, which is worse than both being wrong the same way. The formula living in
+five places is now issue P. Measured across all eight combinations, averaged over five ticks:
 
 | K | L | M | Connected users | Provisioned |
 | --- | --- | --- | --- | --- |
@@ -343,6 +353,103 @@ the local decisions the thesis argues should be local.
 orchestrator design the station receives a digest and answers a closed
 question, which is summarization and policy arrived at through the
 architecture.
+
+### Baseline with the model, 28 September 2026
+
+Three ticks of `LLMAllocator` on the RNP topology with `llama3.1:8b`, 20 users
+and 15 satellites, measured **after** issues K, L and M were fixed. Everything
+recorded before that date was measured on a network where most pending
+applications belonged to users with no access point, and is not comparable.
+
+| Tick | Calls | Skipped | Applications asked | Prompt tokens (~) | Wall clock |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 9 | 19 | 60 | 14 296 | 474 s |
+| 2 | 26 | 2 | 356 | 23 638 | 968 s |
+| 3 | 24 | 4 | 78 | 13 742 | 533 s |
+| **mean** | **19.7** | 8.3 | **164.7** | **17 225** | **658 s** |
+
+**A tick costs 8 to 16 minutes.** That is the number Phase 3 has to move.
+
+Two things the table shows that a single tick would have hidden:
+
+* **Calls swing from 9 to 26.** Stations are visited in sequence within a tick,
+  and each one's allocation empties part of the pending list, so the stations
+  visited later find nothing to do and skip. One tick is not a measurement.
+* **Tick 2 asks about 356 applications** in a scenario that contains 20. Every
+  station is asked about nearly all of them, which is the global question
+  restated as a number.
+
+**The allocator's `provisioned` and `failed` counters cannot be used for
+quality.** They are summed across stations, so with a global question the same
+application is counted by every station asked about it — tick 2 reports 198
+failures among 20 applications. Scoping removes that double counting by
+itself, which would look like an improvement it did not make. The outcome
+metric is therefore read from the simulator: how many *distinct* applications
+are placed at the end of a tick.
+
+### Result of the scoping, 28 September 2026
+
+Three ticks per arm, `llama3.1:8b`, same seed, same scenario. The *global* arm
+reproduces the pre-scoping behaviour exactly — same calls, same tokens as the
+baseline above — which is what makes the two comparable.
+
+| Per tick | Global question | Scoped to the station | |
+| --- | --- | --- | --- |
+| Model calls | 19.7 | 20.7 | +5% |
+| Applications asked about | 164.7 | 101.7 | **−38%** |
+| Prompt tokens (~) | 17 225 | 16 619 | −3.5% |
+| Tokens per call (~) | 876 | 804 | −8% |
+| Wall clock | 579.5 s | 531.0 s | **−8.4%** |
+| Distinct applications placed | 13.3 | 13.0 | −2% |
+
+**As a cost reduction this is a negative result.** 8.4% of wall clock, across
+three ticks, is inside the noise: tick to tick the same arm varies by a factor
+of two. Scoping did not make the tick affordable.
+
+Two things went differently from the structural estimate made without the
+model:
+
+* **Calls went up, not down.** With a global question, once the first stations
+  place the pending applications the list empties and every station visited
+  later skips with "no pending apps". That saving was an accident of visit
+  order, not locality, and scoping removes it. A station is now asked when *its*
+  users have work, which is the correct criterion and costs one more call per
+  tick.
+* **Cutting applications barely cut tokens.** The application list is 37% of the
+  prompt, so removing 42% of it removes about 15% of the prompt at best. The
+  estimate had assumed applications drove prompt size.
+
+**What the run did establish** is where the cost lives. Across 121 model calls,
+elapsed time against prompt length gives **r = 0.98**; against the number of
+applications, only 0.65. Time is almost exactly linear in prompt characters:
+
+| Applications in the prompt | Calls | Median time |
+| --- | --- | --- |
+| 0-3 | 47 | 18.4 s |
+| 4-8 | 41 | 24.7 s |
+| 9-15 | 17 | 29.3 s |
+| 16-30 | 16 | 42.9 s |
+
+And the prompt is not mostly applications:
+
+| Section of the state | Share of the prompt |
+| --- | --- |
+| applications | 37% |
+| process_units | 25% |
+| satellites | 16% |
+| topology | 11% |
+| ground_station | 3% |
+
+**Keep the scoping anyway.** It is not a cost win, but it is the property the
+thesis rests on: before it, 26 stations answered one network-wide question, and
+no decision was local. It is also what Phase 4's orchestrator needs in order to
+skip stations that have nothing to do with a request.
+
+**The next lever is direction 3, not the cache.** With r = 0.98 against prompt
+length, halving the prompt halves the tick. That means replacing the serialized
+JSON of process units, satellites and topology — 52% of the prompt between them
+— with a digest carrying the same facts. The cache stays after that: a scoped,
+digested question is the one worth caching.
 
 ### How to measure
 
