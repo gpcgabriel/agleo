@@ -48,7 +48,7 @@ class SatelliteCatalog:
 
     def __init__(self, path):
         """Args:
-            path (str): Path to the JSON traces file.
+        path (str): Path to the JSON traces file.
         """
         self.path = path
 
@@ -108,8 +108,7 @@ class SatelliteCatalog:
         delta_lon = longitudes_rad - target_lon_rad
 
         inner = (
-            np.sin(delta_lat / 2.0) ** 2
-            + np.cos(target_lat_rad) * np.cos(latitudes_rad) * np.sin(delta_lon / 2.0) ** 2
+            np.sin(delta_lat / 2.0) ** 2 + np.cos(target_lat_rad) * np.cos(latitudes_rad) * np.sin(delta_lon / 2.0) ** 2
         )
         return 2.0 * EARTH_RADIUS_KM * np.arcsin(np.sqrt(np.clip(inner, 0.0, 1.0)))
 

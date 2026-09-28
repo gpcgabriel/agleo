@@ -17,8 +17,12 @@ NAME_FIELDS = ("name", "tool", "tool_name", "function")
 ARGUMENT_FIELDS = ("parameters", "arguments", "args", "parameter")
 
 _JSON_LITERALS = {"true": True, "false": False, "null": None, "True": True, "False": False, "None": None}
-_ARITHMETIC = {ast.Add: lambda a, b: a + b, ast.Sub: lambda a, b: a - b,
-               ast.Mult: lambda a, b: a * b, ast.Div: lambda a, b: a / b}
+_ARITHMETIC = {
+    ast.Add: lambda a, b: a + b,
+    ast.Sub: lambda a, b: a - b,
+    ast.Mult: lambda a, b: a * b,
+    ast.Div: lambda a, b: a / b,
+}
 
 
 def _evaluate(node):

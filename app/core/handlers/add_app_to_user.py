@@ -26,8 +26,7 @@ def handle(session, payload):
     session.apply_infrastructure_change()
 
     description = (
-        f"Added application (CPU={payload.cpu_demand}, Mem={payload.memory_demand}) "
-        f"to User {payload.user_id}"
+        f"Added application (CPU={payload.cpu_demand}, Mem={payload.memory_demand}) " f"to User {payload.user_id}"
     )
     return ActionResult(
         messages=[{"role": "system", "content": f"Action executed successfully: {description}"}],

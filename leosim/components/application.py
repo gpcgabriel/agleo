@@ -3,11 +3,12 @@ from ..component_manager import ComponentManager
 from .user import User
 from typing import List, Dict, Any, Optional
 
+
 class Application(ComponentManager):
     """Represents an application with specific resource demands.
 
     An Application is a unit of workload that can be requested by users,
-    provisioned on processing units, and migrated between hosts during 
+    provisioned on processing units, and migrated between hosts during
     the simulation.
 
     Attributes:
@@ -31,7 +32,7 @@ class Application(ComponentManager):
 
     _instances = []
     _object_count = 0
-    
+
     def __init__(
         self,
         id: int = 0,
@@ -57,11 +58,11 @@ class Application(ComponentManager):
         """
         self.__class__._instances.append(self)
         self.__class__._object_count += 1
-        
+
         if id == 0:
             id = self.__class__._object_count
-        self.id = id 
-        
+        self.id = id
+
         self.cpu_demand = cpu_demand
         self.memory_demand = memory_demand
         self.storage_demand = storage_demand
@@ -69,29 +70,29 @@ class Application(ComponentManager):
         self.sla = sla
         self.dependency_labels = dependency_labels
         self.architectural_demands = architectural_demands
-        
+
         self.user = None
         self.process_unit = None
         self.migrations = []
-        self.available = False  
+        self.available = False
         self._available = False
         self.being_provisioned = False
         self.completed = False
-                          
+
     def collect_metrics(self) -> Dict[str, Any]:
         """Collects telemetry data from this specific application instance.
 
         Returns:
-            dict: A dictionary containing IDs, demands, current state, 
+            dict: A dictionary containing IDs, demands, current state,
                 hosting information, and migration status.
         """
         last_migration = self.migrations[-1].copy() if self.migrations else None
-        
+
         if last_migration:
             # Converting to string so the value can be written to disk.
-            last_migration['origin'] = str(last_migration['origin'])
-            last_migration['target'] = str(last_migration['target'])
-            
+            last_migration["origin"] = str(last_migration["origin"])
+            last_migration["target"] = str(last_migration["target"])
+
         metrics = {
             "ID": self.id,
             "CPU Demand": self.cpu_demand,
@@ -102,32 +103,36 @@ class Application(ComponentManager):
             "Process Unit": str(self.process_unit) if self.process_unit else None,
             "Available": self.available,
             "Being Provisioned": self.being_provisioned,
-            "Last Migration": last_migration
+            "Last Migration": last_migration,
         }
-        
+
         return metrics
-    
+
     def step(self) -> None:
         """Updates the component state for the current simulation tick.
 
-        This method manages the migration lifecycle (waiting, downloading, 
-        state transfer, and finishing) and ensures resource consistency 
+        This method manages the migration lifecycle (waiting, downloading,
+        state transfer, and finishing) and ensures resource consistency
         between processing units.
         """
-        if len(self.migrations) > 0 and self.migrations[-1]['end'] is None:
+        if len(self.migrations) > 0 and self.migrations[-1]["end"] is None:
             migr = self.migrations[-1]
             # TODO: Implement a formal dependency management system.
             # Standing in for the state machine until that system exists.
             dependencies_on_process_unit = []
-            
+
             # Treating data transfer as instantaneous, which is what the model does today.
-            if migr["status"] == 'waiting':
-                if len(dependencies_on_process_unit) > 0 or len(dependencies_on_process_unit) == len(self.dependency_labels):
-                    migr['status'] = 'download_dependencies'
+            if migr["status"] == "waiting":
+                if len(dependencies_on_process_unit) > 0 or len(dependencies_on_process_unit) == len(
+                    self.dependency_labels
+                ):
+                    migr["status"] = "download_dependencies"
 
             # Transitioning straight to the next stage while dependency simulation is
             # still pending.
-            if migr['status'] == 'download_dependencies' and len(dependencies_on_process_unit) == len(self.dependency_labels):
+            if migr["status"] == "download_dependencies" and len(dependencies_on_process_unit) == len(
+                self.dependency_labels
+            ):
                 # Releasing the resources held on the source processing unit.
                 if self.process_unit:
                     self.process_unit.cpu_demand -= self.cpu_demand
@@ -135,30 +140,30 @@ class Application(ComponentManager):
                     self.process_unit.storage_demand -= self.storage_demand
 
                 if self.process_unit is None or self.state == 0:
-                    migr['status'] = "finished"
+                    migr["status"] = "finished"
                 else:
                     # TODO: Implement complex state migration logic.
-                    migr['status'] = 'application_state_migration'
-                
+                    migr["status"] = "application_state_migration"
+
             # Logging the time spent in each migration phase.
-            if migr['status'] == 'waiting':
-                migr['waiting_time'] += 1
-            elif migr['status'] == 'download_dependencies':
-                migr['download_time'] += 1
-            elif migr['status'] == 'application_state_migration':
-                migr['application_state_migration_time'] += 1
-            elif migr['status'] == "finished":
+            if migr["status"] == "waiting":
+                migr["waiting_time"] += 1
+            elif migr["status"] == "download_dependencies":
+                migr["download_time"] += 1
+            elif migr["status"] == "application_state_migration":
+                migr["application_state_migration_time"] += 1
+            elif migr["status"] == "finished":
                 # Terminating the migration and updating the host references.
                 migr["end"] = self.model.scheduler.steps + 1
-                
+
                 if self.process_unit:
                     self.process_unit.applications.remove(self)
-                
-                self.process_unit = migr['target']
+
+                self.process_unit = migr["target"]
                 self.process_unit.applications.append(self)
 
                 self.being_provisioned = False
-                self.available = True    
+                self.available = True
 
         # Updating the availability flags from the host's status.
         if self.process_unit and not self.process_unit.available:
@@ -167,14 +172,14 @@ class Application(ComponentManager):
             self.available = True
         elif self.process_unit is None and self.available:
             self.available = False
-            
+
         self._available = self.available
 
     def export(self) -> dict:
         """Generates a dictionary representation for context saving.
 
         Returns:
-            dict: The serialized state of the application including 
+            dict: The serialized state of the application including
                 relationships with users and processing units.
         """
         component = {
@@ -188,38 +193,44 @@ class Application(ComponentManager):
             "architectural_demands": self.architectural_demands,
             "relationships": {
                 "user": {"id": self.user.id, "class": type(self.user).__name__} if self.user else None,
-                "process_unit": {"id": self.process_unit.id, "class": type(self.process_unit).__name__} if self.process_unit else None,
-            }
+                "process_unit": (
+                    {"id": self.process_unit.id, "class": type(self.process_unit).__name__}
+                    if self.process_unit
+                    else None
+                ),
+            },
         }
         return component
-    
+
     def provision(self, process_unit: Any) -> None:
         """Starts the provisioning process on a target processing unit.
 
         Args:
-            process_unit (object): The target host where the application 
+            process_unit (object): The target host where the application
                 will be provisioned.
         """
         if self.completed or self.being_provisioned:
             return
 
         self.being_provisioned = True
-        
+
         # Reserving the resources on the target host immediately.
         process_unit.cpu_demand += self.cpu_demand
         process_unit.memory_demand += self.memory_demand
         process_unit.storage_demand += self.storage_demand
-        
-        self.migrations.append({
-            "status": "waiting",
-            "origin": self.process_unit,
-            "target": process_unit,
-            "start": self.model.scheduler.steps + 1,
-            "end": None,
-            "waiting_time": 0,
-            "download_time": 0,
-            "application_state_migration_time": 0
-        })
+
+        self.migrations.append(
+            {
+                "status": "waiting",
+                "origin": self.process_unit,
+                "target": process_unit,
+                "start": self.model.scheduler.steps + 1,
+                "end": None,
+                "waiting_time": 0,
+                "download_time": 0,
+                "application_state_migration_time": 0,
+            }
+        )
 
     def deprovision(self) -> None:
         """Ends the provisioning and releases resources from the current host.
@@ -235,7 +246,7 @@ class Application(ComponentManager):
             process_unit.storage_demand -= self.storage_demand
 
             process_unit.applications.remove(self)
-            
+
         self.process_unit = None
 
     @staticmethod
@@ -249,10 +260,10 @@ class Application(ComponentManager):
                     if am.application.id == app.id and am.history:
                         pending = am.request_provisioning
                         last = am.history[-1]
-                        if last.get('required_provisioning_time'):
-                            remaining = last['required_provisioning_time'] - last['provisioned_time']
-                        elif last.get('end'):
-                            remaining = last['end'] - app.model.scheduler.steps
+                        if last.get("required_provisioning_time"):
+                            remaining = last["required_provisioning_time"] - last["provisioned_time"]
+                        elif last.get("end"):
+                            remaining = last["end"] - app.model.scheduler.steps
                         break
                 if pending:
                     break

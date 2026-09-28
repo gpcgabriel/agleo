@@ -1,11 +1,12 @@
 from ..component_manager import ComponentManager
 from typing import List, Dict, Any, Optional, Tuple
 
+
 class ProcessUnit(ComponentManager):
     """Represents an infrastructure component with computational capabilities.
 
-    This class models hardware such as datacenters or edge servers. It 
-    interacts with other elements through the Topology component, 
+    This class models hardware such as datacenters or edge servers. It
+    interacts with other elements through the Topology component,
     requiring proper integration into the simulation's network structure.
 
     Attributes:
@@ -25,19 +26,20 @@ class ProcessUnit(ComponentManager):
         applications (List[object]): Applications currently hosted on this unit.
         available (bool): Status indicating if the unit is functional.
     """
+
     _instances = []
     _object_count = 0
-   
+
     def __init__(
-            self,
-            id: int = 0,
-            cpu: int = 0,
-            memory: int = 0,
-            storage: int = 0,
-            coordinates: Optional[Tuple[float, float, float]] = None,
-            model_name: str = "",
-            architecture: Dict[str, Any] = {}
-        ):
+        self,
+        id: int = 0,
+        cpu: int = 0,
+        memory: int = 0,
+        storage: int = 0,
+        coordinates: Optional[Tuple[float, float, float]] = None,
+        model_name: str = "",
+        architecture: Dict[str, Any] = {},
+    ):
         """Initializes a ProcessUnit instance.
 
         Args:
@@ -48,44 +50,44 @@ class ProcessUnit(ComponentManager):
             coordinates (tuple, optional): Latitude, longitude, and altitude.
             model_name (str): Label for the hardware model.
             architecture (dict): Specific hardware architectural demands.
-        """     
+        """
         self.__class__._instances.append(self)
         self.__class__._object_count += 1
-        
+
         if id == 0:
             id = self.__class__._object_count
-        self.id = id 
-        
+        self.id = id
+
         self.model_name = model_name
         self.coordinates = coordinates
-        
+
         # Holding the total computational capacity.
         self.cpu = cpu
         self.memory = memory
         self.storage = storage
         self.power = 0
-        
+
         # Tracking the current demands.
         self.cpu_demand = 0
         self.memory_demand = 0
         self.storage_demand = 0
-        
+
         # Describing the architectural specifications.
         self.architecture = architecture
-        
+
         # Allowing integration with the relevant models.
         self.power_generation_model = None
         self.power_generation_model_parameters = {}
-        
+
         self.power_consumption_model = None
         self.power_consumption_model_parameters = {}
-        
+
         self.failure_model = None
         self.failure_model_parameters = {}
-        
+
         # Listing the applications currently allocated in the unit.
         self.applications = []
-                
+
         # Recording whether the unit is available.
         self.available = True
 
@@ -106,15 +108,15 @@ class ProcessUnit(ComponentManager):
             "Storage Demand": self.storage_demand,
             "Power": self.power,
             "Available": self.available,
-            "Architecture": self.architecture
+            "Architecture": self.architecture,
         }
-        
+
         return metrics
-    
+
     def step(self) -> None:
         """Activates the component and ensures its operation during the simulation.
 
-        Updates the status of allocated applications. If the unit becomes 
+        Updates the status of allocated applications. If the unit becomes
         unavailable, hosted applications are deprovisioned.
         """
         # Updating the status of applications that were allocated here and have
@@ -123,12 +125,12 @@ class ProcessUnit(ComponentManager):
             if app.process_unit and not app.process_unit.available:
                 app.available = False
                 app.deprovision()
-      
+
     def export(self) -> dict:
         """Generates a dictionary representation for saving the current context.
 
         Returns:
-            dict: Serialized object state including hardware specs and 
+            dict: Serialized object state including hardware specs and
                 application relationships.
         """
         component = {
@@ -145,20 +147,16 @@ class ProcessUnit(ComponentManager):
             "power_consumption_model_parameters": self.power_consumption_model_parameters,
             "relationships": {
                 "power_generation_model": self.power_generation_model.__name__ if self.power_generation_model else None,
-                "power_consumption_model": self.power_consumption_model.__name__ if self.power_consumption_model else None,
+                "power_consumption_model": (
+                    self.power_consumption_model.__name__ if self.power_consumption_model else None
+                ),
                 "failure_model": self.failure_model.__name__ if self.failure_model else None,
-                "applications": [
-                    {
-                        "class": type(app).__name__,
-                        "id": app.id
-                    } for app in self.applications
-                ],
+                "applications": [{"class": type(app).__name__, "id": app.id} for app in self.applications],
+            },
+        }
 
-            }
-        } 
-        
         return component
-    
+
     def has_capacity_to_host(self, application: object) -> bool:
         """Checks if there are enough available resources to host an application.
 
@@ -171,9 +169,9 @@ class ProcessUnit(ComponentManager):
         cpu_demand = self.cpu_demand + application.cpu_demand
         memory_demand = self.memory_demand + application.memory_demand
         storage_demand = self.storage_demand + application.storage_demand
-        
+
         return self.cpu >= cpu_demand and self.memory >= memory_demand and self.storage >= storage_demand
-    
+
     @staticmethod
     def export_processunits() -> Dict:
         pu_data = {}

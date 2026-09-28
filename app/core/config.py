@@ -54,8 +54,9 @@ class SimulationConfig:
         self.scenario = scenario
         self.algorithm = algorithm
 
-    def copy_with(self, gml_path=None, satellites_path=None, num_users=None,
-                  num_satellites=None, scenario=None, algorithm=None):
+    def copy_with(
+        self, gml_path=None, satellites_path=None, num_users=None, num_satellites=None, scenario=None, algorithm=None
+    ):
         """Returns a new configuration with only the given fields replaced.
 
         Fields left as None keep their current value. Used by restart

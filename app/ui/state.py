@@ -16,6 +16,7 @@ CHAT_KEY = "chat_messages"
 
 # -- Simulation session -----------------------------------------------------
 
+
 def get_session():
     """Returns: SimulationSession or None: The loaded simulation, if any."""
     return st.session_state.get(SESSION_KEY)
@@ -27,6 +28,7 @@ def set_session(session):
 
 
 # -- Conversation and notices -----------------------------------------------
+
 
 def push_chat(role, content):
     """Appends a message to the conversation history.
@@ -76,6 +78,7 @@ def apply_result(result):
 
 
 # -- Pending proposal -------------------------------------------------------
+
 
 def get_pending():
     """Returns: ProposedAction or None: The proposal awaiting a decision."""

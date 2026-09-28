@@ -114,14 +114,16 @@ def test_tool_list_exposes_every_proposal_tool():
     buffer = ProposalBuffer()
     names = [tool.__name__ for tool in buffer.get_tools()]
 
-    assert sorted(names) == sorted([
-        "propose_run_simulation",
-        "propose_restart_simulation",
-        "propose_add_process_unit",
-        "propose_add_user",
-        "propose_add_app_to_user",
-        "propose_add_node",
-    ])
+    assert sorted(names) == sorted(
+        [
+            "propose_run_simulation",
+            "propose_restart_simulation",
+            "propose_add_process_unit",
+            "propose_add_user",
+            "propose_add_app_to_user",
+            "propose_add_node",
+        ]
+    )
 
 
 if __name__ == "__main__":

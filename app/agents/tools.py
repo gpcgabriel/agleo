@@ -93,10 +93,10 @@ class ProposalBuffer:
 
     def __init__(self, current_config=None):
         """Args:
-            current_config (SimulationConfig): Active simulation configuration,
-                used as the base when the operator asks for a restart without
-                specifying every parameter. May be None when no simulation has
-                been loaded yet.
+        current_config (SimulationConfig): Active simulation configuration,
+            used as the base when the operator asks for a restart without
+            specifying every parameter. May be None when no simulation has
+            been loaded yet.
         """
         self.current_config = current_config
         self.proposals = []
@@ -286,6 +286,4 @@ class ProposalBuffer:
             self.proposals[-1] = ProposedAction(ActionType.ADD_NODES, merged)
             return f"Proposal updated: {self.proposals[-1].description}. Please confirm in the control panel."
 
-        return self.register(
-            ProposedAction(ActionType.ADD_NODES, AddNodesPayload(spread_out_collisions(specs, set())))
-        )
+        return self.register(ProposedAction(ActionType.ADD_NODES, AddNodesPayload(spread_out_collisions(specs, set()))))

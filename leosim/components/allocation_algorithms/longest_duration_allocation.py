@@ -1,8 +1,9 @@
 from geopy.distance import geodesic
 from ..satellite import Satellite
-from ..user import User 
+from ..user import User
 from math import sqrt
 import networkx as nx
+
 
 def has_path(topology, origin, target):
     """Verifica se existe conectividade via rede terrestre."""
@@ -11,20 +12,22 @@ def has_path(topology, origin, target):
             return True
     return False
 
+
 def distance(coordinates1, coordinates2):
     """Calcula a distância 3D entre dois pontos."""
     if coordinates1 is None or coordinates2 is None:
-        return float('inf')
-    ground_distance = geodesic(coordinates1[:2], coordinates2[:2]).kilometers 
+        return float("inf")
+    ground_distance = geodesic(coordinates1[:2], coordinates2[:2]).kilometers
     air_distance = (coordinates1[2] - coordinates2[2]) / 1000
     return sqrt(ground_distance**2 + air_distance**2)
+
 
 def get_exposure_time(user, satellite):
     """Calcula por quantos passos de simulação o satélite ainda estará visível."""
     step = user.model.scheduler.steps
     max_distance = min(user.max_connection_range, satellite.max_connection_range)
     count = 0
-    
+
     # Simulating the future trajectory to predict how long the connection lasts.
     for coordinates in satellite.coordinates_trace[step:]:
         if coordinates is not None:
@@ -34,13 +37,14 @@ def get_exposure_time(user, satellite):
                 break
     return count
 
+
 def longest_duration_allocation(model, parameters):
     # Counting the provisionings made on each step.
-    
+
     # Keeping a dictionary on the model object so the counts survive between steps.
-    if not hasattr(model, 'provisioning_history'):
+    if not hasattr(model, "provisioning_history"):
         model.provisioning_history = {}
-    
+
     step_atual_str = str(model.scheduler.steps)
     if step_atual_str not in model.provisioning_history:
         model.provisioning_history[step_atual_str] = 0
@@ -56,18 +60,19 @@ def longest_duration_allocation(model, parameters):
                 applications_to_be_allocated.append(access_model)
             else:
                 process_unit = access_model.application.process_unit
-                if not any(
-                    (process_unit in model.topology.neighbors(ap) for ap in user.network_access_points)
-                ) or user.network_access_points == []:
+                if (
+                    not any((process_unit in model.topology.neighbors(ap) for ap in user.network_access_points))
+                    or user.network_access_points == []
+                ):
                     applications_to_be_allocated.append(access_model)
 
     # 2. Ordenar aplicações
     def get_remaining_time(access_model):
         last_access = access_model.history[-1]
-        if last_access.get('required_provisioning_time'):
-            return last_access.get('required_provisioning_time') - last_access['provisioned_time']
-        return last_access['end'] - model.scheduler.steps
-    
+        if last_access.get("required_provisioning_time"):
+            return last_access.get("required_provisioning_time") - last_access["provisioned_time"]
+        return last_access["end"] - model.scheduler.steps
+
     applications_to_be_allocated.sort(key=get_remaining_time, reverse=True)
 
     # 3. Alocação
@@ -77,23 +82,25 @@ def longest_duration_allocation(model, parameters):
         sat = None
 
         # Trying the ground stations.
-        if parameters['ground_station'].process_unit and (parameters['scenario'] == 'terrestrial' or parameters['scenario'] == 'hybrid'):
-            for unit in parameters['ground_station'].process_unit:
-                if not isinstance(getattr(unit, 'owner', None), Satellite):
+        if parameters["ground_station"].process_unit and (
+            parameters["scenario"] == "terrestrial" or parameters["scenario"] == "hybrid"
+        ):
+            for unit in parameters["ground_station"].process_unit:
+                if not isinstance(getattr(unit, "owner", None), Satellite):
                     if unit.has_capacity_to_host(access_model.application) and unit.available:
                         if has_path(model.topology, access_model.user, unit):
                             best_target = unit
-                            max_duration = float('inf')
-                            break 
-        
+                            max_duration = float("inf")
+                            break
+
         # Trying the satellites.
         if best_target is None:
             for access_point in access_model.user.network_access_points:
                 if not model.topology.has_node(access_point):
                     continue
-                
-                if (isinstance(access_point, Satellite) and access_point.active):
-                    pu = getattr(access_point, 'process_unit', None)
+
+                if isinstance(access_point, Satellite) and access_point.active:
+                    pu = getattr(access_point, "process_unit", None)
                     if pu and pu.available and pu.has_capacity_to_host(access_model.application):
                         duration = get_exposure_time(access_model.user, access_point)
                         if duration > max_duration:
@@ -103,10 +110,10 @@ def longest_duration_allocation(model, parameters):
         # 4. Provisionamento e Contagem
         if best_target is not None:
             app = access_model.application
-            
+
             # Running the provisioning.
             if best_target != app.process_unit:
                 app.provision(best_target)
-                
+
                 # Incrementing the provisioning counter.
                 model.provisioning_history[step_atual_str] += 1

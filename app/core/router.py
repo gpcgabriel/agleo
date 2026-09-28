@@ -18,9 +18,7 @@ QUICK_COMMAND_CONTEXT = (
 VIEWING_HISTORY_MESSAGE = (
     "⚠️ You are viewing a historical step. To send commands, drag the slider to the most recent step."
 )
-PENDING_ACTION_MESSAGE = (
-    "⚠️ Resolve the pending proposed action in the upper panel before continuing the conversation."
-)
+PENDING_ACTION_MESSAGE = "⚠️ Resolve the pending proposed action in the upper panel before continuing the conversation."
 
 
 class LocalReply:

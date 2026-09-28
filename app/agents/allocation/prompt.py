@@ -8,10 +8,8 @@ INSTRUCTIONS = [
     "You allocate applications in a LEO satellite network.",
     "Objective: maximize the number of provisioned applications.",
     "Choose one strategy per application, from two options.",
-    "best_fit: packs an application into the tightest-fitting process unit, "
-    "minimizing wasted resources.",
-    "longest_duration: picks the satellite with the longest remaining visibility "
-    "time for the user.",
+    "best_fit: packs an application into the tightest-fitting process unit, " "minimizing wasted resources.",
+    "longest_duration: picks the satellite with the longest remaining visibility " "time for the user.",
     "Every pending application ID must appear in exactly one of the two lists.",
 ]
 

@@ -1,5 +1,6 @@
 from typing import Tuple
 
+
 def linear_estimation(sat) -> Tuple[float, float, float]:
     """
     Estimates the next position of the satellite based on linear inertia.
@@ -12,7 +13,7 @@ def linear_estimation(sat) -> Tuple[float, float, float]:
 
     if last_coord is None:
         current_step = sat.model.scheduler.steps
-        
+
         if current_step >= 2:
             last_coord = sat.coordinates_trace[current_step - 2]
         else:

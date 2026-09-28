@@ -5,6 +5,7 @@ from .satellite import Satellite
 from .user import User
 from typing import List, Tuple, Optional, Dict, Any
 
+
 class GroundStation(ComponentManager):
     _instances = []
     _object_count = 0
@@ -14,7 +15,7 @@ class GroundStation(ComponentManager):
         id: int = 0,
         coordinates: Optional[Tuple[float, float, float]] = None,
         wireless_delay: int = 0,
-        max_connection_range: int = 2000
+        max_connection_range: int = 2000,
     ) -> None:
         self.__class__._instances.append(self)
         self.__class__._object_count += 1
@@ -37,15 +38,13 @@ class GroundStation(ComponentManager):
             "wireless_delay": self.wireless_delay,
             "max_connection_range": self.max_connection_range,
             "relationships": {
-                "users": [
-                    {"id": user.id, "class": type(user).__name__}
-                    for user in self.users
-                ],
-                "process_unit": [
-                    {"id": unit.id, "class": type(unit).__name__}
-                    for unit in self.process_unit
-                ] if self.process_unit else None
-            }
+                "users": [{"id": user.id, "class": type(user).__name__} for user in self.users],
+                "process_unit": (
+                    [{"id": unit.id, "class": type(unit).__name__} for unit in self.process_unit]
+                    if self.process_unit
+                    else None
+                ),
+            },
         }
         return component
 
@@ -86,11 +85,11 @@ class GroundStation(ComponentManager):
                 if self.model.topology.has_edge(self, satellite):
                     continue
                 link = NetworkLink()
-                link['topology'] = topology
-                link['nodes'] = [satellite, self]
-                link['bandwidth'] = NetworkLink.default_bandwidth
-                link['delay'] = link.get_delay()
-                link['type'] = 'dynamic'
+                link["topology"] = topology
+                link["nodes"] = [satellite, self]
+                link["bandwidth"] = NetworkLink.default_bandwidth
+                link["delay"] = link.get_delay()
+                link["type"] = "dynamic"
                 topology.add_edge(satellite, self)
                 topology._adj[satellite][self] = link
                 topology._adj[self][satellite] = link

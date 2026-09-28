@@ -44,6 +44,7 @@ def resolve_model():
 
 # -- Decision handling ------------------------------------------------------
 
+
 def test_an_application_is_never_placed_by_two_strategies():
     decision = AllocationDecision(best_fit=[1, 2], longest_duration=[2, 3])
     best_fit, longest_duration = split_without_duplicates(decision)
@@ -61,6 +62,7 @@ def test_an_empty_decision_is_valid():
 
 
 # -- State selection --------------------------------------------------------
+
 
 def test_only_pending_applications_are_collected():
     all_apps = {"App_1": {"pending": True}, "App_2": {"pending": False}, "App_3": {"pending": True}}
@@ -92,12 +94,21 @@ def test_collect_state_reports_a_skip_reason_instead_of_a_partial_state():
     if reason:
         assert state is None and pending is None
     else:
-        for section in ("step", "scenario", "ground_station", "satellites", "users",
-                        "process_units", "applications", "topology"):
+        for section in (
+            "step",
+            "scenario",
+            "ground_station",
+            "satellites",
+            "users",
+            "process_units",
+            "applications",
+            "topology",
+        ):
             assert section in state, f"state is missing '{section}'"
 
 
 # -- Prompt -----------------------------------------------------------------
+
 
 def test_the_prompt_names_the_pending_applications():
     prompt = build_allocation_prompt({"step": 0}, [7, 9], [])
@@ -109,8 +120,7 @@ def test_the_prompt_names_the_pending_applications():
 def test_history_is_absent_until_there_is_one():
     assert build_history_section([]) == ""
 
-    entry = {"step": 1, "best_fit": [1], "longest_duration": [],
-             "results": {"provisioned": 1, "failed": 0}}
+    entry = {"step": 1, "best_fit": [1], "longest_duration": [], "results": {"provisioned": 1, "failed": 0}}
     section = build_history_section([entry])
 
     assert "Step 1" in section
@@ -118,6 +128,7 @@ def test_history_is_absent_until_there_is_one():
 
 
 # -- Injection --------------------------------------------------------------
+
 
 def test_the_allocator_is_shaped_like_a_plain_allocation_algorithm():
     """The engine injects it exactly like best_fit_allocation, which is what
@@ -141,6 +152,7 @@ def test_decisions_are_kept_per_ground_station():
 
 
 # -- Integration ------------------------------------------------------------
+
 
 def test_one_station_decides_through_the_model():
     model_name = resolve_model()

@@ -96,8 +96,9 @@ def build_scenario(config, scenary_path=DEFAULT_SCENARY_PATH):
     return scenary_path
 
 
-def build_simulator(config, scenary_path=DEFAULT_SCENARY_PATH, logs_directory=DEFAULT_LOGS_DIRECTORY,
-                    allocation_algorithm=None):
+def build_simulator(
+    config, scenary_path=DEFAULT_SCENARY_PATH, logs_directory=DEFAULT_LOGS_DIRECTORY, allocation_algorithm=None
+):
     """Builds a simulator ready to run.
 
     Args:

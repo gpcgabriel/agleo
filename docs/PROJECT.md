@@ -42,6 +42,12 @@ The interpreter with `agno`, `streamlit`, `numpy` and `geopy` installed:
 ~/.pyenv/versions/3.12.9/bin/python
 ```
 
+Formatting uses a different one — `black` lives on the pyenv shims:
+
+```bash
+~/.pyenv/shims/black -l 120 app leosim tests app.py dataset.py
+```
+
 Entry points:
 
 | Command | What it does |
@@ -111,17 +117,16 @@ Things that have already cost time:
 * **Streamlit's `data-testid` values changed.** Rules written against
   `element-container` match nothing; the current testid is `stElementContainer`
   and `element-container` is now a class.
-* **`within_range` and `calculate_distance` divide altitudes by 1000.**
-  Altitudes are already in kilometres, so the vertical leg of the slant range
-  collapses and a satellite overhead reads as if it were on the ground. Two
-  occurrences in `leosim/components/topology.py`.
-* **Users are created at satellite altitudes.** `dataset.create_users` samples
-  positions from `Satellite.coordinates_trace`, altitude included, so users
-  orbit instead of standing on the ground.
-* **`User.export()` omits `max_connection_range`.** The scenario round trip
-  resets 1500 km to the 300 km constructor default — smaller than any
-  satellite's altitude, so with correct geometry a user could never see one.
-  Same defect class as the lost `name` on `Satellite`.
+* **Coordinates are `(latitude, longitude, altitude in kilometres)`.** Ground
+  stations, process units and users sit at altitude 0; satellites at 320-528.
+  `within_range` and `calculate_distance` use the vertical leg unscaled. If a
+  `/1000` reappears there, it is the old bug coming back, not a unit
+  conversion.
+* **Anything a component needs after a reload must be in its `export()`.**
+  `Simulator.initialize` rebuilds each object with `set_attributes(**dict)`,
+  so a field missing from `export()` silently falls back to the constructor
+  default. This cost half the users their connection range for months, and
+  `Satellite` still loses its `name` the same way.
 * **`leosim/components/mobility_models/` is the live one.** A second copy used
   to sit at `leosim/mobility_models/`, never imported and carrying bugs that
   the live copy had already fixed. It is gone; if a similar pair appears,

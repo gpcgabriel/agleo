@@ -3,20 +3,25 @@ from ..satellite import Satellite
 from ..user import User
 import networkx as nx
 
+
 def has_path(topology, origin, target):
     for access_point in origin.network_access_points:
         if nx.has_path(G=topology, source=access_point, target=target):
             return True
-    
+
     return False
+
 
 def best_fit_allocation(model, parameters):
 
     def best_fit(app, process_units):
-        return min(process_units, key=lambda unit: 
-                   (unit.cpu - app.cpu_demand) + (unit.memory - app.memory_demand) + (unit.storage - app.storage_demand) 
+        return min(
+            process_units,
+            key=lambda unit: (unit.cpu - app.cpu_demand)
+            + (unit.memory - app.memory_demand)
+            + (unit.storage - app.storage_demand),
         )
-        
+
     applications_to_be_allocated = []
 
     # Selecting the applications that require provisioning.
@@ -30,9 +35,15 @@ def best_fit_allocation(model, parameters):
             else:
                 process_unit = access_model.application.process_unit
                 # Skipping what is not directly connected to a network access point.
-                if not any(
-                    ( process_unit in model.topology.neighbors(access_point)  for access_point in user.network_access_points)
-                    ) or user.network_access_points == []:
+                if (
+                    not any(
+                        (
+                            process_unit in model.topology.neighbors(access_point)
+                            for access_point in user.network_access_points
+                        )
+                    )
+                    or user.network_access_points == []
+                ):
                     applications_to_be_allocated.append(access_model)
 
     # Iterating over the provisioning demands.
@@ -40,19 +51,23 @@ def best_fit_allocation(model, parameters):
         process_units = []
         # Searching for process units directly connected to network access points.
         for access_point in access_model.user.network_access_points:
-            if isinstance(access_point, Satellite) and getattr(access_point, 'process_unit') is not None:
+            if isinstance(access_point, Satellite) and getattr(access_point, "process_unit") is not None:
                 process_unit = access_point.process_unit
 
                 if process_unit.has_capacity_to_host(access_model.application) and process_unit.available:
                     process_units.append(process_unit)
 
         # Trying the ground network first.
-        if process_units == []:   
+        if process_units == []:
             process_units = []
-            if parameters['ground_station'].process_unit:
-                for unit in parameters['ground_station'].process_unit:
+            if parameters["ground_station"].process_unit:
+                for unit in parameters["ground_station"].process_unit:
                     # Checking whether communication with this server is possible.
-                    if unit.has_capacity_to_host(access_model.application) and unit.available and has_path(model.topology, access_model.user, unit):
+                    if (
+                        unit.has_capacity_to_host(access_model.application)
+                        and unit.available
+                        and has_path(model.topology, access_model.user, unit)
+                    ):
                         process_units.append(unit)
 
         if process_units == []:

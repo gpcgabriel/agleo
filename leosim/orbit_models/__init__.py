@@ -1,1 +1,1 @@
-from .coordinates_history import*
+from .coordinates_history import *

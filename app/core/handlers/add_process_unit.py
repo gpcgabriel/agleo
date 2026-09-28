@@ -39,8 +39,7 @@ def handle(session, payload):
     session.apply_infrastructure_change()
 
     description = (
-        f"Added ProcessUnit (CPU={payload.cpu}, Mem={payload.memory}) "
-        f"to {payload.target_type} {payload.target_id}"
+        f"Added ProcessUnit (CPU={payload.cpu}, Mem={payload.memory}) " f"to {payload.target_type} {payload.target_id}"
     )
     return ActionResult(
         messages=[{"role": "system", "content": f"Action executed successfully: {description}"}],

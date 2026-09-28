@@ -1,4 +1,4 @@
-# LEOSim Roadmap
+# AGLEO Roadmap
 
 Where the project stands and what comes next. The long-term goal is an
 **agentic-defined simulation**: ground stations that decide locally, an
@@ -115,11 +115,61 @@ exact geodesic.
 | H | Tick correctness is untested — tests assert the clock advances, not that allocation is right | Phase 8 |
 | I | The scenario round trip is one-way: after `Simulator.initialize` every link has `topology = None`, so a second `save_scenary` raises and a running simulation cannot be checkpointed | Phase 8 |
 | J | Users attach directly to ground stations, a path that does not exist in a LEO architecture | Phase 10 |
-| K | `within_range` **and** `calculate_distance` divide altitudes by 1000, collapsing the vertical leg of the slant range — two occurrences in `topology.py` | Phase 10 |
-| L | Users are created at satellite altitudes, so they orbit instead of standing on the ground | Phase 10 |
-| M | `User.export()` omits `max_connection_range`, so the scenario round trip resets it to the 300 km default | Phase 10 |
+| ~~K~~ | ~~`within_range` and `calculate_distance` divide altitudes by 1000~~ — fixed 28 September 2026 | done |
+| ~~L~~ | ~~Users are created at satellite altitudes~~ — fixed 28 September 2026 | done |
+| ~~M~~ | ~~`User.export()` omits `max_connection_range`~~ — fixed 28 September 2026 | done |
 | N | A gateway accepts every satellite in range; real gateway earth stations serve 8 (Gen1) to 32 (Gen2) at a time | Phase 10 |
 | O | An LLM tick costs one model call per ground station — 28 with the RNP topology, minutes of wall clock | Phase 3 |
+
+### What could be fixed now
+
+Every issue above was re-verified against the code on 28 September 2026. This
+is the standing triage; it is not permission to fix anything.
+
+**Fixed on 28 September 2026: K, L and M, together.** They had to move as a
+group. Measured across all eight combinations, averaged over five ticks:
+
+| K | L | M | Connected users | Provisioned |
+| --- | --- | --- | --- | --- |
+| — | — | — | 11.4/20 | 2.2 |
+| **x** | — | — | 6.0/20 | **0.0** |
+| — | — | **x** | 20.0/20 | 9.8 |
+| **x** | **x** | **x** | 20.0/20 | 9.8 |
+
+Correcting the slant-range geometry (K) without restoring the user's reach (M)
+takes provisioning to **zero**: with honest geometry and a 300 km reach, no
+user can see a satellite at 320-528 km. M was the fix that mattered; K and L
+were free once M was in, and they make the model physically honest rather than
+accidentally correct. After the three: 20/20 users connected on every tick and
+11 to 13 applications provisioned, against 2.2 before.
+
+**This invalidates every allocation result recorded before that date.** The
+numbers in Phase 3's baseline were measured on a network where most pending
+applications belonged to users with no access point at all.
+
+**Cheap and low risk, still open:**
+
+| # | Cost | What it changes |
+| --- | --- | --- |
+| E | two lines in `app/ui/sidebar.py` | removes a radio option that raises `TypeError: LocalSkills.__init__() missing 1 required positional argument: 'path'` the moment it is selected |
+| D | a field in the snapshot | records that one step is ~60 s of simulated time, which nothing does today |
+
+**Fixable, but each carries a design decision rather than a correction:**
+
+| # | The decision hiding in it |
+| --- | --- |
+| J | removing the user-to-ground-station link changes the network model; it is what Phase 10 is about |
+| N | a gateway cap needs a number — 8 (Gen1) or 32 (Gen2) — and a policy for the satellites turned away |
+| I | making the round trip symmetric means deciding how `Topology` is serialized |
+
+**Not fixable now:**
+
+| # | Why |
+| --- | --- |
+| C | agent-added satellites teleport because the trace is sparse; only real propagation fixes it (Phase 9) |
+| F, G | the global singleton and the duplicated scheduler ordering are invasive and change no results (Phase 7) |
+| H | tick correctness can now be asserted meaningfully, since allocation actually succeeds — moved from blocked to open |
+| O | this is Phase 3, in progress |
 
 ---
 
@@ -237,29 +287,62 @@ because it costs almost nothing.
    and no local process unit already skip. Stations whose neighbourhood is
    unchanged could skip too.
 
-### Decided: cache first, then policy
+### Decided: scope the question first, then cache
 
-Settled 26 September 2026, and **this is the demonstration scope**. Phase 3 is
-what has to work well; phases 4 and 5 come after the demonstration.
+Settled 26 September 2026 as "cache first", **revised 28 September 2026 after
+measuring**. Phase 3 remains the demonstration scope.
 
-**Direction 1 is the work**: skip the call when the pending set and the
-reachable satellites are unchanged since this station's last decision, reusing
-the stored choice. It changes nothing about what the model decides, so a
-regression can only be a bug, not a research result.
+**What the measurement found.** The pending application list is built once for
+the whole network and handed to every station: 26 of 26 stations receive the
+identical list. Each station sees its own satellites and process units, so the
+*infrastructure* view is local — but the *question* is global. A station in
+Porto Alegre is asked to choose a strategy for applications belonging to users
+it could never serve.
 
-The reason to do it first is not the saving — it is that it forces the
-instrumentation into existence. Nothing can be claimed about phases 4 and 5
-without a recorded baseline to compare against.
+That is why caching alone is worthless. The list changes whenever anything is
+placed or requested anywhere, so "nothing changed since last time" almost never
+holds:
 
-**Direction 2 is rejected.** Batching several stations into one call merges the
-local decisions the thesis argues should be local. It would improve the number
-and damage the claim.
+| Cache key | Hit rate |
+| --- | --- |
+| Pending set + exact reachable satellites | 6.7% |
+| Pending set + count of reachable satellites | 6.7% |
+| Pending set only | 7.5% |
+| Pending set, with issue M fixed | **1.8%** |
 
-**Directions 3 and 4 are absorbed into Phase 4.** Under the design settled for
-the orchestrator, the station stops receiving the network JSON and stops
-emitting placements: it receives a digest and answers a closed question. That
-is summarization and policy, arrived at through the architecture rather than
-bolted on. Doing them twice would be wasted work.
+Loosening the key barely helps, which rules out satellite motion as the cause.
+And the more correct the simulation becomes, the *less* the cache is worth:
+once applications can actually be placed, they leave the pending set and churn
+increases.
+
+**Scoping the question changes the picture.** Asking each station only about
+applications whose user it could plausibly serve — the user shares a satellite
+with the station, or sits on it:
+
+| | Calls | Applications per prompt |
+| --- | --- | --- |
+| Global question (today) | 228 | 9.6 |
+| Scoped to the station | 224 | **4.5** |
+
+The call count barely moves, because with satellites overhead almost every
+station can reach something. But the question halves, and **the cache then
+reaches 22.3% instead of 1.8%** — a scoped pending set changes far less often.
+Together: roughly 174 calls where there are 228 today, with prompts half the
+size.
+
+The reason to do this first is not the number. It is that **the localized
+decision the thesis is about does not exist yet**. Today there are 26 answers
+to one global question. Scoping is what makes them local.
+
+**Order:** scope, measure, then cache on top of the scoped question.
+
+**Direction 2 stays rejected.** Batching several stations into one call merges
+the local decisions the thesis argues should be local.
+
+**Directions 3 and 4 stay absorbed into Phase 4.** Under the settled
+orchestrator design the station receives a digest and answers a closed
+question, which is summarization and policy arrived at through the
+architecture.
 
 ### How to measure
 
@@ -378,6 +461,22 @@ option would need validating against something that can actually run.
 2. *As a tie-breaker.* When stations disagree, the agnostic ones are not
    counted on either side. They shrink the conflict set instead of padding it,
    which is what makes the disagreement that remains worth looking at.
+
+**The orchestrator asks only the stations that are involved.** The same rule
+Phase 3 applies to applications applies one level up: a station with nothing to
+do with the request at the current step is not consulted at all. Two filters,
+and they compose:
+
+* *Relevance.* The station cannot serve any application in the request — skip
+  it. This is Phase 3's scoping, read from the orchestrator's side.
+* *Stability.* Nothing significant changed in that station's neighbourhood
+  since it last answered — reuse its answer instead of asking again.
+
+"Significant" needs a definition that is written down and measured, not
+guessed. The candidates are the ones Phase 3 measures: the scoped application
+set, the reachable satellites, and whether any reachable process unit still has
+capacity. Whatever is chosen, the orchestrator must be able to say *why* it
+skipped a station, because that is the record the thesis argues from.
 
 **The digest and the answers are kept together.** After the round, the
 orchestrator holds the pair `(digest, {station: choice})`. That pair is the

@@ -38,7 +38,7 @@ def find_reachable_satellite_ids(station):
 
         ground_distance = geodesic(station.coordinates[:2], satellite.coordinates[:2]).kilometers
         altitude_difference = (station.coordinates[2] - satellite.coordinates[2]) / 1000
-        distance = sqrt(ground_distance ** 2 + altitude_difference ** 2)
+        distance = sqrt(ground_distance**2 + altitude_difference**2)
 
         if distance < min(station.max_connection_range, satellite.max_connection_range):
             reachable.add(satellite.id)
@@ -95,9 +95,7 @@ def build_network_state(model, station, scenario, all_apps, pending_app_ids, rea
                 satellite_ids.add(int(access_point.split("_")[1]))
 
     satellites = {
-        key: info
-        for key, info in Satellite.export_satellites().items()
-        if int(key.split("_")[1]) in satellite_ids
+        key: info for key, info in Satellite.export_satellites().items() if int(key.split("_")[1]) in satellite_ids
     }
 
     process_unit_ids = set()
@@ -122,15 +120,11 @@ def build_network_state(model, station, scenario, all_apps, pending_app_ids, rea
         if int(key.split("_")[1]) in process_unit_ids
     }
 
-    applications = {
-        key: info for key, info in all_apps.items() if int(key.split("_")[1]) in pending_set
-    }
+    applications = {key: info for key, info in all_apps.items() if int(key.split("_")[1]) in pending_set}
 
     topology = model.topology.export_topology()
     relevant_user_ids = {int(key.split("_")[1]) for key in relevant_users}
-    topology["user_sat"] = [
-        link for link in topology.get("user_sat", []) if link["user"] in relevant_user_ids
-    ]
+    topology["user_sat"] = [link for link in topology.get("user_sat", []) if link["user"] in relevant_user_ids]
     topology["gs_sat"] = [link for link in topology.get("gs_sat", []) if link["gs"] == station.id]
 
     return {

@@ -60,9 +60,7 @@ def render_sidebar(ollama_ok: bool) -> dict:
         "Maximum Satellites", min_value=1, max_value=100, value=15, key="num_satellites_key"
     )
     scenario = st.sidebar.selectbox("Scenario", ["hybrid", "leo", "terrestrial"], key="scenario_key")
-    algorithm = st.sidebar.selectbox(
-        "Allocation Algorithm", list(SimulationConfig.ALGORITHMS), key="algorithm_key"
-    )
+    algorithm = st.sidebar.selectbox("Allocation Algorithm", list(SimulationConfig.ALGORITHMS), key="algorithm_key")
 
     st.sidebar.markdown("---")
     st.sidebar.markdown(f"## {wrap_icon(icon_bot(18))} Agent Settings", unsafe_allow_html=True)

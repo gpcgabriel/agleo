@@ -26,8 +26,8 @@ class AgentResult:
 
     def __init__(self, text, proposals):
         """Args:
-            text (str): The agent's natural-language reply.
-            proposals (list): Proposals recorded during the run.
+        text (str): The agent's natural-language reply.
+        proposals (list): Proposals recorded during the run.
         """
         self.text = text
         self.proposals = list(proposals)

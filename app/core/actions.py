@@ -185,10 +185,7 @@ class AddAppToUserPayload:
 
     def describe(self):
         """Returns: str: Human-readable description shown in the gate."""
-        return (
-            f"Create application (CPU={self.cpu_demand}, Mem={self.memory_demand}) "
-            f"for User {self.user_id}"
-        )
+        return f"Create application (CPU={self.cpu_demand}, Mem={self.memory_demand}) " f"for User {self.user_id}"
 
 
 class ProposedAction:

@@ -7,11 +7,12 @@ from typing import Callable, List, Dict, Any, Optional
 from .components import *
 from .scheduler import *
 
+
 class Simulator(ComponentManager):
     """Orchestrates the internal operations of the simulation tool.
 
-    This class manages agent scheduling, initialization, data collection, 
-    and storage processes. It acts as the central controller for the 
+    This class manages agent scheduling, initialization, data collection,
+    and storage processes. It acts as the central controller for the
     simulation lifecycle.
 
     Attributes:
@@ -22,9 +23,9 @@ class Simulator(ComponentManager):
 
     _instances = []
     _object_count = 0
-    
+
     time_units = ["seconds", "minutes", "hours"]
-    
+
     def __init__(
         self,
         id: int = 0,
@@ -34,38 +35,38 @@ class Simulator(ComponentManager):
         topology_management_algorithm: Callable = default_topology_management,
         topology_management_algorithm_parameters: Optional[Dict[str, Any]] = None,
         user_defined_functions: Optional[List[Callable]] = None,
-        scheduler: Callable = Scheduler, 
+        scheduler: Callable = Scheduler,
         dump_interval: int = 100,
         logs_directory: str = "logs",
         ignore_list: Optional[List[Any]] = None,
         clean_data_in_memory: bool = False,
         tick_duration: int = 1,
-        time_unit: str = 'seconds',
-        scenario: str = 'hybrid',
+        time_unit: str = "seconds",
+        scenario: str = "hybrid",
         repetition: int = 1,
-        topology_name: Optional[str] = None
+        topology_name: Optional[str] = None,
     ) -> None:
         """Initializes a new Simulator instance.
 
         Args:
             id (int): Unique identifier for the simulator. Defaults to 0.
-            stopping_criterion (Callable): Binary function that returns True 
+            stopping_criterion (Callable): Binary function that returns True
                 when the simulation should terminate.
-            resource_management_algorithm (Callable): Function implementing 
+            resource_management_algorithm (Callable): Function implementing
                 provisioning and migration policies.
-            resource_management_algorithm_parameters (dict): Parameters 
+            resource_management_algorithm_parameters (dict): Parameters
                 passed to the resource management function.
-            topology_management_algorithm (Callable): Function implementing 
+            topology_management_algorithm (Callable): Function implementing
                 link addition and removal logic.
-            topology_management_algorithm_parameters (dict): Parameters 
+            topology_management_algorithm_parameters (dict): Parameters
                 passed to the topology management function.
-            user_defined_functions (list): List of user functions to be 
+            user_defined_functions (list): List of user functions to be
                 injected into the global namespace.
             scheduler (Class): Scheduler class used for component execution.
             dump_interval (int): Tick interval for writing logs to disk.
             logs_directory (str): Path where log files will be stored.
             ignore_list (list): List of agent classes to exclude from metrics.
-            clean_data_in_memory (bool): If True, clears metric lists after 
+            clean_data_in_memory (bool): If True, clears metric lists after
                 each disk dump.
             tick_duration (int): Duration value for time conversion.
             time_unit (str): Unit of time (e.g., 'seconds', 'hours').
@@ -75,28 +76,28 @@ class Simulator(ComponentManager):
         """
         self.__class__._instances.append(self)
         self.__class__._object_count += 1
-        
+
         if id == 0:
             id = self.__class__._object_count
-        self.id = id 
-        
+        self.id = id
+
         self.stopping_criterion = stopping_criterion
         self.running = False
-        
+
         self.resource_management_algorithm = resource_management_algorithm
 
         # Copying the parameters into a fresh dictionary: using the signature
         # default directly would make two instances share, and overwrite, the
         # same dictionary.
         self.resource_management_algorithm_parameters = dict(resource_management_algorithm_parameters or {})
-        self.resource_management_algorithm_parameters['scenario'] = scenario
-        
+        self.resource_management_algorithm_parameters["scenario"] = scenario
+
         self.topology_management_algorithm = topology_management_algorithm
         self.topology_management_parameters = dict(topology_management_algorithm_parameters or {})
-        
+
         self.scheduler = scheduler(self)
         self.topology = Topology()
-        
+
         self.logs_directory = logs_directory
         self.dump_interval = dump_interval
         self.last_dump = 0
@@ -106,10 +107,10 @@ class Simulator(ComponentManager):
 
         # Converting the time unit through timedelta, for a single standard.
         self.tick_duration = datetime.timedelta(**{time_unit: tick_duration}).total_seconds()
-        
-        for function in (user_defined_functions or []):
+
+        for function in user_defined_functions or []:
             globals()[function.__name__] = function
-        
+
         ComponentManager.model = self
 
         self.scenario = scenario
@@ -121,7 +122,7 @@ class Simulator(ComponentManager):
 
         Args:
             dataset (str): File path to the JSON configuration file.
-            
+
         Raises:
             FileNotFoundError: If the dataset path is invalid.
             json.JSONDecodeError: If the file is not a valid JSON.
@@ -130,12 +131,12 @@ class Simulator(ComponentManager):
         for component_class in ComponentManager.__subclasses__():
             if component_class.__name__ != "Simulator":
                 globals()[component_class.__name__].clear()
-        
-        with open(dataset, 'r', encoding='UTF-8') as file:
+
+        with open(dataset, "r", encoding="UTF-8") as file:
             dataset_data = json.load(file)
-            
+
         created_components = []
-        
+
         # Instantiating the objects described by the dataset schema.
         for class_name, components in dataset_data.items():
             for component in components:
@@ -143,41 +144,39 @@ class Simulator(ComponentManager):
                 obj.set_attributes(**component)
                 obj.relationships = component["relationships"]
                 created_components.append(obj)
-                
+
         # Resolving the relationships between objects.
         for obj in created_components:
             for key, value in obj.relationships.items():
                 # Resolving a reference to a global function.
-                if isinstance(value, str) and globals().get(value): 
+                if isinstance(value, str) and globals().get(value):
                     setattr(obj, key, globals()[value])
-                    
+
                 # Resolving a relationship to a single object.
-                elif isinstance(value, dict) and "class" in value and "id" in value: 
-                    object_relation = globals()[value['class']].find_by("id", value['id'])
+                elif isinstance(value, dict) and "class" in value and "id" in value:
+                    object_relation = globals()[value["class"]].find_by("id", value["id"])
                     setattr(obj, key, object_relation)
-                   
+
                 # Resolving a mapping held in a global dictionary.
-                elif isinstance(value, dict) and all((globals().get(v) for v in value.values())): 
+                elif isinstance(value, dict) and all((globals().get(v) for v in value.values())):
                     object_relation = {k: globals().get(v) for k, v in value.items()}
                     setattr(obj, key, object_relation)
 
                 # Resolving a list of object references.
-                elif isinstance(value, list) and all(('id' in c and 'class' in c for c in value)): 
-                    components_list = [
-                        globals()[comp['class']].find_by('id', comp['id']) for comp in value 
-                    ]
+                elif isinstance(value, list) and all(("id" in c and "class" in c for c in value)):
+                    components_list = [globals()[comp["class"]].find_by("id", comp["id"]) for comp in value]
                     setattr(obj, key, components_list)
 
-                elif value is None: 
+                elif value is None:
                     setattr(obj, key, None)
 
         # Adding the network nodes to the topology manager.
         for agent in GroundStation.all() + Satellite.all() + ProcessUnit.all():
             self.topology.add_node(agent)
-        
+
         # Establishing the network links.
-        for link in NetworkLink.all():            
-            self.topology.add_edge(link["nodes"][0], link['nodes'][1])
+        for link in NetworkLink.all():
+            self.topology.add_edge(link["nodes"][0], link["nodes"][1])
             self.topology._adj[link["nodes"][0]][link["nodes"][1]] = link
             self.topology._adj[link["nodes"][1]][link["nodes"][0]] = link
 
@@ -189,82 +188,76 @@ class Simulator(ComponentManager):
             if component_class not in self.ignore_list + [self.__class__]:
                 if component_class.__name__ not in self.agent_metrics:
                     self.agent_metrics[component_class.__name__] = []
-                    
+
     def step(self) -> None:
         """Executes a single simulation tick.
 
         Updates the scheduler, topology management, and resource allocation.
         """
         self.scheduler.step()
-        self.topology_management_algorithm(
-            topology=self.topology, 
-            **self.topology_management_parameters
-        )
+        self.topology_management_algorithm(topology=self.topology, **self.topology_management_parameters)
 
         if callable(self.resource_management_algorithm):
             for gs in GroundStation.all():
                 params = dict(self.resource_management_algorithm_parameters)
-                params['ground_station'] = gs
+                params["ground_station"] = gs
                 self.resource_management_algorithm(self, params)
-            
+
     def monitor(self) -> None:
         """Collects metrics from all tracked components.
 
-        Triggered every step. If the dump interval is reached, it invokes 
+        Triggered every step. If the dump interval is reached, it invokes
         the data persistence method.
         """
         for component_class in ComponentManager.__subclasses__():
             if component_class not in self.ignore_list + [self.__class__]:
-                metrics = {
-                    'Step': self.scheduler.steps,
-                    'metrics': component_class.collect_class_metrics()
-                }
-                
-                if not metrics['metrics']:
+                metrics = {"Step": self.scheduler.steps, "metrics": component_class.collect_class_metrics()}
+
+                if not metrics["metrics"]:
                     continue
-                
+
                 self.agent_metrics[component_class.__name__].append(metrics)
-        
+
         if self.scheduler.steps == self.last_dump + self.dump_interval:
             self.dump_data()
             self.last_dump = self.scheduler.steps
-                                  
+
     def dump_data(self) -> None:
         """Writes accumulated metrics to JSONL files on disk.
 
-        If `clean_data_in_memory` is True, the internal buffer is cleared 
+        If `clean_data_in_memory` is True, the internal buffer is cleared
         after a successful write.
         """
         if not os.path.exists(self.logs_directory):
-            os.makedirs(self.logs_directory)  
-        
+            os.makedirs(self.logs_directory)
+
         for agent_class, data in self.agent_metrics.items():
             filename = f"{self.logs_directory}/{agent_class}.jsonl"
 
             with open(filename, mode="a", encoding="utf-8") as file:
                 for metric in data:
-                    file.write(json.dumps(metric) + "\n") 
+                    file.write(json.dumps(metric) + "\n")
 
             if self.clean_data_in_memory:
                 self.agent_metrics[agent_class] = []
-            
+
     def run(self) -> None:
         """Starts the main simulation execution loop.
 
-        Runs until the `stopping_criterion` evaluates to True. Performs 
+        Runs until the `stopping_criterion` evaluates to True. Performs
         initial monitoring and a final data dump after termination.
         """
         self.running = True
         self.initialize_logs()
         self.monitor()
-            
+
         while self.running:
             print(f"Step {self.scheduler.steps + 1}")
             self.step()
             self.monitor()
-            
+
             # Stopping once the criterion is met.
             if self.stopping_criterion(self):
                 self.running = False
-        
+
         self.dump_data()

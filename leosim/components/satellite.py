@@ -4,11 +4,12 @@ from .user import User
 from typing import Callable, Dict, Any, Optional, Tuple
 from ..orbit_models.linear_estimation import linear_estimation
 
+
 class Satellite(ComponentManager):
     """Represents a satellite in the aerial segment of the topology.
 
-    Satellites facilitate connectivity between GroundStations, Users, and other 
-    Satellites. They can be associated with a ProcessUnit for data processing 
+    Satellites facilitate connectivity between GroundStations, Users, and other
+    Satellites. They can be associated with a ProcessUnit for data processing
     and support dynamic mobility, power, and failure models.
 
     Attributes:
@@ -27,19 +28,20 @@ class Satellite(ComponentManager):
         min_power (float): Minimum energy threshold for operation.
         coordinates_trace (list): List of pre-calculated positions over time.
     """
+
     _instances = []
     _object_count = 0
-  
+
     def __init__(
-            self, 
-            id: int = 0,
-            name: str = "",
-            coordinates: Optional[Tuple[float, float, float]] = None,
-            wireless_delay: int = 0,
-            max_connection_range: int = 1000,
-            is_gateway: bool = False,
-            mobility_model: Callable = linear_estimation
-        ) -> None: 
+        self,
+        id: int = 0,
+        name: str = "",
+        coordinates: Optional[Tuple[float, float, float]] = None,
+        wireless_delay: int = 0,
+        max_connection_range: int = 1000,
+        is_gateway: bool = False,
+        mobility_model: Callable = linear_estimation,
+    ) -> None:
         """Initializes a Satellite instance.
 
         Args:
@@ -52,7 +54,7 @@ class Satellite(ComponentManager):
         """
         self.__class__._instances.append(self)
         self.__class__._object_count += 1
-        
+
         if id == 0:
             id = self.__class__._object_count
         self.id = id
@@ -71,26 +73,26 @@ class Satellite(ComponentManager):
         # Holding the satellite coordinates.
         self.coordinates = coordinates
         self.coordinates_trace = []
-        
+
         # Holding the models the satellite runs.
         self.mobility_model = mobility_model
         self.mobility_model_parameters = {}
-        
+
         self.power_generation_model = None
         self.power_generation_model_parameters = {}
-        
+
         self.power_consumption_model = None
         self.power_consumption_model_parameters = {}
-        
+
         self.failure_model = None
         self.failure_occurred = False
         self.failure_model_parameters = {}
-        
+
     def collect_metrics(self) -> Dict[str, Any]:
         """Collects operational metrics from the satellite.
 
         Returns:
-            dict: Current ID, coordinates, power, activity status, 
+            dict: Current ID, coordinates, power, activity status,
                 gateway status, and failure status.
         """
         metrics = {
@@ -99,41 +101,43 @@ class Satellite(ComponentManager):
             "Power": self.power,
             "Active": self.active,
             "Is Gateway": self.is_gateway,
-            "Status": "Available" if not self.failure_occurred else "Failure" 
+            "Status": "Available" if not self.failure_occurred else "Failure",
         }
-        
+
         return metrics
-    
+
     def step(self) -> None:
         """Executes the satellite's logic for the current simulation step.
 
-        Updates mobility, manages attached ProcessUnit status, evaluates 
+        Updates mobility, manages attached ProcessUnit status, evaluates
         failure/power models, and handles user connections.
         """
         # Preparing to check which users fall within range on the next step.
         self.users = []
 
         # Checking whether the index is missing, or holds an invalid value.
-        needs_calculation = (len(self.coordinates_trace) <= self.model.scheduler.steps) or (self.coordinates_trace[self.model.scheduler.steps] is None)
+        needs_calculation = (len(self.coordinates_trace) <= self.model.scheduler.steps) or (
+            self.coordinates_trace[self.model.scheduler.steps] is None
+        )
 
         if needs_calculation:
             # Expecting the model to return the position; the class handles insertion.
             new_position = self.mobility_model(self)
-            
+
             # Growing the list, or replacing the None already in that slot.
             if len(self.coordinates_trace) <= self.model.scheduler.steps:
                 self.coordinates_trace.append(new_position)
             else:
                 self.coordinates_trace[self.model.scheduler.steps] = new_position
-            
+
         # Updating the coordinates.
         if self.coordinates != self.coordinates_trace[self.model.scheduler.steps]:
             self.coordinates = self.coordinates_trace[self.model.scheduler.steps]
-        
+
         # Updating the coordinates of the attached process unit, if there is one.
         if self.process_unit:
             self.process_unit.coordinates = self.coordinates
-            
+
         # Marking any linked process unit unavailable: with no coordinates the
         # satellite cannot interact with the other components.
         if self.coordinates is None:
@@ -170,14 +174,14 @@ class Satellite(ComponentManager):
                 self.active = True
                 if self.process_unit:
                     self.process_unit.available = True
-        
+
         # Triggering the power models, when they are set.
         if self.power_generation_model:
             self.power_generation_model(self)
-        
+
         if self.power_consumption_model:
             self.power_consumption_model(self)
-        
+
         # Serving the users within range, as long as the satellite is operational.
         self.connect_users()
 
@@ -199,9 +203,9 @@ class Satellite(ComponentManager):
         """Generates a dictionary representation of the object for context saving.
 
         Returns:
-            dict: Serialized state including coordinates, power levels, 
+            dict: Serialized state including coordinates, power levels,
                 model parameters, and object relationships.
-        """  
+        """
         component = {
             "id": self.id,
             "coordinates": self.coordinates,
@@ -218,16 +222,19 @@ class Satellite(ComponentManager):
             "failure_model_parameters": self.failure_model_parameters,
             "relationships": {
                 "mobility_model": self.mobility_model.__name__ if self.mobility_model else None,
-                "power_consumption_model": self.power_consumption_model.__name__ if self.power_consumption_model else None,
+                "power_consumption_model": (
+                    self.power_consumption_model.__name__ if self.power_consumption_model else None
+                ),
                 "power_generate_model": self.power_generation_model.__name__ if self.power_generation_model else None,
                 "failure_model": self.failure_model.__name__ if self.failure_model else None,
-                "process_unit": {
-                    "id": self.process_unit.id,
-                    "class": type(self.process_unit).__name__
-                } if self.process_unit else None,
-            }
+                "process_unit": (
+                    {"id": self.process_unit.id, "class": type(self.process_unit).__name__}
+                    if self.process_unit
+                    else None
+                ),
+            },
         }
-        
+
         return component
 
     @staticmethod
@@ -236,8 +243,7 @@ class Satellite(ComponentManager):
         for sat in Satellite._instances:
             step = sat.model.scheduler.steps
             future = [
-                (round(c[0], 1), round(c[1], 1)) if c else None
-                for c in sat.coordinates_trace[step + 1:step + 16]
+                (round(c[0], 1), round(c[1], 1)) if c else None for c in sat.coordinates_trace[step + 1 : step + 16]
             ]
             pu = sat.process_unit
             pu_avail = pu.available if pu else None

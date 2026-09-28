@@ -3,7 +3,8 @@ import os
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-markers = ['o', 'x', 's', '^', 'D', '*', 'v', '+']
+markers = ["o", "x", "s", "^", "D", "*", "v", "+"]
+
 
 # ==========================================================
 # UTILITY FUNCTIONS
@@ -13,28 +14,22 @@ def read_jsonl(file_path):
         for line in f:
             yield json.loads(line)
 
+
 def calculate_average(list_of_lists):
     if not list_of_lists:
         return []
 
     min_len = min(len(l) for l in list_of_lists)
 
-    return [
-        sum(l[i] for l in list_of_lists) / len(list_of_lists)
-        for i in range(min_len)
-    ]
+    return [sum(l[i] for l in list_of_lists) / len(list_of_lists) for i in range(min_len)]
+
 
 def plot(data_dict, steps_dict, xlabel, ylabel, filename, current_path):
     plt.figure(figsize=(12, 7))
 
     for i, label in enumerate(data_dict):
 
-        plt.plot(
-            steps_dict[label],
-            data_dict[label],
-            label=label,
-            marker=markers[i % len(markers)]
-        )
+        plt.plot(steps_dict[label], data_dict[label], label=label, marker=markers[i % len(markers)])
 
     plt.xlabel(xlabel, fontsize=18)
     plt.ylabel(ylabel, fontsize=18)
@@ -46,32 +41,24 @@ def plot(data_dict, steps_dict, xlabel, ylabel, filename, current_path):
     plt.savefig(os.path.join(current_path, filename))
     plt.close()
 
+
 def get_topologies(current_path):
     return [
-        p.name for p in Path(current_path).iterdir()
-        if p.is_dir() and not p.name.startswith('.') and p.name != '__pycache__'
+        p.name
+        for p in Path(current_path).iterdir()
+        if p.is_dir() and not p.name.startswith(".") and p.name != "__pycache__"
     ]
+
 
 def build_path(current_path, alg, scenario, filename, rep=None):
     """
     Build the correct file path considering if repetitions exist or not.
     """
     if rep is None:
-        return os.path.join(
-            current_path,
-            alg,
-            scenario,
-            "rep1",
-            filename
-        )
+        return os.path.join(current_path, alg, scenario, "rep1", filename)
 
-    return os.path.join(
-        current_path,
-        alg,
-        scenario,
-        f"rep{rep}",
-        filename
-    )
+    return os.path.join(current_path, alg, scenario, f"rep{rep}", filename)
+
 
 # ==========================================================
 # USER METRICS
@@ -96,20 +83,9 @@ def compare_algorithms_averaged(algorithm_names, scenarios, num_repetitions, cur
             for rep in range(1, num_repetitions + 1):
 
                 if num_repetitions == 1:
-                    file_path = build_path(
-                        current_path,
-                        alg,
-                        scenario,
-                        "User.jsonl"
-                    )
+                    file_path = build_path(current_path, alg, scenario, "User.jsonl")
                 else:
-                    file_path = build_path(
-                        current_path,
-                        alg,
-                        scenario,
-                        "User.jsonl",
-                        rep
-                    )
+                    file_path = build_path(current_path, alg, scenario, "User.jsonl", rep)
 
                 if not os.path.isfile(file_path):
                     print(f"WARNING: {file_path} not found")
@@ -179,17 +155,10 @@ def compare_algorithms_averaged(algorithm_names, scenarios, num_repetitions, cur
             "Step",
             "Avg Number of Provisioned Applications",
             f"provisioned_{scenario}.png",
-            current_path
+            current_path,
         )
 
-        plot(
-            avg_delay,
-            avg_steps,
-            "Step",
-            "Delay",
-            f"delay_{scenario}.png",
-            current_path
-        )
+        plot(avg_delay, avg_steps, "Step", "Delay", f"delay_{scenario}.png", current_path)
 
         plot(
             avg_not_provisioned,
@@ -197,8 +166,9 @@ def compare_algorithms_averaged(algorithm_names, scenarios, num_repetitions, cur
             "Step",
             "Avg Applications Not Provisioned",
             f"not_provisioned_{scenario}.png",
-            current_path
+            current_path,
         )
+
 
 # ==========================================================
 # MIGRATIONS
@@ -220,20 +190,9 @@ def plot_migrations(algorithm_names, scenarios, num_repetitions, current_path):
             for rep in range(1, num_repetitions + 1):
 
                 if num_repetitions == 1:
-                    file_path = build_path(
-                        current_path,
-                        alg,
-                        scenario,
-                        "Application.jsonl"
-                    )
+                    file_path = build_path(current_path, alg, scenario, "Application.jsonl")
                 else:
-                    file_path = build_path(
-                        current_path,
-                        alg,
-                        scenario,
-                        "Application.jsonl",
-                        rep
-                    )
+                    file_path = build_path(current_path, alg, scenario, "Application.jsonl", rep)
 
                 if not os.path.isfile(file_path):
                     continue
@@ -246,7 +205,8 @@ def plot_migrations(algorithm_names, scenarios, num_repetitions, current_path):
                     step = data["Step"]
 
                     migrations = sum(
-                        1 for metric in data["metrics"]
+                        1
+                        for metric in data["metrics"]
                         if metric.get("Last Migration")
                         and metric["Last Migration"].get("origin") is not None
                         and metric["Last Migration"].get("target") is not None
@@ -267,26 +227,15 @@ def plot_migrations(algorithm_names, scenarios, num_repetitions, current_path):
                 min_len = len(avg_migrations[alg])
                 avg_steps[alg] = captured_steps[:min_len]
 
-        plot(
-            avg_migrations,
-            avg_steps,
-            "Step",
-            "Avg Number of Migrations",
-            f"migrations_{scenario}.png",
-            current_path
-        )
+        plot(avg_migrations, avg_steps, "Step", "Avg Number of Migrations", f"migrations_{scenario}.png", current_path)
+
 
 # ==========================================================
 # TOPOLOGY ANALYSIS
 # ==========================================================
 def plot_avg_topology(algorithm_names, scenarios, num_repetitions, current_path):
 
-    plot_provisioned_in_topology(
-        algorithm_names,
-        scenarios,
-        num_repetitions,
-        current_path
-    )
+    plot_provisioned_in_topology(algorithm_names, scenarios, num_repetitions, current_path)
 
     topologies = get_topologies(current_path)
 
@@ -303,20 +252,9 @@ def plot_avg_topology(algorithm_names, scenarios, num_repetitions, current_path)
                 for rep in range(1, num_repetitions + 1):
 
                     if num_repetitions == 1:
-                        file_path = build_path(
-                            current_path,
-                            alg,
-                            scenario,
-                            "Application.jsonl"
-                        )
+                        file_path = build_path(current_path, alg, scenario, "Application.jsonl")
                     else:
-                        file_path = build_path(
-                            current_path,
-                            alg,
-                            scenario,
-                            "Application.jsonl",
-                            rep
-                        )
+                        file_path = build_path(current_path, alg, scenario, "Application.jsonl", rep)
 
                     if not os.path.isfile(file_path):
                         continue
@@ -326,17 +264,16 @@ def plot_avg_topology(algorithm_names, scenarios, num_repetitions, current_path)
                         step = data["Step"]
 
                         migrations = sum(
-                            1 for metric in data["metrics"]
+                            1
+                            for metric in data["metrics"]
                             if metric.get("Last Migration")
                             and metric["Last Migration"].get("origin") is not None
                             and metric["Last Migration"].get("target") is not None
                         )
 
-                        scenario_topology_step \
-                            .setdefault(scenario, {}) \
-                            .setdefault(topology, {}) \
-                            .setdefault(step, []) \
-                            .append(migrations)
+                        scenario_topology_step.setdefault(scenario, {}).setdefault(topology, {}).setdefault(
+                            step, []
+                        ).append(migrations)
 
     for scenario, topo_data in scenario_topology_step.items():
 
@@ -347,10 +284,7 @@ def plot_avg_topology(algorithm_names, scenarios, num_repetitions, current_path)
 
             sorted_steps = sorted(step_data.keys())
 
-            data[topology] = [
-                sum(step_data[s]) / len(step_data[s])
-                for s in sorted_steps
-            ]
+            data[topology] = [sum(step_data[s]) / len(step_data[s]) for s in sorted_steps]
 
             steps[topology] = sorted_steps
 
@@ -360,8 +294,9 @@ def plot_avg_topology(algorithm_names, scenarios, num_repetitions, current_path)
             "Step",
             "Avg Number of Migrations",
             f"avg_migrations_topology_vs_step_{scenario}.png",
-            current_path
+            current_path,
         )
+
 
 # ==========================================================
 # PROVISIONED USERS BY TOPOLOGY
@@ -383,20 +318,9 @@ def plot_provisioned_in_topology(algorithm_names, scenarios, num_repetitions, cu
                 for rep in range(1, num_repetitions + 1):
 
                     if num_repetitions == 1:
-                        file_path = build_path(
-                            current_path,
-                            alg,
-                            scenario,
-                            "User.jsonl"
-                        )
+                        file_path = build_path(current_path, alg, scenario, "User.jsonl")
                     else:
-                        file_path = build_path(
-                            current_path,
-                            alg,
-                            scenario,
-                            "User.jsonl",
-                            rep
-                        )
+                        file_path = build_path(current_path, alg, scenario, "User.jsonl", rep)
 
                     if not os.path.isfile(file_path):
                         continue
@@ -423,11 +347,9 @@ def plot_provisioned_in_topology(algorithm_names, scenarios, num_repetitions, cu
 
                             last_accesses[metric_id] = current
 
-                        scenario_topology_step \
-                            .setdefault(scenario, {}) \
-                            .setdefault(topology, {}) \
-                            .setdefault(step, []) \
-                            .append(prov)
+                        scenario_topology_step.setdefault(scenario, {}).setdefault(topology, {}).setdefault(
+                            step, []
+                        ).append(prov)
 
     for scenario, topo_data in scenario_topology_step.items():
 
@@ -438,10 +360,7 @@ def plot_provisioned_in_topology(algorithm_names, scenarios, num_repetitions, cu
 
             sorted_steps = sorted(step_data.keys())
 
-            data[topology] = [
-                sum(step_data[s]) / len(step_data[s])
-                for s in sorted_steps
-            ]
+            data[topology] = [sum(step_data[s]) / len(step_data[s]) for s in sorted_steps]
 
             steps[topology] = sorted_steps
 
@@ -451,19 +370,14 @@ def plot_provisioned_in_topology(algorithm_names, scenarios, num_repetitions, cu
             "Step",
             "Avg Number of Provisioned Users",
             f"avg_provisioned_topology_vs_step_{scenario}.png",
-            current_path
+            current_path,
         )
+
 
 # ==========================================================
 # GROUND STATION LINKS
 # ==========================================================
-def plot_groundstation_links_by_id(
-        algorithm_names,
-        scenarios,
-        num_repetitions,
-        current_path,
-        ground_station_id
-):
+def plot_groundstation_links_by_id(algorithm_names, scenarios, num_repetitions, current_path, ground_station_id):
 
     for scenario in scenarios:
 
@@ -480,20 +394,9 @@ def plot_groundstation_links_by_id(
             for rep in range(1, num_repetitions + 1):
 
                 if num_repetitions == 1:
-                    file_path = build_path(
-                        current_path,
-                        alg,
-                        scenario,
-                        "GroundStation.jsonl"
-                    )
+                    file_path = build_path(current_path, alg, scenario, "GroundStation.jsonl")
                 else:
-                    file_path = build_path(
-                        current_path,
-                        alg,
-                        scenario,
-                        "GroundStation.jsonl",
-                        rep
-                    )
+                    file_path = build_path(current_path, alg, scenario, "GroundStation.jsonl", rep)
 
                 if not os.path.isfile(file_path):
                     continue
@@ -530,8 +433,9 @@ def plot_groundstation_links_by_id(
             "Step",
             f"Number of satellites connected to GroundStation_{ground_station_id}",
             f"gs_{ground_station_id}_links_{scenario}.png",
-            current_path
+            current_path,
         )
+
 
 # ==========================================================
 # GROUND STATION DELAY
@@ -551,20 +455,9 @@ def plot_delay_by_groundstation(algorithm_names, scenarios, num_repetitions, cur
             for rep in range(1, num_repetitions + 1):
 
                 if num_repetitions == 1:
-                    file_path = build_path(
-                        current_path,
-                        alg,
-                        scenario,
-                        "User.jsonl"
-                    )
+                    file_path = build_path(current_path, alg, scenario, "User.jsonl")
                 else:
-                    file_path = build_path(
-                        current_path,
-                        alg,
-                        scenario,
-                        "User.jsonl",
-                        rep
-                    )
+                    file_path = build_path(current_path, alg, scenario, "User.jsonl", rep)
 
                 if not os.path.isfile(file_path):
                     continue
@@ -608,7 +501,15 @@ def plot_delay_by_groundstation(algorithm_names, scenarios, num_repetitions, cur
                 min_len = len(avg_delay[alg])
                 avg_steps[alg] = captured_steps[:min_len]
 
-        plot(avg_delay, avg_steps, "Step", f"Delay (GS {ground_station_id})", f"delay_gs_{ground_station_id}_{scenario}.png", current_path)
+        plot(
+            avg_delay,
+            avg_steps,
+            "Step",
+            f"Delay (GS {ground_station_id})",
+            f"delay_gs_{ground_station_id}_{scenario}.png",
+            current_path,
+        )
+
 
 # ==========================================================
 # RESOURCE CONSUMPTION (APPLICATION LEVEL)
@@ -627,20 +528,9 @@ def plot_avg_resource_consumption(algorithm_names, scenarios, num_repetitions, c
 
             for rep in range(1, num_repetitions + 1):
                 if num_repetitions == 1:
-                    file_path = build_path(
-                        current_path,
-                        alg,
-                        scenario,
-                        "Application.jsonl"
-                    )
+                    file_path = build_path(current_path, alg, scenario, "Application.jsonl")
                 else:
-                    file_path = build_path(
-                        current_path,
-                        alg,
-                        scenario,
-                        "Application.jsonl",
-                        rep
-                    )
+                    file_path = build_path(current_path, alg, scenario, "Application.jsonl", rep)
 
                 if not os.path.isfile(file_path):
                     continue
@@ -698,4 +588,11 @@ def plot_avg_resource_consumption(algorithm_names, scenarios, num_repetitions, c
         # Plot CPU
         plot(avg_cpu, avg_steps, "Step", "Avg CPU Consumption per Application", f"avg_cpu_{scenario}.png", current_path)
         # Plot memory
-        plot(avg_mem, avg_steps, "Step", "Avg Memory Consumption per Application", f"avg_memory_{scenario}.png", current_path)
+        plot(
+            avg_mem,
+            avg_steps,
+            "Step",
+            "Avg Memory Consumption per Application",
+            f"avg_memory_{scenario}.png",
+            current_path,
+        )

@@ -11,10 +11,10 @@ class ActionResult:
 
     def __init__(self, messages=None, toast=None, new_session=None):
         """Args:
-            messages (list): Messages to append to the conversation history.
-            toast (str): Short notice to display, if any.
-            new_session (SimulationSession): Session replacing the current one,
-                when the action rebuilt the simulation.
+        messages (list): Messages to append to the conversation history.
+        toast (str): Short notice to display, if any.
+        new_session (SimulationSession): Session replacing the current one,
+            when the action rebuilt the simulation.
         """
         self.messages = list(messages or [])
         self.toast = toast

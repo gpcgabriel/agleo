@@ -27,10 +27,10 @@ class SimulationSession:
 
     def __init__(self, simulator, config, allocation_algorithm=None):
         """Args:
-            simulator (Simulator): An initialized simulator.
-            config (SimulationConfig): The configuration it was built from.
-            allocation_algorithm (Callable): The injected strategy, kept so a
-                restart can rebuild the simulation with the same one.
+        simulator (Simulator): An initialized simulator.
+        config (SimulationConfig): The configuration it was built from.
+        allocation_algorithm (Callable): The injected strategy, kept so a
+            restart can rebuild the simulation with the same one.
         """
         self.simulator = simulator
         self.config = config

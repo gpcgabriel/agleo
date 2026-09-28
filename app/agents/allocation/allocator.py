@@ -35,10 +35,10 @@ class LLMAllocator:
 
     def __init__(self, model_name=DEFAULT_MODEL, host=DEFAULT_HOST, logs_directory=None):
         """Args:
-            model_name (str): Model identifier in Ollama.
-            host (str): Ollama endpoint.
-            logs_directory (str): Where to append the decision log. When None,
-                the simulator's own logs directory is used.
+        model_name (str): Model identifier in Ollama.
+        host (str): Ollama endpoint.
+        logs_directory (str): Where to append the decision log. When None,
+            the simulator's own logs directory is used.
         """
         self.model_name = model_name
         self.host = host
@@ -128,7 +128,10 @@ class LLMAllocator:
         prompt = build_allocation_prompt(state, pending_app_ids, self.get_decisions(station.id))
         logger.debug(
             "Step %s | GS_%s | %s pending | prompt ~%s chars",
-            model.scheduler.steps, station.id, len(pending_app_ids), len(prompt),
+            model.scheduler.steps,
+            station.id,
+            len(pending_app_ids),
+            len(prompt),
         )
 
         try:
@@ -136,7 +139,8 @@ class LLMAllocator:
         except Exception:
             logger.exception(
                 "Step %s | GS_%s | model failed, falling back to best_fit_allocation",
-                model.scheduler.steps, station.id,
+                model.scheduler.steps,
+                station.id,
             )
             best_fit_allocation(model, parameters)
             self.append_to_log(
@@ -153,7 +157,9 @@ class LLMAllocator:
 
         logger.info(
             "Step %s | GS_%s | provisioned=%s failed=%s",
-            model.scheduler.steps, station.id,
-            results.get("provisioned", 0), results.get("failed", 0),
+            model.scheduler.steps,
+            station.id,
+            results.get("provisioned", 0),
+            results.get("failed", 0),
         )
         self.record(model, station, best_fit_ids, longest_duration_ids, results)

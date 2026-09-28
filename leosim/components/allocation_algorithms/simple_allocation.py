@@ -3,21 +3,23 @@ from ..satellite import Satellite
 from ..user import User
 import networkx as nx
 
+
 def has_path(topology, origin, target):
     for access_point in origin.network_access_points:
         if nx.has_path(G=topology, source=access_point, target=target):
             return True
-    
+
     return False
+
 
 def simple_allocation(model, parameters):
     def is_better(other, current_unit):
-        return ( 
-            (other.cpu - other.cpu_demand) < (current_unit.cpu - current_unit.cpu_demand) and
-            (other.memory - other.memory_demand) < (current_unit.memory - current_unit.memory_demand) and
-            (other.storage - other.storage_demand) < (current_unit.storage - current_unit.storage_demand)
+        return (
+            (other.cpu - other.cpu_demand) < (current_unit.cpu - current_unit.cpu_demand)
+            and (other.memory - other.memory_demand) < (current_unit.memory - current_unit.memory_demand)
+            and (other.storage - other.storage_demand) < (current_unit.storage - current_unit.storage_demand)
         )
-        
+
     applications_to_be_allocated = []
 
     # Selecting the applications that need provisioning.
@@ -29,9 +31,13 @@ def simple_allocation(model, parameters):
                 else:
                     process_unit = access_model.application.process_unit
                     # Skipping what is not directly connected to a network access point.
-                    if not any(
-                        process_unit in model.topology.neighbors(access_point)  for access_point in user.network_access_points
-                    ) or user.network_access_points == []:
+                    if (
+                        not any(
+                            process_unit in model.topology.neighbors(access_point)
+                            for access_point in user.network_access_points
+                        )
+                        or user.network_access_points == []
+                    ):
                         access_model.application.deprovision()
                         applications_to_be_allocated.append(access_model)
 
@@ -44,7 +50,7 @@ def simple_allocation(model, parameters):
 
         # Looking for process units directly connected to network access points.
         for access_point in access_model.user.network_access_points:
-            if isinstance(access_point, Satellite) and getattr(access_point, 'process_unit') is not None:
+            if isinstance(access_point, Satellite) and getattr(access_point, "process_unit") is not None:
                 process_unit = access_point.process_unit
 
                 if process_unit.has_capacity_to_host(access_model.application) and process_unit.available:
@@ -55,7 +61,11 @@ def simple_allocation(model, parameters):
             process_units = []
             for unit in ProcessUnit.all():
                 # Checking whether communication with this server is possible.
-                if unit.has_capacity_to_host(access_model.application) and unit.available and has_path(model.topology, access_model.user, unit):
+                if (
+                    unit.has_capacity_to_host(access_model.application)
+                    and unit.available
+                    and has_path(model.topology, access_model.user, unit)
+                ):
                     process_units.append(unit)
 
         if process_units == []:

@@ -25,16 +25,14 @@ def dashboard_agent_instructions():
         "When writing to the operator, respond in natural prose with Markdown formatting. "
         "Do not output raw JSON or code blocks in the chat. You still use JSON internally "
         "when invoking the provided tools.",
-        "Your task is to help the operator monitor, inspect, and control the LEO satellite "
-        "network simulation.",
+        "Your task is to help the operator monitor, inspect, and control the LEO satellite " "network simulation.",
         "For informational questions (for example 'how many applications are allocated?'), "
         "answer in natural language based only on the context provided. DO NOT call tools to "
         "answer informational questions.",
         "Only use proposal tools when the operator explicitly requests a change to the simulation.",
         "If the operator uses '/step <n>', call 'propose_run_simulation' with steps=n.",
         "If the operator uses '/restart', call 'propose_restart_simulation'.",
-        "If the operator uses '/review', DO NOT call any tools. Produce a textual analysis of "
-        "the current topology.",
+        "If the operator uses '/review', DO NOT call any tools. Produce a textual analysis of " "the current topology.",
         "To add nodes (Satellites or GroundStations), call 'propose_add_node'. To add N nodes you "
         "MUST pass parallel lists with exactly N elements each: to add 2 Satellites, node_types "
         "must be ['Satellite', 'Satellite'] with 2 latitudes, 2 longitudes and 2 altitudes.",
@@ -44,6 +42,5 @@ def dashboard_agent_instructions():
         "of them; they are spread apart automatically.",
         "Your tools DO NOT execute actions directly: they register a proposal that the operator "
         "must confirm or cancel in the control panel.",
-        "If the operator asks for an action while tools are disabled, tell them to enable tools in "
-        "the sidebar.",
+        "If the operator asks for an action while tools are disabled, tell them to enable tools in " "the sidebar.",
     ]

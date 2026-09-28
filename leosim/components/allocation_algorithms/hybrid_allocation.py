@@ -14,7 +14,7 @@ def has_path(topology, origin, target):
 
 def distance(coordinates1, coordinates2):
     if coordinates1 is None or coordinates2 is None:
-        return float('inf')
+        return float("inf")
     ground_distance = geodesic(coordinates1[:2], coordinates2[:2]).kilometers
     air_distance = (coordinates1[2] - coordinates2[2]) / 1000
     return sqrt(ground_distance**2 + air_distance**2)
@@ -36,13 +36,13 @@ def get_exposure_time(user, satellite):
 def get_eligible_pus(app, user, model, parameters):
     process_units = []
     for access_point in user.network_access_points:
-        if isinstance(access_point, Satellite) and getattr(access_point, 'process_unit') is not None:
+        if isinstance(access_point, Satellite) and getattr(access_point, "process_unit") is not None:
             pu = access_point.process_unit
             if pu.has_capacity_to_host(app) and pu.available:
                 process_units.append(pu)
 
-    if not process_units and parameters['ground_station'].process_unit:
-        for unit in parameters['ground_station'].process_unit:
+    if not process_units and parameters["ground_station"].process_unit:
+        for unit in parameters["ground_station"].process_unit:
             if unit.has_capacity_to_host(app) and unit.available and has_path(model.topology, user, unit):
                 process_units.append(unit)
 
@@ -61,8 +61,10 @@ def allocate_single_app(app, user, model, parameters, strategy):
         process_units = get_eligible_pus(app, user, model, parameters)
         if not process_units:
             return "failed_no_capacity"
-        target = min(process_units, key=lambda u:
-                     (u.cpu - app.cpu_demand) + (u.memory - app.memory_demand) + (u.storage - app.storage_demand))
+        target = min(
+            process_units,
+            key=lambda u: (u.cpu - app.cpu_demand) + (u.memory - app.memory_demand) + (u.storage - app.storage_demand),
+        )
         if target != app.process_unit:
             app.provision(target)
             return "provisioned"
@@ -71,15 +73,15 @@ def allocate_single_app(app, user, model, parameters, strategy):
     elif strategy == "longest_duration":
         best_target = None
         max_duration = -1
-        scenario = parameters.get('scenario', 'hybrid')
+        scenario = parameters.get("scenario", "hybrid")
 
-        if parameters['ground_station'].process_unit and (scenario == 'terrestrial' or scenario == 'hybrid'):
-            for unit in parameters['ground_station'].process_unit:
-                if not isinstance(getattr(unit, 'owner', None), Satellite):
+        if parameters["ground_station"].process_unit and (scenario == "terrestrial" or scenario == "hybrid"):
+            for unit in parameters["ground_station"].process_unit:
+                if not isinstance(getattr(unit, "owner", None), Satellite):
                     if unit.has_capacity_to_host(app) and unit.available:
                         if has_path(model.topology, user, unit):
                             best_target = unit
-                            max_duration = float('inf')
+                            max_duration = float("inf")
                             break
 
         if best_target is None:
@@ -87,7 +89,7 @@ def allocate_single_app(app, user, model, parameters, strategy):
                 if not model.topology.has_node(access_point):
                     continue
                 if isinstance(access_point, Satellite) and access_point.active:
-                    pu = getattr(access_point, 'process_unit', None)
+                    pu = getattr(access_point, "process_unit", None)
                     if pu and pu.available and pu.has_capacity_to_host(app):
                         duration = get_exposure_time(user, access_point)
                         if duration > max_duration:
@@ -106,7 +108,9 @@ def allocate_single_app(app, user, model, parameters, strategy):
         if not process_units:
             return "failed_no_capacity"
         user_coords = user.coordinates
-        target = min(process_units, key=lambda pu: distance(user_coords, pu.coordinates) if pu.coordinates else float('inf'))
+        target = min(
+            process_units, key=lambda pu: distance(user_coords, pu.coordinates) if pu.coordinates else float("inf")
+        )
         if target != app.process_unit:
             app.provision(target)
             return "provisioned"
@@ -135,7 +139,7 @@ def hybrid_allocation(model, parameters, best_fit_apps, longest_duration_apps, l
         (load_balanced_apps, "load_balanced"),
     ]:
         for app_id in app_id_list:
-            app = Application.find_by('id', app_id)
+            app = Application.find_by("id", app_id)
             if not app:
                 continue
             user = app.user
