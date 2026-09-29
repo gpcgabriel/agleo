@@ -124,7 +124,9 @@ def build_network_state(model, station, scenario, all_apps, pending_app_ids, rea
         reachable_satellite_ids (set): Satellites currently in range.
 
     Returns:
-        dict: The state to serialize into the prompt.
+        dict: The state to render into the prompt, including `unit_hosts`,
+        which maps each process unit to the satellite or ground station it
+        sits on.
     """
     pending_set = set(pending_app_ids)
 
@@ -144,13 +146,19 @@ def build_network_state(model, station, scenario, all_apps, pending_app_ids, rea
         key: info for key, info in Satellite.export_satellites().items() if int(key.split("_")[1]) in satellite_ids
     }
 
+    # Recording where each process unit sits while the satellites still carry
+    # the link: a unit in orbit and a unit on the ground are reached by
+    # different paths, and the `pu` field is dropped a few lines below.
     process_unit_ids = set()
-    for info in satellites.values():
+    host_by_unit = {}
+    for satellite_key, info in satellites.items():
         unit = info.get("pu")
         if unit:
             process_unit_ids.add(unit["id"])
+            host_by_unit[f"PU_{unit['id']}"] = satellite_key
     for unit in station.process_unit or []:
         process_unit_ids.add(unit.id)
+        host_by_unit[f"PU_{unit.id}"] = f"GS_{station.id}"
 
     # Trimming after collecting the unit ids, which are read from these fields.
     for info in satellites.values():
@@ -180,6 +188,7 @@ def build_network_state(model, station, scenario, all_apps, pending_app_ids, rea
         "satellites": satellites,
         "users": relevant_users,
         "process_units": process_units,
+        "unit_hosts": host_by_unit,
         "applications": applications,
         "topology": topology,
     }

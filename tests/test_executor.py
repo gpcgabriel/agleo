@@ -9,7 +9,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.agents.tools import ProposalBuffer
+from app.agents.dashboard.tools import ProposalBuffer
 from app.core.config import SimulationConfig
 from app.core.executor import execute_action
 from app.core.session import create_session

@@ -126,13 +126,17 @@ interface effects.
   * `catalog.py` — indexed satellite traces
   * `snapshot.py`, `summary.py` — state for the map and for the agent
   * `router.py` — command routing, free of interface calls
-* `app/agents/`
-  * `tools.py` — `ProposalBuffer` and the `propose_*` tools
-  * `runner.py` — agent assembly and execution
-  * `tool_call_recovery.py` — recovery of tool calls emitted as text
-  * `prompts.py` — system description and instructions
-  * `allocation/` — the LLM allocation strategy, injected into the simulator
-    like any other allocation algorithm
+* `app/agents/` — one package per agent
+  * `dashboard/` — the agent the operator talks to
+    * `tools.py` — `ProposalBuffer` and the `propose_*` tools
+    * `runner.py` — agent assembly and execution
+    * `tool_call_recovery.py` — recovery of tool calls emitted as text
+    * `prompts.py` — system description and instructions
+  * `allocation/` — the ground station agent, injected into the simulator like
+    any other allocation algorithm
+    * `state.py` — what each station is asked about, and about what
+    * `prompt.py`, `decision.py` — the question and the shape of the answer
+    * `metrics.py` — what each round cost and what it achieved
 * `app/ui/`
   * `state.py` — the only bridge to `st.session_state`
   * `sidebar.py`, `map.py`, `header.py`, `css.py`, `ollama.py`

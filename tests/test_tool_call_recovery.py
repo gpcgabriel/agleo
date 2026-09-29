@@ -5,8 +5,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.agents.tool_call_recovery import looks_like_tool_call, parse_tool_call, recover
-from app.agents.tools import ProposalBuffer
+from app.agents.dashboard.tool_call_recovery import looks_like_tool_call, parse_tool_call, recover
+from app.agents.dashboard.tools import ProposalBuffer
 from app.core.actions import ActionType
 
 # Holding the exact text a model returned instead of calling the tool.

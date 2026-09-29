@@ -102,10 +102,31 @@ def test_collect_state_reports_a_skip_reason_instead_of_a_partial_state():
             "satellites",
             "users",
             "process_units",
+            "unit_hosts",
             "applications",
             "topology",
         ):
             assert section in state, f"state is missing '{section}'"
+
+
+def test_every_process_unit_records_where_it_sits():
+    """A unit in orbit and a unit on the ground are reached by different paths.
+
+    `build_network_state` drops each satellite's `pu` field after collecting
+    the unit ids, so the link has to be recorded before that happens or the
+    digest cannot say which satellite a unit rides on.
+    """
+    session = make_session()
+
+    for station in GroundStation.all():
+        state, pending, reason = collect_state(session.simulator, station, "hybrid")
+        if reason:
+            continue
+
+        for unit_key in state["process_units"]:
+            host = state["unit_hosts"].get(unit_key)
+            assert host is not None, f"{unit_key} has no recorded host"
+            assert host.startswith("Sat_") or host.startswith("GS_"), f"{unit_key} sits on {host!r}"
 
 
 # -- Prompt -----------------------------------------------------------------
@@ -115,7 +136,14 @@ def test_the_prompt_names_the_pending_applications():
     prompt = build_allocation_prompt({"step": 0}, [7, 9], [])
 
     assert "[7, 9]" in prompt
-    assert "Network State" in prompt
+
+
+def test_the_prompt_carries_the_digest_rather_than_serialized_state():
+    prompt = build_allocation_prompt({"step": 0}, [7, 9], [])
+
+    assert "PLACE THESE APPLICATIONS" in prompt
+    assert "PROCESS UNITS IN REACH" in prompt
+    assert "{" not in prompt, "the state is being serialized, not rendered"
 
 
 def test_history_is_absent_until_there_is_one():

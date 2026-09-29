@@ -4,9 +4,9 @@ from agno.agent import Agent
 from agno.models.ollama import Ollama
 from agno.skills import LocalSkills, Skills
 
-from app.agents.prompts import dashboard_agent_description, dashboard_agent_instructions
-from app.agents.tool_call_recovery import looks_like_tool_call, recover
-from app.agents.tools import ProposalBuffer
+from app.agents.dashboard.prompts import dashboard_agent_description, dashboard_agent_instructions
+from app.agents.dashboard.tool_call_recovery import looks_like_tool_call, recover
+from app.agents.dashboard.tools import ProposalBuffer
 
 MODE_TOOLS = "Tools"
 MODE_SKILLS = "Skills"

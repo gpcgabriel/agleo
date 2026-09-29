@@ -63,7 +63,7 @@ def test_domain_packages_import_without_streamlit_loaded():
         "import sys;"
         "sys.path.insert(0, %r);"
         "import app.core.session, app.core.executor, app.core.router,"
-        " app.core.catalog, app.core.handlers, app.agents.runner;"
+        " app.core.catalog, app.core.handlers, app.agents.dashboard.runner;"
         "assert 'streamlit' not in sys.modules, 'streamlit was loaded';"
         "print('ok')" % str(ROOT)
     )
@@ -126,7 +126,7 @@ def test_the_domain_imports_without_the_llm_stack_loaded():
 
 
 def test_the_domain_modules_are_importable():
-    for name in ("app.core.session", "app.core.router", "app.core.handlers", "app.agents.runner"):
+    for name in ("app.core.session", "app.core.router", "app.core.handlers", "app.agents.dashboard.runner"):
         assert importlib.import_module(name) is not None
 
 

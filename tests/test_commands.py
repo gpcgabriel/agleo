@@ -10,7 +10,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.agents.runner import MODE_TOOLS, run_agent
+from app.agents.dashboard.runner import MODE_TOOLS, run_agent
 from app.core.actions import ActionType
 from app.core.config import SimulationConfig
 from app.helper_functions.ollama_helper import DEFAULT_MODEL, is_ollama_running, list_local_models

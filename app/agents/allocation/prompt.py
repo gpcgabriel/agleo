@@ -1,6 +1,6 @@
 """Prompt construction for the allocation agent."""
 
-from json import dumps
+from app.agents.allocation.digest import render_digest
 
 HISTORY_STEPS_SHOWN = 5
 
@@ -41,9 +41,13 @@ def build_history_section(decisions):
 def build_allocation_prompt(state, pending_app_ids, decisions):
     """Builds the prompt for one allocation decision.
 
+    The state is rendered as a digest rather than serialized: elapsed time is
+    almost exactly linear in prompt length, and JSON punctuation is most of
+    what the model would be reading.
+
     Args:
         state (dict): The trimmed network state.
-        pending_app_ids (list): Applications waiting for placement.
+        pending_app_ids (list): Applications this station could place.
         decisions (list): Past decisions of this ground station.
 
     Returns:
@@ -51,6 +55,6 @@ def build_allocation_prompt(state, pending_app_ids, decisions):
     """
     return (
         f"PENDING APPS (IDs to allocate): {pending_app_ids}\n"
-        f"Network State (JSON):\n{dumps(state, default=str)}\n"
+        f"{render_digest(state, pending_app_ids)}\n"
         f"{build_history_section(decisions)}"
     )

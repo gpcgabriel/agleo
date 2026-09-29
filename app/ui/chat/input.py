@@ -2,7 +2,7 @@
 
 import streamlit as st
 
-from app.agents.runner import run_agent
+from app.agents.dashboard.runner import run_agent
 from app.core.router import Blocked, DispatchToAgent, LocalReply, route
 from app.helper_functions.ollama_helper import DEFAULT_MODEL, model_is_available
 from app.ui.state import get_pending, push_chat, set_pending

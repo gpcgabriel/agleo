@@ -101,6 +101,55 @@ exact geodesic.
 
 ---
 
+## The system the phases are building
+
+Settled 29 September 2026. A network manager needs data about an
+infrastructure but does not know how to run a simulation — which metrics to
+collect, for how long, what to hold constant. AGLEO is what the answer is.
+
+They choose one of two paths.
+
+```
+                            ┌─────────────────────────────┐
+                            │  automatic  or  step by step │
+                            └──────────────┬──────────────┘
+                     ┌─────────────────────┴─────────────────────┐
+                     │                                           │
+              STEP BY STEP                                 AUTOMATIC
+                     │                                           │
+   operator gives dataset, trace, topology      operator gives the objective, and
+                     │                          optionally dataset, trace, topology,
+                     │                          number of runs, step budget
+                     ▼                                           ▼
+   simulation starts, live map beside a          the orchestrator configures and
+   chat with the orchestrator agent              runs it under those directives
+                     │                                           │
+   operator drives the infrastructure and        it stops when it judges the
+   the steps until satisfied                     objective met
+                     │                                           │
+                     └──────────────► metrics ◄──────────────────┘
+```
+
+### What exists today
+
+Only part of the step-by-step path. The operator picks dataset, trace and
+topology in the sidebar, the map renders live, and the dashboard agent takes
+commands behind a confirmation gate. What is missing from that path is the
+agent being an *orchestrator* rather than a proposer of single mutations.
+
+The automatic path does not exist at all: there is no objective as a
+first-class object, no unattended run, and no stopping criterion the agent can
+evaluate. That is Phase 5.
+
+### What the demonstration covers
+
+**The ground station agent is the only agent inside the simulation.** The
+orchestrator and the automatic path are not part of the demonstration; the
+demonstration is Phase 3 — the tick made affordable, measured before and after.
+
+
+---
+
 ## Known issues carried into the next phases
 
 | # | Issue | Addressed in |
@@ -121,6 +170,7 @@ exact geodesic.
 | N | A gateway accepts every satellite in range; real gateway earth stations serve 8 (Gen1) to 32 (Gen2) at a time | Phase 10 |
 | O | An LLM tick costs one model call per ground station — 28 with the RNP topology, minutes of wall clock | Phase 3 |
 | P | The slant-range formula is written five times: `Topology.within_range`, `Topology.calculate_distance`, `hybrid_allocation.distance`, `longest_duration_allocation.distance` and `state.find_reachable_satellite_ids`. This is what let issue K survive a fix | open |
+| Q | The model omits applications from both strategy lists, and `hybrid_allocation` never looks at them — not placed, not counted as failed, absent from `details`. Measured at 19% of decisions under a no-op prompt change | open |
 
 ### What could be fixed now
 
@@ -450,6 +500,242 @@ length, halving the prompt halves the tick. That means replacing the serialized
 JSON of process units, satellites and topology — 52% of the prompt between them
 — with a digest carrying the same facts. The cache stays after that: a scoped,
 digested question is the one worth caching.
+
+### Next: a deterministic translator, not a cache
+
+Assessed 28 September 2026, after the scoping result pointed at prompt length.
+
+The proposal: a module that *translates* the infrastructure state and the
+applications to be provisioned into what each relevant station needs to decide,
+instead of serializing the state as JSON. Measured on 24 stations at step 3:
+
+| | Chars | Tokens (~) |
+| --- | --- | --- |
+| Serialized JSON prompt, today | 2 642 | 660 |
+| Rendered digest, same decision-relevant facts | 473 | 118 |
+| | **−82%** | |
+
+Nothing an allocation strategy reads is dropped. What goes is JSON
+punctuation, fields that are always zero (`sto` everywhere), and raw inputs the
+code can turn into the number the model actually uses — a satellite's three
+future positions become "visible for N steps", and `cpu_total`/`cpu_used`
+become `cpu_free`.
+
+**Projected cost.** Fitting elapsed time against prompt length over the 121
+real calls of the comparison gives `t = 1.03 s + 7.89 s per 1000 chars`
+(r = 0.98, measured between 931 and 12 943 chars):
+
+| | Per call | Per tick, at 20.7 calls |
+| --- | --- | --- |
+| Today | 21.9 s | 453 s |
+| With the digest | 4.8 s | **99 s** |
+
+That is a projection, and 473 chars sits **below the measured range**, so the
+intercept is doing more work than the data supports. It needs a confirming run
+before it is quoted as a result.
+
+**The digest is also what makes caching possible at all.** Over 12 ticks with
+scoping on:
+
+| Cache key | Hit rate |
+| --- | --- |
+| The full JSON state | **0.0%** |
+| The facts a digest carries | **19.2%** |
+
+The raw state never repeats — a delay written as `3.8731589318491397` changes
+every tick, and so does every satellite position. Rounded, derived facts do
+repeat. This settles the order: digest first, cache second, because a cache
+over the raw state can never hit.
+
+### What it changes about the orchestrator
+
+The translation is mechanical, so it does not need a model. That splits the
+orchestrator's job in two, and only one half needs language:
+
+| Job | How often | Needs a model |
+| --- | --- | --- |
+| Turning operator intent into objectives | once per run, or when the intent changes | **yes** |
+| Turning state into each station's question | every tick | **no** — this is the translator |
+| Choosing a strategy for the question | every tick, per station | yes, and this is the thesis claim |
+
+This is better than the settled design in two ways: the per-tick orchestrator
+call disappears, and the chewing becomes reproducible and testable instead of
+being a model output that has to be trusted.
+
+**The boundary, settled 29 September 2026.** If the translator decides *which*
+units to show and in what order, it has made the placement judgment and the
+station agent is a rubber stamp — the contribution would live in the Python,
+not in the agents. So:
+
+> The translator **translates**. It turns the infrastructure, the context, the
+> history and the pertinent parts of the state into a digest a small model can
+> ingest, and it filters out the stations that cannot serve the applications at
+> hand so no call is spent on them. It does not rank, score or recommend.
+
+| Allowed | Not allowed |
+| --- | --- |
+| Including every process unit the station can reach | Sorting them by how well they fit |
+| Computing free capacity from total and used | Dropping ones that "would not be chosen" |
+| Computing remaining visibility from the future positions | Naming a best candidate |
+| Skipping a station that can serve nothing this step | Skipping a station because its answer seems predictable |
+
+The last row is the subtle one. Filtering by *capability* is translation —
+the station genuinely has nothing to decide. Filtering by *expected answer* is
+deciding, and it belongs to the agent.
+
+The falsification test is the one the evaluation needs anyway: if replacing the
+model with a fixed strategy produces the same allocation outcome, the agent is
+not contributing and the translator has absorbed the decision.
+
+### One gap found while prototyping
+
+`build_network_state` pops the `pu` field from each satellite after collecting
+the unit ids, so the state no longer records **which satellite a process unit
+rides on**. A digest cannot then say "this unit is on a satellite visible for
+N more steps", which is the column that makes `longest_duration` decidable. The
+link has to be preserved before the digest can carry it.
+
+### Measured: the digest, 29 September 2026
+
+Three arms, three ticks each, `llama3.1:8b`, same seed and scenario. The
+`unit_hosts` link was restored first, so the digest can say which satellite a
+process unit rides on.
+
+| Per tick | Global question | Scoped | Scoped + digest |
+| --- | --- | --- | --- |
+| Model calls | 19.7 | 20.7 | 20.0 |
+| Applications asked about | 164.7 | 101.7 | 101.7 |
+| Prompt tokens per tick (~) | 17 225 | 16 619 | **3 034** |
+| Prompt tokens per call (~) | 876 | 804 | **152** |
+| Wall clock | 579.5 s | 531.0 s | **308.4 s** |
+| Distinct applications placed | 13.3 | 13.0 | 13.0 |
+
+**A tick is 47% faster than where Phase 3 started, with the allocation outcome
+unchanged.** 9.7 minutes down to 5.1.
+
+### The projection was wrong, and the reason matters
+
+Phase 3 projected 99 s per tick from a linear fit of elapsed time against
+prompt length (`t = 1.03 s + 7.89 s per 1000 chars`, r = 0.98). The prompt
+reduction landed as predicted — 82%, within a point of the estimate. The time
+reduction did not: 47% against a predicted 78%.
+
+The fit was taken over prompts of 931 to 12 943 characters, and the digest is
+574. Below the measured range a per-call floor appears that the fit had
+attributed to slope. Measured inside the digest arm, where prompt length is
+nearly constant:
+
+| Applications in the call | Calls | Median time |
+| --- | --- | --- |
+| 1-3 | 15 | **14.0 s** |
+| 4-8 | 8 | 18.9 s |
+| 9-20 | 13 | 18.7 s |
+
+**Fourteen seconds for the smallest possible question.** At 20 calls per tick
+that is a 280 s floor, and the digest has brought the tick to 308 s — within
+10% of it.
+
+The extrapolation was flagged as one when it was made, which is why it was
+labelled a projection and scheduled for confirmation rather than quoted as a
+result. It still overstated the gain by a factor of three.
+
+### What this means for the rest of Phase 3
+
+**Prompt size is no longer the lever; the number of calls is.** The remaining
+cost is per-call overhead, not reading. Two things act on it:
+
+* **The stability filter**, now worth building: the digest's facts repeat 19.2%
+  of the time between ticks where the raw state repeated 0%. Cutting one call
+  in five removes ~60 s from a tick.
+* **A smaller answer.** Within the digest arm, time still correlates with the
+  application count (r = 0.70) even at constant prompt length, because the
+  reply is two lists of application ids that grow with it. Phase 4's design —
+  one option out of a fixed set — collapses that reply to a single token's
+  worth of choice.
+
+The second is also what makes a typed-decision model such as Jev interesting:
+its published 70-500 ms is an attack on exactly this floor, not on prompt size.
+
+### The history section, and what asking about it uncovered
+
+Raised 29 September 2026: the prompt carries the station's own past decisions,
+and that section grows after every answer. So even at an unchanged
+infrastructure the prompt differs between ticks, and a stability filter keyed
+on infrastructure alone would be reusing a decision the agent might have
+revised. The objection is correct as stated. Measured at a fixed state,
+temperature 0, so the same prompt always gives the same answer:
+
+| | Stations where the answer changed |
+| --- | --- |
+| Adding one history entry | **5 of 6** |
+
+But the next question decides what to do about it. Is the answer tracking the
+feedback, or moving under any perturbation at all? Two controls:
+
+| | Stations |
+| --- | --- |
+| Success and failure gave *different* answers | 3 of 6 |
+| A filler line carrying no information changed the answer | **5 of 6** |
+
+The filler was `This station reports nominal operation.` It moved the decision
+more often than the difference between "you placed everything" and "you placed
+nothing". **The answer is not tracking feedback. It is unstable under any
+change to the prompt, and the history is one more thing that perturbs it.**
+
+### How much moves
+
+Measured over 8 stations and 68 application decisions, comparing a prompt
+against the same prompt plus the filler line:
+
+| | Share of decisions |
+| --- | --- |
+| Changed strategy, `best_fit` ↔ `longest_duration` | 10% |
+| **Dropped from the answer entirely** | **19%** |
+| Appeared, having been absent before | 10% |
+
+The strategy flips are the small part. The large one is the model silently
+omitting applications, against an instruction that says every pending id must
+appear in exactly one of the two lists.
+
+`hybrid_allocation` iterates only the ids it is given. An application in
+neither list is never looked at: not placed, not counted as failed, absent from
+the `details`. About one application in five disappears under a change to the
+prompt that carries no information. This is issue Q.
+
+### What it means for the stability filter
+
+**Build it, and drop the history section.**
+
+Reusing a previous decision is not less principled than re-asking — it is
+*more* so. Re-asking at an unchanged state currently returns a different answer
+about 39% of the time for no reason a reader could defend. Reuse is at least
+deterministic, and it is defensible in writing: the inputs are identical, so
+the decision is.
+
+Dropping the history costs nothing that was working. It does not transmit
+feedback, it spends tokens, and it is what would otherwise force the filter's
+key to include a section that grows every tick. Without it the prompt becomes a
+pure function of the infrastructure, which makes the filter's key exact instead
+of approximate.
+
+There is a caveat worth stating: dropping it removes the *possibility* of
+learning from outcomes, which the design intended. The measurement says that
+possibility is not being realised today. If a later model does use feedback,
+the section comes back — and the filter's key has to grow with it.
+
+### What it means for the thesis
+
+This is the uncomfortable part. If a station's answer moves under a no-op
+perturbation, then some of what "the ground station decided" is measuring is
+noise. Two things follow:
+
+* **The evaluation baseline stops being optional.** The arm that matters is the
+  per-station model against deterministic `best_fit`. If the agent's answers
+  are substantially arbitrary, that comparison is where it shows.
+* **It sharpens the case for a calibrated, typed-decision model.** A closed
+  output set cannot silently omit an application, and a confidence score would
+  distinguish a station that is genuinely indifferent from one that is merely
+  unsteady. See the Jev assessment below.
 
 ### How to measure
 
@@ -1074,6 +1360,120 @@ other, so that an observed difference can be attributed to orbital motion or to
 connectivity but not ambiguously to both. Neither is on the path to a working
 demonstration.
 
+
+---
+
+## Possible future contribution: Jev for the station decision
+
+Assessed 29 September 2026, **not scheduled**. Recorded so the question does
+not have to be reopened from scratch.
+
+### What it is
+
+Jev is TypeSafe AI's first "System One Model": *unstructured state in, typed
+probabilistic decisions out*. It is not a text generator. The vendor describes
+a separate architecture with a parallel sampler that emits all outputs in a
+single query rather than one token at a time, trained with Reinforcement
+Learning for Calibrated Decisions rather than RLHF — the stated target being
+epistemically honest probabilities instead of human preference.
+
+Published figures: end-to-end **70 ms to 500 ms**, claimed **40x-200x faster**
+than an LLM at equivalent intelligence, input at **$0.042/MTok with output
+tokens free**. Outputs are type-safe values drawn from a declared set, each
+carrying a confidence score. The use cases named are "smart if-statements",
+map-reduce over large data, real-time applications and verification.
+
+*All of these come from the vendor's own announcement; none is independently
+verified here.*
+
+### Why it fits this system unusually well
+
+The ground station agent is close to the archetype that model is built for.
+
+| What the station agent does | What Jev takes |
+| --- | --- |
+| Reads a digest of its neighbourhood | unstructured state in |
+| Answers `best_fit`, `longest_duration` or `agnostic` | a declared, closed output set |
+| Is called 20.7 times per tick, 28 stations in parallel | parallel sampling, per-call latency in milliseconds |
+| Needs no prose — its answer is consumed by code | typed value, not text |
+
+The settled Phase 4 design already narrows the station's reply to one option
+out of a fixed set with a one-sentence reason. Drop the sentence and that is
+exactly a typed decision.
+
+**Projected tick cost**, at 20.7 calls per tick:
+
+| | Per tick |
+| --- | --- |
+| `llama3.1:8b` today | 453 s |
+| `llama3.1:8b` with the digest (projected) | 99 s |
+| Jev at the slow end, 500 ms | **10.3 s** |
+| Jev at the fast end, 70 ms | **1.4 s** |
+
+At the digest's ~118 tokens per call, a 180-step run sends about 440k input
+tokens: **$0.018 per run**, or roughly $18 for a thousand runs. Cost is not
+what would decide this.
+
+### The part that is genuinely interesting for the thesis
+
+**The confidence score replaces self-reported agnosticism with a measurement.**
+
+The current design asks the station to *declare* itself indifferent. A station
+that says "agnostic" might be indifferent, or might be a small model failing to
+commit. Those are not the same thing, and nothing in the reply distinguishes
+them.
+
+A calibrated probability does distinguish them: 51%/49% between two options is
+indifference expressed numerically, and 95% is a station whose local view
+genuinely determines the answer. That turns the thesis's central claim — that
+localized decisions carry information — from something argued into something
+plotted.
+
+### Where it does not fit
+
+**The dashboard agent.** It converses with the operator, explains what
+happened, and writes the report at the end of an automatic run. That is prose,
+and a typed-decision model does not produce prose.
+
+**The orchestrator's intent translation.** Turning "simulate a scenario where a
+region loses two gateways and tell me what happens to latency" into objectives
+and a configuration is a language task.
+
+So the shape would be **hybrid**, which also matches the System One / System
+Two framing the vendor uses: an LLM at the two language-facing boundaries, a
+typed-decision model for the high-volume decision inside the simulation loop.
+
+### What would have to be settled first
+
+* **It is a hosted API, and the thesis is about small models on ground
+  stations.** Whether that contradicts the premise depends on what "localized"
+  means in the claim: locality of *decision scope in the network topology*, or
+  locality of *where inference runs*. The dissertation has to say which, and
+  the answer changes whether this is a contribution or a contradiction.
+* **Reproducibility.** A hosted model can change under a result. Measurements
+  taken against a pinned local model in Ollama can be rerun in two years; ones
+  taken against a managed endpoint may not be. For the dissertation's headline
+  numbers this matters more than speed.
+* **The claims are the vendor's.** 40x-200x and "cannot hallucinate" need
+  independent measurement on this workload before being repeated.
+* **Offline operation disappears.** Every tick needs the network.
+
+### What it does not change
+
+**Phase 3's work is the input pipeline either way.** "Unstructured state in"
+still has to be produced, and a smaller, cleaner state is better for a typed
+decision model too — cheaper per call, and more stable between ticks, which is
+what makes the skip filter work. The translator is not wasted if this happens;
+it is the prerequisite.
+
+### When to revisit
+
+After the demonstration, and after Phase 8 exists to measure it against the
+local-model baseline. The number to beat is the one Phase 3 is establishing.
+
+### Source
+
+* [Introducing System One Models and Jev](https://typesafe.ai/blog/introducing-system-one-models-and-jev), TypeSafe AI
 
 ---
 
