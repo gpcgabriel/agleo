@@ -7,6 +7,12 @@ from app.ui.state import CHAT_KEY
 
 CHAT_HEIGHT = 450
 
+# Naming the scroll box so the stylesheets can reach it. Streamlit gives it a
+# 1px border of white at 20% opacity whatever the theme is: visible on the dark
+# surface, invisible on the cream one, which left the orchestrator panel and
+# the conversation inside it reading as a single undivided box.
+CHAT_HISTORY_KEY = "chat_history"
+
 
 def render_chat_history():
     """Draws the message history.
@@ -15,7 +21,7 @@ def render_chat_history():
         DeltaGenerator: The history container, so the in-flight reply can be
         written inside it.
     """
-    container = st.container(height=CHAT_HEIGHT)
+    container = st.container(height=CHAT_HEIGHT, key=CHAT_HISTORY_KEY)
 
     with container:
         for message in st.session_state[CHAT_KEY]:

@@ -128,12 +128,22 @@ class SimulationSession:
     def request_steps(self, steps):
         """Schedules a number of steps to run.
 
-        Steps are consumed one at a time so the interface can draw progress
+        Steps are consumed a few at a time so the interface can draw progress
         and offer to interrupt between them.
 
         Args:
             steps (int): How many steps to run.
+
+        Raises:
+            RuntimeError: If a batch is already running. Accepting a second
+                request would silently extend the one in flight, and the
+                operator would get more steps than either request asked for.
         """
+        if self.has_pending_steps():
+            raise RuntimeError(
+                f"{self.steps_remaining} steps are still running; stop them before requesting {steps} more."
+            )
+
         self.steps_remaining = max(0, int(steps))
 
     def has_pending_steps(self):
@@ -150,7 +160,11 @@ class SimulationSession:
             return True
 
         self.advance_one_step()
-        self.steps_remaining -= 1
+        # Clamping rather than subtracting. The counter is read straight into
+        # the progress notice, and "-2 steps remaining" was reported from a
+        # run that could not be reproduced: whatever let a decrement through
+        # on an exhausted batch, it must not reach the operator as a negative.
+        self.steps_remaining = max(0, self.steps_remaining - 1)
         return self.steps_remaining == 0
 
     def stop_stepping(self):

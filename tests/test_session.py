@@ -90,6 +90,43 @@ def test_scheduled_steps_are_consumed_one_at_a_time():
     assert session.simulator.scheduler.steps == 3
 
 
+def test_the_counter_never_goes_below_zero():
+    """The progress notice reads this value straight out; "-2 steps remaining"
+    was reported from a run that could not be reproduced."""
+    session = make_session()
+    session.request_steps(1)
+
+    for _ in range(4):
+        session.run_next_pending_step()
+
+    assert session.steps_remaining == 0
+
+
+def test_a_second_batch_is_refused_while_one_is_running():
+    """Accepting it would silently extend the run in flight, and the operator
+    would get more steps than either request asked for."""
+    session = make_session()
+    session.request_steps(5)
+    session.run_next_pending_step()
+
+    try:
+        session.request_steps(5)
+    except RuntimeError as error:
+        assert "4 steps are still running" in str(error)
+    else:
+        raise AssertionError("a second batch was accepted mid-run")
+
+
+def test_a_batch_is_accepted_once_the_previous_one_has_emptied():
+    session = make_session()
+    session.request_steps(1)
+    session.run_next_pending_step()
+
+    session.request_steps(2)
+
+    assert session.steps_remaining == 2
+
+
 def test_stopping_discards_the_remaining_scheduled_steps():
     session = make_session()
     session.request_steps(5)

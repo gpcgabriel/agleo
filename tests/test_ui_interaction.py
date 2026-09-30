@@ -10,7 +10,9 @@ def run_ui_test():
         print("Error: 'playwright' is not installed. Run 'pip install playwright' first.")
         sys.exit(1)
 
-    target_url = "http://localhost:8501/"
+    # Reading the port from the environment so this follows whatever the app is
+    # actually served on; 8502 is what `.claude/launch.json` starts.
+    target_url = os.environ.get("LEOSIM_URL", "http://localhost:8502/")
     print(f"Starting UI validation test on {target_url}...")
 
     with sync_playwright() as p:
@@ -31,7 +33,16 @@ def run_ui_test():
             page.wait_for_selector("button:has-text('Initialize Simulation')", timeout=10000)
             init_btn = page.locator("button:has-text('Initialize Simulation')")
             init_btn.click()
-            time.sleep(3)  # Give simulation a moment to initialize and reload
+
+            # Waiting on the chat input rather than on a fixed delay: building the
+            # simulation takes a few seconds, and the first tick of a session is
+            # slower than the rest.
+            page.wait_for_selector('[data-testid="stChatInput"] textarea', timeout=60000)
+
+            # Letting the accessibility script catch up. It attaches the slash menu
+            # to whatever chat input is on the page from a poll that runs once a
+            # second, so the field can exist for up to that long before it works.
+            time.sleep(3)
 
             # Waiting for the main container to stabilize again.
             page.wait_for_selector('[data-testid="stMainBlockContainer"]', timeout=15000)
@@ -39,7 +50,9 @@ def run_ui_test():
             # Looking for template tags or raw HTML/JS leaked into the body text.
             body_text = page.locator("body").inner_text()
 
-            leaks = ["{{IS_DARK}}", "{{COMMANDS_JSON}}", "onerror=", "const doc =", "window.fixA11yInterval"]
+            # `accessibility.js` interpolates the command list and nothing else, so
+            # what a leak looks like today is the script's own source in the body.
+            leaks = ["onerror=", "const doc =", "initAccessibility(", "slashMenuRealm"]
             for leak in leaks:
                 if leak in body_text:
                     raise AssertionError(f"LEAK DETECTED: Raw script or template token '{leak}' found in UI body text!")
@@ -60,10 +73,11 @@ def run_ui_test():
             if slash_menu.is_visible():
                 raise AssertionError("Slash commands menu is visible before typing '/'!")
 
-            # Focusing the chat input and typing '/'.
-            chat_input.focus()
-            chat_input.type("/")
-            time.sleep(1)  # Let JS event handlers trigger
+            # Clicking rather than focusing, and typing through the keyboard: the
+            # menu opens from the `input` and `keyup` events the real field emits.
+            chat_input.click()
+            page.keyboard.type("/")
+            time.sleep(1.5)  # Let JS event handlers trigger
 
             # Checking that the slash command menu is now visible.
             if not slash_menu.is_visible():

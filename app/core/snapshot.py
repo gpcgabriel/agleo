@@ -104,3 +104,28 @@ def serialize_state(sim):
             )
 
     return state
+
+
+def find_default_node_position(snapshot):
+    """Finds somewhere sensible to put a node the operator did not place.
+
+    The centre of the ground stations already in the scenario: a node dropped
+    there is inside the region being simulated rather than in the ocean off
+    Africa, which is where (0, 0) lands.
+
+    Args:
+        snapshot (dict): A snapshot from `serialize_state`.
+
+    Returns:
+        tuple or None: (latitude, longitude), or None when the scenario has no
+        ground station to average.
+    """
+    stations = (snapshot or {}).get("ground_stations") or []
+    placed = [station for station in stations if station.get("lat") is not None and station.get("lon") is not None]
+    if not placed:
+        return None
+
+    return (
+        sum(station["lat"] for station in placed) / len(placed),
+        sum(station["lon"] for station in placed) / len(placed),
+    )

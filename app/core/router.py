@@ -38,8 +38,18 @@ class Blocked:
 class DispatchToAgent:
     """A forward to the agent, carrying the context it should receive."""
 
-    def __init__(self, context_state):
+    def __init__(self, context_state, allows_changes=True):
+        """Args:
+        context_state (str): Context injected into the agent's prompt.
+        allows_changes (bool): Whether the agent may propose anything for
+            this command. False for a command the router already knows is a
+            question: the agent is then built with no way to act at all,
+            rather than being asked in the prompt not to. The instructions
+            that used to hold `/review` back named the mechanism, which is
+            what handed one capability model to the other.
+        """
         self.context_state = context_state
+        self.allows_changes = allows_changes
 
 
 def is_known_command(prompt):
@@ -100,4 +110,7 @@ def route(prompt, session, has_pending_action):
     if has_pending_action:
         return Blocked(PENDING_ACTION_MESSAGE)
 
-    return DispatchToAgent(build_agent_context(prompt, session.get_current_snapshot()))
+    return DispatchToAgent(
+        build_agent_context(prompt, session.get_current_snapshot()),
+        allows_changes=not stripped.lower().startswith(REVIEW_COMMAND),
+    )

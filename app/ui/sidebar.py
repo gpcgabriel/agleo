@@ -31,13 +31,17 @@ def build_allocation_algorithm(config):
     return LLMAllocator(model_name=model_name).allocate
 
 
-def render_sidebar(ollama_ok: bool) -> dict:
+def render_sidebar(ollama_ok: bool, locked: bool = False) -> dict:
     """Render the sidebar: dataset pickers, simulation params, agent
     settings and the 'Initialize Simulation' action.
 
     Args:
         ollama_ok: whether Ollama is currently reachable (controls the
             model selector state).
+        locked: whether the controls are held. Streamlit stops the running
+            script on any widget interaction, so a selector touched while the
+            agent is answering or while steps are running interrupts that work
+            mid-flight.
 
     Returns:
         dict: The `config` built from the selectors, whether the agent's
@@ -52,15 +56,23 @@ def render_sidebar(ollama_ok: bool) -> dict:
         if "dataset" not in os.path.basename(f) and "temp" not in os.path.basename(f)
     ]
 
-    selected_gml = st.sidebar.selectbox("Terrestrial Topology (GML)", gml_options, key="selected_gml_key")
-    selected_json = st.sidebar.selectbox("Satellite Traces (JSON)", json_options, key="selected_json_key")
-
-    num_users = st.sidebar.number_input("Number of Users", min_value=1, max_value=1000, value=20, key="num_users_key")
-    num_satellites = st.sidebar.number_input(
-        "Maximum Satellites", min_value=1, max_value=100, value=15, key="num_satellites_key"
+    selected_gml = st.sidebar.selectbox(
+        "Terrestrial Topology (GML)", gml_options, key="selected_gml_key", disabled=locked
     )
-    scenario = st.sidebar.selectbox("Scenario", ["hybrid", "leo", "terrestrial"], key="scenario_key")
-    algorithm = st.sidebar.selectbox("Allocation Algorithm", list(SimulationConfig.ALGORITHMS), key="algorithm_key")
+    selected_json = st.sidebar.selectbox(
+        "Satellite Traces (JSON)", json_options, key="selected_json_key", disabled=locked
+    )
+
+    num_users = st.sidebar.number_input(
+        "Number of Users", min_value=1, max_value=1000, value=20, key="num_users_key", disabled=locked
+    )
+    num_satellites = st.sidebar.number_input(
+        "Maximum Satellites", min_value=1, max_value=100, value=15, key="num_satellites_key", disabled=locked
+    )
+    scenario = st.sidebar.selectbox("Scenario", ["hybrid", "leo", "terrestrial"], key="scenario_key", disabled=locked)
+    algorithm = st.sidebar.selectbox(
+        "Allocation Algorithm", list(SimulationConfig.ALGORITHMS), key="algorithm_key", disabled=locked
+    )
 
     st.sidebar.markdown("---")
     st.sidebar.markdown(f"## {wrap_icon(icon_bot(18))} Agent Settings", unsafe_allow_html=True)
@@ -77,7 +89,7 @@ def render_sidebar(ollama_ok: bool) -> dict:
                     break
 
             selected_model = st.sidebar.selectbox(
-                "LLM Model", local_models, index=default_index, key="model_selector_key"
+                "LLM Model", local_models, index=default_index, key="model_selector_key", disabled=locked
             )
             st.session_state["selected_model"] = selected_model
         else:
@@ -88,10 +100,10 @@ def render_sidebar(ollama_ok: bool) -> dict:
         st.session_state["selected_model"] = DEFAULT_MODEL
 
     # Letting the operator enable or disable agent actions.
-    agent_actions_enabled = st.sidebar.checkbox("Allow Agent to execute actions", value=True)
+    agent_actions_enabled = st.sidebar.checkbox("Allow Agent to execute actions", value=True, disabled=locked)
 
     if agent_actions_enabled:
-        agent_mode = st.sidebar.radio("Agent Mode", ("Tools", "Skills"), key="agent_mode_key")
+        agent_mode = st.sidebar.radio("Agent Mode", ("Tools", "Skills"), key="agent_mode_key", disabled=locked)
     else:
         agent_mode = None
 
@@ -106,7 +118,7 @@ def render_sidebar(ollama_ok: bool) -> dict:
 
     # Drawing the Initialize Simulation button with its CSS marker.
     st.sidebar.markdown('<div class="btn-initialize-marker"></div>', unsafe_allow_html=True)
-    if st.sidebar.button("Initialize Simulation", key="btn_initialize", use_container_width=True):
+    if st.sidebar.button("Initialize Simulation", key="btn_initialize", use_container_width=True, disabled=locked):
         with st.spinner("Initializing simulator..."):
             set_session(create_session(config, allocation_algorithm=build_allocation_algorithm(config)))
             clear_pending()

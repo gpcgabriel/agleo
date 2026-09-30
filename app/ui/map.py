@@ -5,7 +5,7 @@ from streamlit_folium import st_folium
 from app.ui.gui.icons import icon_globe, wrap_icon
 
 
-def render_map(session, is_dark: bool) -> None:
+def render_map(session, is_dark: bool, locked: bool = False) -> None:
     """Render the map/telemetry column: timeline slider, status metrics,
     the Folium map (links, ground stations, satellites, users) and the
     telemetry detail tabs.
@@ -13,6 +13,7 @@ def render_map(session, is_dark: bool) -> None:
     Args:
         session (SimulationSession): Active simulation.
         is_dark (bool): Whether the dark theme is on.
+        locked (bool): Whether the timeline is held while work is in flight.
     """
     snapshot = session.get_current_snapshot()
     st.markdown(f"<h3>{wrap_icon(icon_globe(20))} Network Visualization & Telemetry</h3>", unsafe_allow_html=True)
@@ -27,7 +28,7 @@ def render_map(session, is_dark: bool) -> None:
             options=list(range(session.get_step_count())),
             value=session.current_step_index,
             format_func=lambda index: labels[index],
-            disabled=session.has_pending_steps(),
+            disabled=locked,
         )
         if slider_idx != session.current_step_index:
             session.view_step(slider_idx)
@@ -48,8 +49,11 @@ def render_map(session, is_dark: bool) -> None:
     map_center = [-15.669171, -48.013922]  # Default center (Brazil)
 
     tiles_theme = "CartoDB dark_matter" if is_dark else "CartoDB positron"
-    dynamic_link_color = "#f59e0b" if is_dark else "#d97706"
-    static_link_color = "#06b6d4" if is_dark else "#0284c7"
+    # Matching the light theme's muted accents. The saturated sky blues that
+    # were here read as glaring over the pale positron tiles.
+    dynamic_link_color = "#f59e0b" if is_dark else "#b45309"
+    static_link_color = "#06b6d4" if is_dark else "#1f6f8b"
+    coverage_color = "#0ea5e9" if is_dark else "#1f6f8b"
 
     m = folium.Map(location=map_center, zoom_start=4, tiles=tiles_theme, control_scale=True)
 
@@ -92,9 +96,9 @@ def render_map(session, is_dark: bool) -> None:
         folium.Circle(
             location=[sat["lat"], sat["lon"]],
             radius=sat["max_connection_range"] * 1000,
-            color="#0ea5e9",
+            color=coverage_color,
             fill=True,
-            fill_color="#0ea5e9",
+            fill_color=coverage_color,
             fill_opacity=0.08,
             weight=1,
         ).add_to(m)

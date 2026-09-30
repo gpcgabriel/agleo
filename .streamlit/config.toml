@@ -1,2 +1,19 @@
 [ui]
 hideTopBar = true
+
+[theme]
+# Pinning the base. With no `[theme]` section at all Streamlit follows the
+# browser's colour scheme; the moment one option is set it fills the rest
+# from its *light* base instead, which turned the chat input and the toasts
+# white on the dark theme. Both stylesheets are written over the dark base,
+# so that is what this has to say.
+base = "dark"
+
+# Streamlit paints the slider's filled track, the radio dots and the checkbox
+# ticks with this colour, and the slider's fill is an inline gradient whose
+# stops carry it — there is no CSS hook to recolour it per theme. One value has
+# to serve both stylesheets, so this sits between the dark theme's #4fc3f7 and
+# the light theme's #1f6f8b: 5.3:1 on the near-black page and 3.4:1 on the
+# cream one, both clear of the 3:1 that non-text contrast asks for. Streamlit's
+# own default, #ff4b4b, was the loudest thing on the cream page.
+primaryColor = "#2b8fb0"

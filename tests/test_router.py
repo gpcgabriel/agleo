@@ -90,6 +90,22 @@ def test_history_is_checked_before_the_pending_proposal():
     assert "historical step" in decision.reason
 
 
+def test_a_question_reaches_the_agent_with_no_way_to_act():
+    """`/review` used to be held back by an instruction naming the tools, which
+    is what let one capability model leak into the other. The router says it is
+    a question and the agent is built without an action surface at all."""
+    decision = route("/review", FakeSession(), has_pending_action=False)
+
+    assert isinstance(decision, DispatchToAgent)
+    assert decision.allows_changes is False
+
+
+def test_a_change_reaches_the_agent_able_to_propose_one():
+    decision = route("add a satellite at -7.2, -35.8", FakeSession(), has_pending_action=False)
+
+    assert decision.allows_changes is True
+
+
 if __name__ == "__main__":
     from runner import run_module_tests
 

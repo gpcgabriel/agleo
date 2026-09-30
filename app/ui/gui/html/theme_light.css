@@ -2,26 +2,32 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-    --bg-primary: #ffffff;
-    --bg-secondary: #f7f7f8;
-    --bg-surface: #ffffff;
-    --bg-elevated: #ececf1;
-    --text-primary: #1a1a2e;
-    --text-secondary: #6e6e80;
-    --accent-primary: #0ea5e9;
-    --accent-secondary: #0284c7;
-    --accent-glow: rgba(14, 165, 233, 0.1);
-    --border-subtle: #e5e5e5;
-    --border-active: #0ea5e9;
-    --danger: #ef4444;
-    --success: #22c55e;
+    /* A cream page rather than white. Pure white next to a saturated sky blue
+       is what made this theme read as glaring, and the warm greys below keep
+       the contrast without the vibration. Every pair here clears 4.5:1 except
+       the accent on `--bg-elevated` (4.36:1), which is only ever the hover
+       state of a secondary button, and that rule switches the text to
+       `--accent-secondary` (6.24:1). */
+    --bg-primary: #f7f4ed;        /* Page */
+    --bg-secondary: #f1ece1;      /* Sidebar, chat panel */
+    --bg-surface: #fdfbf6;        /* Cards, bubbles, fields */
+    --bg-elevated: #e8e1d3;       /* Hover states, elevated surfaces */
+    --text-primary: #2b2721;      /* Main text */
+    --text-secondary: #6b6156;    /* Secondary/muted text */
+    --accent-primary: #1f6f8b;    /* Muted teal-blue */
+    --accent-secondary: #17566d;  /* Darker accent */
+    --accent-glow: rgba(31, 111, 139, 0.10);
+    --border-subtle: #ddd5c6;     /* Subtle borders */
+    --border-active: #1f6f8b;     /* Active/focused borders */
+    --danger: #b4443a;            /* Cancel/error */
+    --success: #4a7c4e;           /* Confirm/success */
     --radius-sm: 8px;
     --radius-md: 12px;
     --radius-lg: 20px;
     --radius-pill: 28px;
-    --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
-    --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
-    --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+    --shadow-sm: 0 2px 4px rgba(74, 62, 44, 0.06);
+    --shadow-md: 0 4px 12px rgba(74, 62, 44, 0.10);
+    --shadow-lg: 0 8px 24px rgba(74, 62, 44, 0.14);
     --font-family: 'Inter', sans-serif;
 }
 
@@ -256,6 +262,31 @@ div[data-baseweb="tab-highlight"] {
     background-color: var(--accent-primary) !important;
 }
 
+/* The timeline slider. Its parts carry no testid, so these are positional:
+   inside the group, the first inner div is the rail and the second the thumb.
+   The rail's filled portion is an inline `linear-gradient` whose stops
+   Streamlit computes, which no stylesheet can reach — that colour comes from
+   `primaryColor` in `.streamlit/config.toml` instead. What is set here is the
+   unfilled rail, which shows through the gradient's translucent stops, and the
+   thumb. If the slider breaks after a Streamlit upgrade, the shape below is
+   what changed. */
+[data-testid="stSlider"] [role="group"] > div > div:nth-of-type(1) {
+    background-color: var(--border-subtle) !important;
+}
+[data-testid="stSlider"] [role="group"] > div > div:nth-of-type(2) {
+    background-color: var(--accent-primary) !important;
+}
+[data-testid="stSlider"] [role="group"] input {
+    background-color: var(--accent-primary) !important;
+    border-color: var(--accent-primary) !important;
+}
+[data-testid="stSliderThumbValue"],
+[data-testid="stSliderTickBar"],
+[data-testid="stSliderThumbValue"] *,
+[data-testid="stSliderTickBar"] * {
+    color: var(--text-secondary) !important;
+}
+
 /* Chat Interface (Starlink x ChatGPT Hybrid) */
 
 /* Chatbot container box */
@@ -290,12 +321,12 @@ div[data-testid="stChatMessageContainer"]::-webkit-scrollbar-thumb {
 }
 
 /* User chat bubble */
-[data-testid="stChatMessage"]:has([data-testid*="user"]),
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]),
 [data-testid="stChatMessage"]:has(img[alt*="user"]) {
     flex-direction: row-reverse !important;
     background-color: transparent !important;
 }
-[data-testid="stChatMessage"]:has([data-testid*="user"]) [data-testid="stChatMessageContent"],
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) [data-testid="stChatMessageContent"],
 [data-testid="stChatMessage"]:has(img[alt*="user"]) [data-testid="stChatMessageContent"] {
     background-color: var(--accent-glow) !important;
     color: var(--text-primary) !important;
@@ -305,18 +336,18 @@ div[data-testid="stChatMessageContainer"]::-webkit-scrollbar-thumb {
     margin-left: 15% !important;
     box-shadow: var(--shadow-sm) !important;
 }
-[data-testid="stChatMessage"]:has([data-testid*="user"]) [data-testid="stChatMessageContent"] p,
-[data-testid="stChatMessage"]:has([data-testid*="user"]) [data-testid="stChatMessageContent"] li,
-[data-testid="stChatMessage"]:has([data-testid*="user"]) [data-testid="stChatMessageContent"] span {
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) [data-testid="stChatMessageContent"] p,
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) [data-testid="stChatMessageContent"] li,
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) [data-testid="stChatMessageContent"] span {
     color: var(--text-primary) !important;
 }
 
 /* Assistant chat bubble */
-[data-testid="stChatMessage"]:has([data-testid*="assistant"]),
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]),
 [data-testid="stChatMessage"]:has(img[alt*="assistant"]) {
     background-color: transparent !important;
 }
-[data-testid="stChatMessage"]:has([data-testid*="assistant"]) [data-testid="stChatMessageContent"],
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]) [data-testid="stChatMessageContent"],
 [data-testid="stChatMessage"]:has(img[alt*="assistant"]) [data-testid="stChatMessageContent"] {
     background-color: var(--bg-surface) !important;
     color: var(--text-primary) !important;
@@ -326,10 +357,33 @@ div[data-testid="stChatMessageContainer"]::-webkit-scrollbar-thumb {
     margin-right: 15% !important;
     box-shadow: var(--shadow-sm) !important;
 }
-[data-testid="stChatMessage"]:has([data-testid*="assistant"]) [data-testid="stChatMessageContent"] p,
-[data-testid="stChatMessage"]:has([data-testid*="assistant"]) [data-testid="stChatMessageContent"] li,
-[data-testid="stChatMessage"]:has([data-testid*="assistant"]) [data-testid="stChatMessageContent"] span {
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]) [data-testid="stChatMessageContent"] p,
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]) [data-testid="stChatMessageContent"] li,
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]) [data-testid="stChatMessageContent"] span {
     color: var(--text-primary) !important;
+}
+
+/* The conversation's scroll box. Streamlit borders it with white at 20%,
+   which the cream theme swallows entirely. */
+.st-key-chat_history {
+    background-color: var(--bg-primary) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: var(--radius-md) !important;
+    padding: 8px !important;
+}
+
+/* The chat avatars carry Streamlit's own red and orange, which are the two
+   loudest things on either page and the reason they kept reading as bright
+   while everything around them was faded. */
+[data-testid="stChatMessageAvatarAssistant"] {
+    background-color: var(--accent-primary) !important;
+}
+[data-testid="stChatMessageAvatarUser"] {
+    background-color: var(--text-secondary) !important;
+}
+[data-testid="stChatMessageAvatarAssistant"] *,
+[data-testid="stChatMessageAvatarUser"] * {
+    color: var(--bg-surface) !important;
 }
 
 /* Chat Input Styling */
@@ -339,6 +393,10 @@ div[data-testid="stChatMessageContainer"]::-webkit-scrollbar-thumb {
     border-radius: var(--radius-pill) !important;
     padding: 4px 10px !important;
     box-shadow: var(--shadow-sm) !important;
+}
+[data-testid="stChatInput"]:focus-within {
+    border-color: var(--border-active) !important;
+    box-shadow: 0 0 0 1px var(--border-active) !important;
 }
 [data-testid="stChatInput"] textarea {
     background-color: transparent !important;
@@ -354,7 +412,75 @@ div[data-testid="stChatMessageContainer"]::-webkit-scrollbar-thumb {
     border: none !important;
 }
 [data-testid="stChatInput"] button svg {
-    color: var(--bg-primary) !important;
+    color: #ffffff !important;
+}
+
+/* Streamlit's placeholder is its own near-white at 60% opacity whatever the
+   theme is, which on a light field is unreadable. */
+[data-testid="stChatInput"] textarea::placeholder {
+    color: var(--text-secondary) !important;
+    opacity: 1 !important;
+}
+
+/* Alerts keep Streamlit's own palette, which is tuned for its dark theme: on
+   the cream page the info box arrives as a saturated blue slab. */
+[data-testid="stAlertContainer"] {
+    background-color: var(--bg-surface) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-left: 4px solid var(--accent-primary) !important;
+    border-radius: var(--radius-sm) !important;
+    color: var(--text-primary) !important;
+}
+[data-testid="stAlertContainer"] p,
+[data-testid="stAlertContainer"] li,
+[data-testid="stAlertContainer"] span,
+[data-testid="stAlertContainer"] strong {
+    color: var(--text-primary) !important;
+}
+[data-testid="stAlertContainer"]:has([data-testid="stAlertContentWarning"]) {
+    border-left-color: var(--danger) !important;
+}
+[data-testid="stAlertContainer"]:has([data-testid="stAlertContentSuccess"]) {
+    border-left-color: var(--success) !important;
+}
+
+/* The progress strip while a batch of steps runs. On the ordinary surface
+   colour it read as one more inactive panel, which is the opposite of what it
+   is: the only live thing on the page. */
+.st-key-stepping_progress [data-testid="stAlertContainer"] {
+    background-color: var(--accent-glow) !important;
+    border: 1px solid var(--accent-primary) !important;
+    border-left: 4px solid var(--accent-primary) !important;
+}
+
+/* Streamlit fades an element container to a third of its opacity while it
+   waits for its next delta. A run of steps reruns the page continuously, so
+   the whole dashboard spends the run flickering at 0.33 — including the
+   progress strip and its Stop button, which are the one thing on screen that
+   is genuinely live, while the chat avatars carry their own background and
+   stay bright through it. Nothing here is ever stale for long enough that
+   saying so helps. */
+[data-testid="stElementContainer"][data-stale="true"] {
+    opacity: 1 !important;
+}
+
+/* The chat input's inner box and the toasts come straight from Streamlit's
+   base theme, which is pinned to dark in `.streamlit/config.toml`: left alone
+   they are a dark grey box on the cream page and a white card on the near-black
+   one. Both stylesheets set them from the palette so neither depends on the
+   base. */
+[data-testid="stChatInput"] > div {
+    background-color: transparent !important;
+}
+[data-testid="stToast"] {
+    background-color: var(--bg-surface) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: var(--radius-md) !important;
+    box-shadow: var(--shadow-md) !important;
+}
+[data-testid="stToast"],
+[data-testid="stToast"] * {
+    color: var(--text-primary) !important;
 }
 
 /* Buttons Styling */
@@ -434,4 +560,115 @@ div[data-testid="element-container"]:has(.theme-toggle-marker) + div[data-testid
 div.stElementContainer:has(.a11y-script-marker),
 div.stElementContainer:has(.a11y-script-marker) + div.stElementContainer {
     display: none !important;
+}
+
+/* Generated Streamlit class names. They carry layout, not colour, and they
+   change between Streamlit releases: if a container stops filling its column
+   or the chat input grows a stray border, check these first. */
+.st-emotion-cache-17zstxb {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 100%;
+    min-width: 1rem;
+    flex: 1 1 auto;
+}
+.st-emotion-cache-jchovf,
+.st-emotion-cache-jchovf:focus-within {
+    background-color: transparent !important;
+    border: unset !important;
+}
+
+/* Streamlit replaced the `data-baseweb` attributes with its own testids, so
+   every rule written against `data-baseweb="input"` or `"select"` matches
+   nothing. The dark theme looked right anyway because Streamlit's own base is
+   dark; the light theme showed black fields. These target what renders today.
+   If a field goes back to Streamlit's colours, check these names first. */
+[data-testid="stNumberInputContainer"] {
+    background-color: var(--bg-surface) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: var(--radius-sm) !important;
+}
+[data-testid="stNumberInputField"] {
+    background-color: transparent !important;
+    color: var(--text-primary) !important;
+    border: none !important;
+}
+[data-testid="stNumberInputStepUp"],
+[data-testid="stNumberInputStepDown"] {
+    background-color: var(--bg-elevated) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-subtle) !important;
+}
+[data-testid="stSelectbox"] div:has(> input) {
+    background-color: var(--bg-surface) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: var(--radius-sm) !important;
+}
+[data-testid="stSelectbox"] input {
+    background-color: transparent !important;
+    color: var(--text-primary) !important;
+}
+[data-testid="stRadioOption"],
+[data-testid="stRadioOption"] * {
+    color: var(--text-primary) !important;
+}
+[data-testid="stWidgetLabel"],
+[data-testid="stWidgetLabel"] * {
+    color: var(--text-secondary) !important;
+}
+
+/* The step buttons pick up the pill radius from the global button rule, which
+   makes them read as two lozenges laid on top of the field instead of part of
+   it. Squaring them and letting them stretch puts them back inside the box. */
+[data-testid="stNumberInputStepUp"],
+[data-testid="stNumberInputStepDown"] {
+    border: none !important;
+    border-left: 1px solid var(--border-subtle) !important;
+    border-radius: 0 !important;
+    align-self: stretch !important;
+    height: auto !important;
+    min-width: 30px !important;
+    padding: 0 !important;
+}
+[data-testid="stNumberInputStepUp"] {
+    border-top-right-radius: var(--radius-sm) !important;
+    border-bottom-right-radius: var(--radius-sm) !important;
+}
+[data-testid="stNumberInputStepUp"] svg,
+[data-testid="stNumberInputStepDown"] svg {
+    fill: var(--text-primary) !important;
+}
+
+/* The dropdown arrow keeps Streamlit's near-white fill, which is invisible on
+   a light field and harsh on a dark one. The icon declares fill="currentColor"
+   and its first path is a fill="none" square, so only `color` is set here:
+   forcing `fill` on the paths paints that square and the arrow becomes a
+   solid block. */
+[data-testid="stSelectbox"] svg {
+    color: var(--text-secondary) !important;
+}
+[data-testid="stSelectbox"]:hover svg {
+    color: var(--text-primary) !important;
+}
+
+/* Streamlit hangs an anchor link off every heading and reveals it on hover.
+   It is dead weight here — the dashboard is one page with no sections to link
+   to — and revealing it widens the heading enough to flash a scrollbar. */
+[data-testid="stHeaderActionElements"] {
+    display: none !important;
+}
+
+/* The tooltip body carries Streamlit's own dark surface whatever the theme is,
+   so on the light theme it arrives as a dark box in the middle of a white
+   page. */
+[data-testid="stTooltipContent"] {
+    background-color: var(--bg-elevated) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: var(--radius-sm) !important;
+    box-shadow: var(--shadow-md) !important;
+}
+[data-testid="stTooltipContent"] * {
+    color: var(--text-primary) !important;
 }

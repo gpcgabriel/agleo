@@ -12,6 +12,7 @@ PENDING_KEY = "pending_action"
 PENDING_CONFIRMED_KEY = "pending_action_confirmed"
 TOAST_KEY = "toast_message"
 CHAT_KEY = "chat_messages"
+PROMPT_KEY = "prompt_awaiting_agent"
 
 
 # -- Simulation session -----------------------------------------------------
@@ -109,3 +110,34 @@ def confirm_pending():
 def pending_is_confirmed():
     """Returns: bool: True if there is a confirmed proposal waiting to run."""
     return get_pending() is not None and st.session_state.get(PENDING_CONFIRMED_KEY, False)
+
+
+# -- Prompt awaiting the agent ----------------------------------------------
+
+
+def set_prompt_for_agent(prompt):
+    """Hands a prompt to the next render instead of running it on this one.
+
+    Answering takes tens of seconds, and Streamlit stops a running script the
+    moment any widget is touched. Deferring the call by one render lets the
+    controls that would interrupt it be drawn disabled first.
+
+    Args:
+        prompt (str): What the operator submitted.
+    """
+    st.session_state[PROMPT_KEY] = prompt
+
+
+def get_prompt_for_agent():
+    """Returns: str or None: The prompt this render has to answer."""
+    return st.session_state.get(PROMPT_KEY)
+
+
+def clear_prompt_for_agent():
+    """Forgets the prompt, whether or not it was answered."""
+    st.session_state[PROMPT_KEY] = None
+
+
+def agent_is_running():
+    """Returns: bool: True if this render is waiting on the agent."""
+    return get_prompt_for_agent() is not None
