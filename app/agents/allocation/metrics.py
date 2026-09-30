@@ -52,10 +52,24 @@ class AllocationMetrics:
                 "elapsed_seconds": 0.0,
                 "provisioned": 0,
                 "failed": 0,
+                "omitted": 0,
+                "invented": 0,
             }
         )
 
-    def add_call(self, step, station_id, outcome, applications, prompt_chars, elapsed_seconds, provisioned, failed):
+    def add_call(
+        self,
+        step,
+        station_id,
+        outcome,
+        applications,
+        prompt_chars,
+        elapsed_seconds,
+        provisioned,
+        failed,
+        omitted=0,
+        invented=0,
+    ):
         """Records a station that was asked.
 
         Args:
@@ -67,6 +81,9 @@ class AllocationMetrics:
             elapsed_seconds (float): Wall clock spent waiting for the model.
             provisioned (int): Applications placed.
             failed (int): Applications that could not be placed.
+            omitted (int): Applications asked about that the reply left out.
+                These are the decisions that used to leave no trace.
+            invented (int): Ids the reply named that were never asked about.
         """
         self.records.append(
             {
@@ -79,6 +96,8 @@ class AllocationMetrics:
                 "elapsed_seconds": round(elapsed_seconds, 3),
                 "provisioned": provisioned,
                 "failed": failed,
+                "omitted": omitted,
+                "invented": invented,
             }
         )
 
@@ -103,6 +122,8 @@ class AllocationMetrics:
                     "elapsed_seconds": 0.0,
                     "provisioned": 0,
                     "failed": 0,
+                    "omitted": 0,
+                    "invented": 0,
                 },
             )
             if record["outcome"] == "skipped":
@@ -117,6 +138,8 @@ class AllocationMetrics:
             row["elapsed_seconds"] += record["elapsed_seconds"]
             row["provisioned"] += record["provisioned"]
             row["failed"] += record["failed"]
+            row["omitted"] += record.get("omitted", 0)
+            row["invented"] += record.get("invented", 0)
 
         rows = [by_step[step] for step in sorted(by_step)]
         for row in rows:

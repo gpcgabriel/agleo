@@ -12,7 +12,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.agents.allocation.allocator import LLMAllocator
-from app.agents.allocation.decision import AllocationDecision, split_without_duplicates
+from app.agents.allocation.decision import AllocationDecision, reconcile
 from app.agents.allocation.prompt import build_allocation_prompt, build_history_section
 from app.agents.allocation.state import collect_state, find_pending_app_ids, should_skip
 from app.core.config import SimulationConfig
@@ -47,18 +47,67 @@ def resolve_model():
 
 def test_an_application_is_never_placed_by_two_strategies():
     decision = AllocationDecision(best_fit=[1, 2], longest_duration=[2, 3])
-    best_fit, longest_duration = split_without_duplicates(decision)
+    answer = reconcile(decision, [1, 2, 3])
 
-    assert best_fit == [1, 2]
-    assert longest_duration == [3]
-    assert not set(best_fit) & set(longest_duration)
+    assert answer.best_fit == [1, 2]
+    assert answer.longest_duration == [3]
+    assert not set(answer.best_fit) & set(answer.longest_duration)
 
 
 def test_an_empty_decision_is_valid():
-    best_fit, longest_duration = split_without_duplicates(AllocationDecision())
+    answer = reconcile(AllocationDecision(), [])
 
-    assert best_fit == []
-    assert longest_duration == []
+    assert answer.best_fit == []
+    assert answer.longest_duration == []
+    assert answer.is_complete()
+
+
+def test_an_application_the_reply_left_out_is_reported():
+    """Issue Q: an omitted application was not placed, not counted as failed
+    and absent from `details`, so 19% of decisions left no trace at all."""
+    answer = reconcile(AllocationDecision(best_fit=[1], longest_duration=[2]), [1, 2, 3, 4])
+
+    assert answer.omitted == [3, 4]
+    assert not answer.is_complete()
+
+
+def test_an_id_the_station_was_not_asked_about_is_not_placed():
+    """`hybrid_allocation` places any id handed to it, so the station would
+    act outside the neighbourhood it was given."""
+    answer = reconcile(AllocationDecision(best_fit=[1, 99], longest_duration=[2]), [1, 2])
+
+    assert answer.best_fit == [1]
+    assert answer.invented == [99]
+
+
+def test_an_empty_reply_to_a_real_question_omits_everything():
+    answer = reconcile(AllocationDecision(), [7, 8])
+
+    assert answer.omitted == [7, 8]
+    assert answer.best_fit == [] and answer.longest_duration == []
+
+
+def test_a_reply_that_covers_the_question_exactly_is_complete():
+    answer = reconcile(AllocationDecision(best_fit=[2], longest_duration=[1]), [1, 2])
+
+    assert answer.is_complete()
+    assert answer.omitted == [] and answer.invented == []
+
+
+def test_a_duplicate_is_dropped_without_being_called_omitted():
+    """The id is covered, just twice; counting it as omitted would overstate
+    the failure rate the measurement is there to report."""
+    answer = reconcile(AllocationDecision(best_fit=[5], longest_duration=[5]), [5])
+
+    assert answer.best_fit == [5]
+    assert answer.longest_duration == []
+    assert answer.is_complete()
+
+
+def test_omissions_keep_the_order_the_question_had():
+    answer = reconcile(AllocationDecision(best_fit=[20]), [30, 20, 10])
+
+    assert answer.omitted == [30, 10]
 
 
 # -- State selection --------------------------------------------------------

@@ -16,12 +16,14 @@ from math import sqrt
 from geopy.distance import geodesic
 from leosim.components import Application, GroundStation, ProcessUnit, Satellite, User
 
+from app.agents.allocation.digest import component_id
+
 FUTURE_POSITIONS_SHOWN = 3
 
 
 def find_pending_app_ids(all_apps):
     """Returns: list: IDs of the applications still waiting for placement."""
-    return [int(key.split("_")[1]) for key, info in all_apps.items() if info.get("pending")]
+    return [component_id(key) for key, info in all_apps.items() if info.get("pending")]
 
 
 def find_reachable_satellite_ids(station):
@@ -140,10 +142,10 @@ def build_network_state(model, station, scenario, all_apps, pending_app_ids, rea
     for info in relevant_users.values():
         for access_point in info.get("access_points", []):
             if access_point.startswith("Satellite_"):
-                satellite_ids.add(int(access_point.split("_")[1]))
+                satellite_ids.add(component_id(access_point))
 
     satellites = {
-        key: info for key, info in Satellite.export_satellites().items() if int(key.split("_")[1]) in satellite_ids
+        key: info for key, info in Satellite.export_satellites().items() if component_id(key) in satellite_ids
     }
 
     # Recording where each process unit sits while the satellites still carry
@@ -169,15 +171,13 @@ def build_network_state(model, station, scenario, all_apps, pending_app_ids, rea
             info["future"] = info["future"][:FUTURE_POSITIONS_SHOWN]
 
     process_units = {
-        key: info
-        for key, info in ProcessUnit.export_processunits().items()
-        if int(key.split("_")[1]) in process_unit_ids
+        key: info for key, info in ProcessUnit.export_processunits().items() if component_id(key) in process_unit_ids
     }
 
-    applications = {key: info for key, info in all_apps.items() if int(key.split("_")[1]) in pending_set}
+    applications = {key: info for key, info in all_apps.items() if component_id(key) in pending_set}
 
     topology = model.topology.export_topology()
-    relevant_user_ids = {int(key.split("_")[1]) for key in relevant_users}
+    relevant_user_ids = {component_id(key) for key in relevant_users}
     topology["user_sat"] = [link for link in topology.get("user_sat", []) if link["user"] in relevant_user_ids]
     topology["gs_sat"] = [link for link in topology.get("gs_sat", []) if link["gs"] == station.id]
 

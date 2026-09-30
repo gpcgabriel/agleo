@@ -15,15 +15,14 @@ from agno.models.ollama import Ollama
 from leosim.components.allocation_algorithms import best_fit_allocation
 from leosim.components.allocation_algorithms.hybrid_allocation import hybrid_allocation
 
-from app.agents.allocation.decision import AllocationDecision, split_without_duplicates
+from app.agents.allocation.decision import AllocationDecision, reconcile
+from app.helper_functions.ollama_helper import DEFAULT_HOST, DEFAULT_MODEL
 from app.agents.allocation.metrics import AllocationMetrics
 from app.agents.allocation.prompt import INSTRUCTIONS, build_allocation_prompt
 from app.agents.allocation.state import collect_state
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_MODEL = "llama3.1:8b"
-DEFAULT_HOST = "http://localhost:11434"
 DEFAULT_CONTEXT_SIZE = 8192
 LOG_FILENAME = "agent_log.jsonl"
 
@@ -53,6 +52,12 @@ class LLMAllocator:
                 id=model_name,
                 host=host,
                 options={"temperature": 0, "num_ctx": DEFAULT_CONTEXT_SIZE},
+                # Choosing a strategy is a classification, not a puzzle. A
+                # reasoning model left to think spends most of a call emitting
+                # it: qwen3:1.7b took 204 s per call with thinking on, against
+                # 15 s for a larger model that does not think. Models without a
+                # thinking mode accept the flag and ignore it.
+                request_params={"think": False},
             ),
             instructions=INSTRUCTIONS,
             output_schema=AllocationDecision,
@@ -92,13 +97,23 @@ class LLMAllocator:
         """
         return hybrid_allocation(model, parameters, best_fit_ids, longest_duration_ids, [], [])
 
-    def record(self, model, station, best_fit_ids, longest_duration_ids, results):
-        """Stores one decision and appends it to the log."""
+    def record(self, model, station, decision, results):
+        """Stores one decision and appends it to the log.
+
+        Args:
+            model (Simulator): The running simulator.
+            station (GroundStation): The station that was asked.
+            decision (ReconciledDecision): The reply, matched against the
+                question.
+            results (dict): What `hybrid_allocation` returned.
+        """
         entry = {
             "step": model.scheduler.steps,
             "ground_station": station.id,
-            "best_fit": best_fit_ids,
-            "longest_duration": longest_duration_ids,
+            "best_fit": decision.best_fit,
+            "longest_duration": decision.longest_duration,
+            "omitted": decision.omitted,
+            "invented": decision.invented,
             "results": results,
         }
         self.get_decisions(station.id).append(entry)
@@ -162,11 +177,32 @@ class LLMAllocator:
 
         elapsed = time.monotonic() - started
 
-        best_fit_ids, longest_duration_ids = split_without_duplicates(decision)
-        results = self.apply_decision(model, parameters, best_fit_ids, longest_duration_ids)
+        answer = reconcile(decision, pending_app_ids)
+        results = self.apply_decision(model, parameters, answer.best_fit, answer.longest_duration)
 
         if isinstance(results, str):
             results = loads(results)
+
+        # Writing the gaps into the same record the placements go into. An
+        # application the model left out stays pending and is asked about again
+        # next tick, so nothing is lost — but without this the reply looked
+        # like a complete answer to a smaller question.
+        results["omitted"] = len(answer.omitted)
+        results["invented"] = len(answer.invented)
+        for app_id in answer.omitted:
+            results["details"].append({"app": app_id, "strategy": None, "result": "omitted_by_model"})
+        for app_id in answer.invented:
+            results["details"].append({"app": app_id, "strategy": None, "result": "not_in_question"})
+
+        if not answer.is_complete():
+            logger.warning(
+                "Step %s | GS_%s | asked about %s, reply omitted %s and invented %s",
+                step,
+                station.id,
+                len(pending_app_ids),
+                answer.omitted,
+                answer.invented,
+            )
 
         logger.info(
             "Step %s | GS_%s | provisioned=%s failed=%s",
@@ -175,7 +211,7 @@ class LLMAllocator:
             results.get("provisioned", 0),
             results.get("failed", 0),
         )
-        self.record(model, station, best_fit_ids, longest_duration_ids, results)
+        self.record(model, station, answer, results)
         self.metrics.add_call(
             step,
             station.id,
@@ -185,5 +221,7 @@ class LLMAllocator:
             elapsed,
             results.get("provisioned", 0),
             results.get("failed", 0),
+            omitted=len(answer.omitted),
+            invented=len(answer.invented),
         )
         self.metrics.write(getattr(model, "logs_directory", "logs"))
