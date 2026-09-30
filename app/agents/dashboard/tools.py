@@ -91,15 +91,41 @@ class ProposalBuffer:
     proposals of one conversation never leak into another.
     """
 
-    def __init__(self, current_config=None):
+    def __init__(self, current_config=None, default_position=None):
         """Args:
         current_config (SimulationConfig): Active simulation configuration,
             used as the base when the operator asks for a restart without
             specifying every parameter. May be None when no simulation has
             been loaded yet.
+        default_position (tuple): (latitude, longitude) to use for a node the
+            operator did not place. The composition root computes it from the
+            running scenario; this layer has no way to know where the network
+            is.
         """
         self.current_config = current_config
+        self.default_position = default_position
         self.proposals = []
+
+    def fill_positions(self, node_types, latitudes, longitudes):
+        """Completes the positions the operator did not give.
+
+        Args:
+            node_types (list): One entry per node.
+            latitudes (list): Latitudes given, possibly empty.
+            longitudes (list): Longitudes given, possibly empty.
+
+        Returns:
+            tuple: (latitudes, longitudes, what was defaulted). The first two
+            are None when no position was given and none can be chosen.
+        """
+        if latitudes and longitudes:
+            return latitudes, longitudes, ()
+
+        if self.default_position is None:
+            return None, None, ()
+
+        latitude, longitude = self.default_position
+        return [latitude] * len(node_types), [longitude] * len(node_types), ("position",)
 
     def get_proposals(self):
         """Returns: list: A copy of the recorded proposals, in creation order."""
@@ -233,45 +259,59 @@ class ProposalBuffer:
 
         return self.register(ProposedAction(ActionType.ADD_APP_TO_USER, payload))
 
-    def propose_add_node(self, node_types, latitudes, longitudes, altitudes) -> str:
+    def propose_add_node(self, node_types, latitudes=None, longitudes=None, altitudes=None) -> str:
         """Proposes to add one or more new nodes (Satellites or GroundStations).
+
+        Only node_types is required. A position or an altitude the operator did
+        not state is chosen here and reported in the proposal, so the operator
+        can see what was decided for them.
 
         Args:
             node_types: List of node types, for example ["Satellite"].
-            latitudes: List of latitudes, one per node.
-            longitudes: List of longitudes, one per node.
-            altitudes: List of altitudes, one per node.
+            latitudes: List of latitudes, one per node. Optional.
+            longitudes: List of longitudes, one per node. Optional.
+            altitudes: List of altitudes in kilometres, one per node. Optional.
         """
         try:
             node_types = coerce_list(node_types, "node_types")
-            latitudes = coerce_list(latitudes, "latitudes")
-            longitudes = coerce_list(longitudes, "longitudes")
-            altitudes = coerce_list(altitudes, "altitudes")
+            latitudes = coerce_list(latitudes, "latitudes") if latitudes is not None else []
+            longitudes = coerce_list(longitudes, "longitudes") if longitudes is not None else []
+            altitudes = coerce_list(altitudes, "altitudes") if altitudes is not None else []
         except ValueError as error:
             return f"Error: {error}"
 
         if not node_types:
             return "Error: no nodes provided."
 
-        lengths = {len(node_types), len(latitudes), len(longitudes), len(altitudes)}
-        if len(lengths) != 1:
+        supplied = {len(values) for values in (latitudes, longitudes, altitudes) if values}
+        if supplied - {len(node_types)}:
             return (
-                "Error: the parallel lists have different lengths "
+                "Error: every list you pass must have one entry per node "
                 f"(node_types={len(node_types)}, latitudes={len(latitudes)}, "
                 f"longitudes={len(longitudes)}, altitudes={len(altitudes)})."
+            )
+
+        latitudes, longitudes, defaulted_position = self.fill_positions(node_types, latitudes, longitudes)
+        if latitudes is None:
+            return (
+                "Error: no position was given and the scenario has no ground station to place "
+                "the node near. Ask the operator for a latitude and longitude."
             )
 
         specs = []
         for index in range(len(node_types)):
             try:
+                defaulted = list(defaulted_position)
+                if not altitudes:
+                    defaulted.append("altitude")
+
                 specs.append(
                     NodeSpec(
                         node_type=node_types[index],
                         lat=latitudes[index],
                         lon=longitudes[index],
-                        alt=altitudes[index],
-                        cpu=randint(20, 100),
-                        memory=randint(20, 100),
+                        alt=altitudes[index] if altitudes else None,
+                        defaulted=defaulted,
                     )
                 )
             except (ValueError, TypeError) as error:

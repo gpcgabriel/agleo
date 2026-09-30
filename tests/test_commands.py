@@ -79,6 +79,10 @@ def test_restart_command_proposes_restarting_with_current_config():
 
 
 def test_review_command_answers_without_proposing_anything():
+    """The router decides `/review` is a question and hands the agent no way to
+    act, so `action_mode` is None here exactly as it is in the interface. What
+    used to hold it back was an instruction naming the tools, and that is what
+    leaked one capability model into the other."""
     model = resolve_model()
     if model is None:
         print("  SKIP  test_review_command_answers_without_proposing_anything (Ollama or model unavailable)")
@@ -89,7 +93,7 @@ def test_review_command_answers_without_proposing_anything():
         "[SIMULATION STATE] User 1 is disconnected. Ground Station 28 has 0 servers.\n\n"
         "Use this data to answer."
     )
-    result = run_agent("/review", model, MODE_TOOLS, context, make_config())
+    result = run_agent("/review", model, None, context, make_config())
 
     assert not result.has_proposals(), f"/review should propose nothing, proposed {result.proposals}"
     assert "disconnected" in result.text.lower() or "user 1" in result.text.lower()

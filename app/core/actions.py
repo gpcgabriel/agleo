@@ -3,6 +3,8 @@
 Each action has its own type and a payload with named, validated fields.
 """
 
+from random import randint
+
 
 class ActionType:
     """Identifiers of the supported actions.
@@ -108,13 +110,18 @@ class NodeSpec:
 
     NODE_TYPES = ("Satellite", "GroundStation")
 
-    def __init__(self, node_type, lat, lon, alt, cpu, memory):
+    # Altitude is a property of what the node is, not a choice the operator
+    # makes. Satellites in the shipped traces sit between 320 and 528 km.
+    DEFAULT_ALTITUDE = {"Satellite": 550.0, "GroundStation": 0.0}
+
+    def __init__(self, node_type, lat, lon, alt=None, cpu=None, memory=None, defaulted=()):
         if node_type not in self.NODE_TYPES:
             raise ValueError(f"Invalid node_type: {node_type!r}. Expected one of {self.NODE_TYPES}.")
 
         lat, lon = check_coordinates(lat, lon)
-        cpu = int(cpu)
-        memory = int(memory)
+        alt = self.DEFAULT_ALTITUDE[node_type] if alt is None else alt
+        cpu = randint(20, 100) if cpu is None else int(cpu)
+        memory = randint(20, 100) if memory is None else int(memory)
         if cpu < 1:
             raise ValueError(f"cpu must be >= 1, got {cpu}.")
         if memory < 1:
@@ -126,10 +133,15 @@ class NodeSpec:
         self.alt = float(alt)
         self.cpu = cpu
         self.memory = memory
+        # What the operator never stated, so the gate can say so.
+        self.defaulted = tuple(sorted(defaulted))
 
     def describe(self):
         """Returns: str: Short description used when summarizing several nodes."""
-        return f"{self.node_type} at ({self.lat:.4f}, {self.lon:.4f}) with CPU={self.cpu}, Mem={self.memory}"
+        return (
+            f"{self.node_type} at ({self.lat:.4f}, {self.lon:.4f}, {self.alt:.0f}km) "
+            f"with CPU={self.cpu}, Mem={self.memory}"
+        )
 
 
 class AddNodesPayload:
@@ -147,6 +159,19 @@ class AddNodesPayload:
         if len(self.nodes) == 1:
             return f"Add {self.nodes[0].describe()}"
         return f"Add {len(self.nodes)} nodes: " + ", ".join(node.describe() for node in self.nodes)
+
+    def describe_defaults(self):
+        """Returns: str: What was chosen for the operator, empty when nothing was.
+
+        Kept apart from `describe` on purpose. The description is handed to the
+        model as the tool's reply, and a note in brackets there comes back as an
+        argument on the next call.
+        """
+        chosen = sorted({field for node in self.nodes for field in node.defaulted})
+        if not chosen:
+            return ""
+
+        return f"Chosen automatically: {', '.join(chosen)}."
 
 
 class AddUserPayload:
@@ -209,6 +234,64 @@ class ProposedAction:
         self.action_type = action_type
         self.payload = payload
         self.description = payload.describe()
+        # Shown at the gate, never returned to the model.
+        self.defaults_note = payload.describe_defaults() if hasattr(payload, "describe_defaults") else ""
 
     def __repr__(self):
         return f"ProposedAction(action_type={self.action_type!r}, description={self.description!r})"
+
+
+# Actions a skill script can propose. All of them, including
+# `restart_simulation`: the script names the settings to change and the runner
+# resolves them against the configuration currently loaded, which only the
+# dashboard's own process holds.
+SCRIPTABLE_ACTIONS = ActionType.ALL
+
+# Actions whose payload cannot be built where the script runs, so the script
+# prints the arguments and the runner completes them.
+ACTIONS_NEEDING_CURRENT_CONFIG = (ActionType.RESTART_SIMULATION,)
+
+
+def build_payload(action_type, arguments, current_config=None):
+    """Builds the payload for an action from plain arguments.
+
+    Shared by the skill script, which validates before printing, and by the
+    runner, which rebuilds the payload from what the script printed. Both
+    boundaries therefore reject the same values.
+
+    Args:
+        action_type (str): One of `SCRIPTABLE_ACTIONS`.
+        arguments (dict): Fields for that action.
+        current_config (SimulationConfig): The configuration in use. Required
+            by the actions in `ACTIONS_NEEDING_CURRENT_CONFIG` and ignored by
+            the rest.
+
+    Returns:
+        object: The validated payload.
+
+    Raises:
+        ValueError: If the action is unknown or the arguments are invalid.
+    """
+    if action_type == ActionType.RESTART_SIMULATION:
+        if current_config is None:
+            raise ValueError("restart_simulation needs the configuration currently loaded.")
+        return RestartSimulationPayload(current_config.copy_with(**arguments))
+
+    if action_type == ActionType.RUN_SIMULATION:
+        return RunSimulationPayload(arguments["steps"])
+
+    if action_type == ActionType.ADD_PROCESS_UNIT:
+        return AddProcessUnitPayload(
+            arguments["target_type"], arguments["target_id"], arguments["cpu"], arguments["memory"]
+        )
+
+    if action_type == ActionType.ADD_USER:
+        return AddUserPayload(arguments["lat"], arguments["lon"], arguments.get("connection_range", 1500))
+
+    if action_type == ActionType.ADD_APP_TO_USER:
+        return AddAppToUserPayload(arguments["user_id"], arguments["cpu"], arguments["memory"])
+
+    if action_type == ActionType.ADD_NODES:
+        return AddNodesPayload([NodeSpec(**spec) for spec in arguments["nodes"]])
+
+    raise ValueError(f"Action {action_type!r} cannot be built from arguments. Expected one of {SCRIPTABLE_ACTIONS}.")
