@@ -107,7 +107,7 @@ def longest_duration_allocation(model, parameters):
                             max_duration = duration
                             best_target = pu
 
-        # 4. Provisionamento e Contagem
+        # Provisioning and counting.
         if best_target is not None:
             app = access_model.application
 

@@ -5,99 +5,58 @@ Where the project stands and what comes next. The long-term goal is an
 orchestrator above them that ties those decisions to operator intent, and a
 dashboard agent that puts a network manager in the loop.
 
-**Current priority (September 2026).** Phases 3, 4 and 5 are the three problems
-the thesis is about, and they come first:
+**Where it stands (30 September 2026).**
 
-1. **Phase 3** — the context load on the ground stations' small models
-2. **Phase 4** — the orchestrator that manages the other instances
-3. **Phase 5** — running whole simulations from an operator's intent
+| | |
+| --- | --- |
+| Phases 1, 2 | done — layering, and an engine that no longer imports the LLM stack |
+| **Phase 3** | **frozen**: a tick is 47% faster with the allocation outcome unchanged |
+| **Phase 6** | **closed**: `llama3.1:8b` cannot pass arguments to a skill, so function calling is the capability model |
+| Phase 4, 5 | designs settled, not built. The next work |
+| Phases 7, 8 | supporting: one process many simulations, and an experiment harness |
+| Phases 9, 10 | explored and **deliberately deferred**; both change simulation results |
 
-**Demonstration scope (settled 26 September 2026): Phase 3 alone, done well.**
+**Demonstration scope, settled 26 September 2026: Phase 3 alone, done well.**
 The number that tells the story is model calls per tick, before and after, with
-the allocation outcome unchanged. Phases 4 and 5 have their designs settled in
-their sections, but they are built after the demonstration, not for it.
+the allocation outcome unchanged.
 
-Orbital propagation (Phase 9) and the network model correction (Phase 10) were
-explored and **deliberately deferred**. Both change simulation results, and
-neither is on the path to an end-to-end demonstration. What was learned while
-exploring them is recorded in those sections and in
-[Literature notes](#literature-notes) so none of it has to be rediscovered.
+Two things are deliberately unfinished inside Phase 3 and are the first
+candidates when it reopens: the **stability filter**, which is blocked on the
+history question, and the **evaluation arm against `best_fit`**, which needs
+Phase 8 and a metric that separates the strategies (threat 3).
+
+What was learned while exploring the deferred phases is recorded in their
+sections and in [Literature notes](#literature-notes), so none of it has to be
+rediscovered.
 
 ---
 
 ## Phase 1 — Decoupling and structure — **done**
 
-### What changed
+The application was one layer where Streamlit, the LLM agent and the simulation
+engine all called into each other. It is now four, with one enforced rule:
+**`streamlit` may only be imported inside `app/ui`** (`tests/test_layering.py`).
+`app.py` went from 600 lines to a composition root; the layers are listed in
+[PROJECT.md](PROJECT.md).
 
-The application was one layer where Streamlit, the LLM agent and the
-simulation engine all called into each other. It is now four layers with one
-enforced rule: **`streamlit` may only be imported inside `app/ui`**
-(`tests/test_layering.py`).
-
-| Layer | Package | Lines | Owns |
-| --- | --- | --- | --- |
-| Engine | `leosim/` | — | Components, topology, scheduling |
-| Domain | `app/core/` | 1575 | Session, actions, handlers, catalog, routing |
-| Agents | `app/agents/` | 621 | Prompts, tools, runs, recovery |
-| Interface | `app/ui/` | 953 | Widgets, map, chat, theme |
-
-`app.py` went from a 600-line module to a 144-line composition root spread
-across 43 modules, the largest of which is 291 lines.
-
-### Structural moves
+What the refactor put in place, and why each matters later:
 
 * `SimulationSession` owns the simulator, history, viewed index and scheduled
-  steps. Four loose `st.session_state` keys became one.
+  steps — four loose `st.session_state` keys became one object.
 * `SimulationConfig` replaced six positional arguments passed hand to hand.
-* `ProposedAction` (typed `ActionType` + validated payload) replaced a free
-  dictionary with no schema.
-* `execute_pending_action` (≈140 lines, if/elif over action strings) became
-  six handler modules plus a three-line dispatcher.
-* Command routing left the render function for `app/core/router.py`.
-* `render_chat_panel` (155 lines) split into `gate`, `history` and `input`.
-* `SatelliteCatalog` indexes the traces file once instead of reparsing it per
-  lookup.
+* `ProposedAction` — typed `ActionType` plus a validated payload — replaced a
+  free dictionary with no schema. Every agent change goes through it.
+* A ~140-line if/elif over action strings became six handler modules and a
+  three-line dispatcher.
+* `SatelliteCatalog` indexes the traces file once instead of reparsing per
+  lookup: building a 15-satellite scenario went from ~7 s to ~0.4 s.
 
-### Defects fixed
-
-1. `add_process_unit` always failed — the payload was a dict while the
-   executor iterated a list.
-2. `connect_server` always failed on a station with no servers — `export()`
-   writes `None`, `Simulator.initialize` restores it, `.append()` raised.
-3. The agent ran without effective prompts — `description` and `instructions`
-   were passed as function objects, and one returned a tuple annotated `str`.
-4. `Simulator` mutated a shared mutable default, so two instances overwrote
-   each other's `scenario`.
-5. Disabling agent actions raised `ValueError` and froze the chat.
-6. The "trace already taken" check compared NORAD catalog ids against
-   internal sequential ids, so it never excluded anything.
-7. Satellites added by the agent took the NORAD id as their internal id,
-   breaking the numbering.
-8. The timeline showed the history index, so a change made at step 0 read as
-   step 1.
-9. `st.components.v1.html` was deprecated; replaced with `st.iframe`.
-
-### Behaviour changes to be aware of
-
-* **The selected scenario now reaches the allocation algorithm.** It was
-  always `'hybrid'` before. `longest_duration_allocation` branches on it, so
-  results under `leo`/`terrestrial` with that algorithm differ from any
-  previously collected data.
-* Step 0 now shows real connectivity instead of every user disconnected.
-* `add_*` actions no longer consume a simulation tick; they refresh
-  connectivity and publish a snapshot at the same tick.
-
-### Performance
-
-Adding a satellite went from **38.6 s to 0.08 s**. Two independent causes: the
-traces file was reparsed on every lookup, and the geodesic distance was
-computed for all 286,880 indexed positions. The catalog parses once and ranks
-with a vectorized haversine, refining only the 25 nearest candidates with the
-exact geodesic.
-
-### Coverage
-
-56 tests across 12 files, none of which mock Streamlit.
+**Behaviour changes that outlived the refactor.** The selected scenario now
+reaches the allocation algorithm — it was collected in the sidebar and dropped,
+so every run had been `hybrid` whatever the operator picked. Step 0 shows real
+connectivity instead of every user disconnected. `add_*` actions no longer
+consume a tick; they refresh connectivity and record a snapshot, so a change
+and a tick are no longer the same event on the timeline.
 
 ---
 
@@ -150,6 +109,59 @@ demonstration is Phase 3 — the tick made affordable, measured before and after
 
 ---
 
+## Threats to validity
+
+### 1. The station's decision moves under perturbations that carry no information
+
+Re-asking at an unchanged state returns a different answer about **39%** of the
+time. Adding a line to the prompt that carries no new information moves the
+answer in 5 of 6 stations. One model, one scenario, 68 decisions — it says
+something about this deployment, not about LLM allocation in general.
+
+**Why it threatens the work.** The claim under test is that a localized agent
+decides something. If the answer moves under a no-op, part of what is being
+measured is noise, and no prompt change can be read as causal.
+
+**Partly acted on.** The 19% of decisions that used to vanish silently — the
+model omitting applications from both strategy lists — is issue Q, fixed
+30 September 2026 and now counted in the metrics. What remains is the
+sensitivity itself. Before the result is quotable it needs more than one model,
+more than one scenario, and the three-arm history experiment in Phase 3.
+
+### 2. The model does not fit in the GPU
+
+`llama3.1:8b` runs about half in VRAM and half on CPU on a GTX 1650 with 4 GB.
+Every wall-clock number in Phase 3 is therefore a property of *this*
+deployment. The *ratios* — 82% less prompt, 47% less wall clock — are the
+transferable part; the absolute seconds are not. A model that fits entirely in
+VRAM would move the floor, though not necessarily as much as expected:
+`qwen3:1.7b` at 100% VRAM took **204 s per call**, because it is a reasoning
+model and spends the call emitting thought. Fitting in VRAM does not determine
+speed; `think: false` is set for that reason.
+
+### 3. "Applications placed" does not measure what the agent decides
+
+Forcing every application through `hybrid_allocation` with one fixed strategy
+gives the same count either way — 18, 19, 19 over three ticks for `best_fit`
+and identically 18, 19, 19 for `longest_duration` — while **7 of 20
+applications land on a different process unit**. The strategies differ in
+*where* an application goes, not in *whether* it goes anywhere, so counting
+placements cannot tell them apart, and an agent whose job is choosing between
+them cannot be evaluated by it.
+
+A second confound sits next to it: the full `best_fit_allocation` and
+`longest_duration_allocation` place 6.3 and 11.5 applications per tick, but
+that gap is their own selection and deprovisioning logic, which
+`hybrid_allocation` does not run at all.
+
+**What is needed before anything can be concluded about whether the agent pays
+for itself:** a metric that separates the strategies — service continuity and
+migration count for `longest_duration`, unit fragmentation for `best_fit` — and
+arms that differ in one thing, with the deterministic baselines applying their
+strategy through the same path the agent's decision takes.
+
+---
+
 ## Known issues carried into the next phases
 
 | # | Issue | Addressed in |
@@ -158,7 +170,7 @@ demonstration is Phase 3 — the tick made affordable, measured before and after
 | ~~B~~ | ~~`resource_management_algorithm` is ~250 lines with three parsing fallbacks~~ — resolved in Phase 2 | done |
 | C | Agent-added satellites get a compacted trace and teleport between orbital passes | Phase 9 |
 | D | `tick_duration` is computed and never read; one trace step is ~60 s of real time, recorded nowhere | Phase 9 |
-| E | Selecting the "Skills" agent mode raises `TypeError`; no skill has ever been written | Phase 6 |
+| ~~E~~ | ~~Selecting the "Skills" agent mode raises `TypeError`; no skill has ever been written~~ — fixed 29 September 2026: five skills, one per action | done |
 | F | `ComponentManager.model` is a global singleton; two simulations cannot coexist in one process | Phase 7 |
 | G | `refresh_connectivity` reproduces the scheduler's ordering outside the engine | Phase 7 |
 | H | Tick correctness is untested — tests assert the clock advances, not that allocation is right | Phase 8 |
@@ -170,24 +182,38 @@ demonstration is Phase 3 — the tick made affordable, measured before and after
 | N | A gateway accepts every satellite in range; real gateway earth stations serve 8 (Gen1) to 32 (Gen2) at a time | Phase 10 |
 | O | An LLM tick costs one model call per ground station — 28 with the RNP topology, minutes of wall clock | Phase 3 |
 | P | The slant-range formula is written five times: `Topology.within_range`, `Topology.calculate_distance`, `hybrid_allocation.distance`, `longest_duration_allocation.distance` and `state.find_reachable_satellite_ids`. This is what let issue K survive a fix | open |
-| Q | The model omits applications from both strategy lists, and `hybrid_allocation` never looks at them — not placed, not counted as failed, absent from `details`. Measured at 19% of decisions under a no-op prompt change | open |
+| ~~Q~~ | ~~The model omits applications from both strategy lists, and `hybrid_allocation` never looks at them~~ — fixed 30 September 2026. `reconcile` matches the reply against the question; omissions and invented ids are counted, logged and carried into the metrics | done |
 
-### What could be fixed now
+### The triage
 
-Every issue above was re-verified against the code on 28 September 2026. This
-is the standing triage; it is not permission to fix anything.
+Re-verified against the code on 28 September 2026 and updated as issues closed.
+This is a standing list, not permission to fix anything.
 
-**Fixed on 28 September 2026: K, L and M, together.** They had to move as a
-group.
+**Cheap and low risk, still open:**
 
-K was worse than this table said. It listed "two occurrences in `topology.py`";
-there were **five, across four files**, and the three that were nearly missed
-sit in the allocation path itself — `hybrid_allocation.distance` is what
-`LLMAllocator.apply_decision` runs, and `state.find_reachable_satellite_ids` is
-what decides which satellites a station is told about. Fixing only the engine
-pair would have left the agent and the engine disagreeing about what is in
-range, which is worse than both being wrong the same way. The formula living in
-five places is now issue P. Measured across all eight combinations, averaged over five ticks:
+| # | Cost | What it changes |
+| --- | --- | --- |
+| P | ~30 min | one slant-range formula instead of five. This is what let K survive a fix |
+| D | a field in the snapshot | records that one step is ~60 s of simulated time, which nothing does today |
+
+**Fixable, but each carries a design decision rather than a correction:**
+J (removing the user-to-ground-station link changes the network model, which is
+what Phase 10 is about), N (a gateway cap needs a number — 8 for Gen1, 32 for
+Gen2 — and a policy for the satellites turned away) and I (a symmetric round
+trip means deciding how `Topology` is serialized).
+
+**Blocked on a phase:** C and D on Phase 9, F and G on Phase 7, H on Phase 8.
+
+### Why K, L and M had to move together — and what it invalidated
+
+Fixed 28 September 2026. K was worse than the table said: it listed "two
+occurrences in `topology.py`" and there were **five, across four files**, three
+of them in the allocation path itself. Fixing only the engine pair would have
+left the agent and the engine disagreeing about what is in range, which is
+worse than both being wrong the same way. That the formula lives in five places
+is now issue P.
+
+Measured across all eight combinations, averaged over five ticks:
 
 | K | L | M | Connected users | Provisioned |
 | --- | --- | --- | --- | --- |
@@ -200,36 +226,11 @@ Correcting the slant-range geometry (K) without restoring the user's reach (M)
 takes provisioning to **zero**: with honest geometry and a 300 km reach, no
 user can see a satellite at 320-528 km. M was the fix that mattered; K and L
 were free once M was in, and they make the model physically honest rather than
-accidentally correct. After the three: 20/20 users connected on every tick and
-11 to 13 applications provisioned, against 2.2 before.
+accidentally correct.
 
-**This invalidates every allocation result recorded before that date.** The
-numbers in Phase 3's baseline were measured on a network where most pending
-applications belonged to users with no access point at all.
-
-**Cheap and low risk, still open:**
-
-| # | Cost | What it changes |
-| --- | --- | --- |
-| E | two lines in `app/ui/sidebar.py` | removes a radio option that raises `TypeError: LocalSkills.__init__() missing 1 required positional argument: 'path'` the moment it is selected |
-| D | a field in the snapshot | records that one step is ~60 s of simulated time, which nothing does today |
-
-**Fixable, but each carries a design decision rather than a correction:**
-
-| # | The decision hiding in it |
-| --- | --- |
-| J | removing the user-to-ground-station link changes the network model; it is what Phase 10 is about |
-| N | a gateway cap needs a number — 8 (Gen1) or 32 (Gen2) — and a policy for the satellites turned away |
-| I | making the round trip symmetric means deciding how `Topology` is serialized |
-
-**Not fixable now:**
-
-| # | Why |
-| --- | --- |
-| C | agent-added satellites teleport because the trace is sparse; only real propagation fixes it (Phase 9) |
-| F, G | the global singleton and the duplicated scheduler ordering are invasive and change no results (Phase 7) |
-| H | tick correctness can now be asserted meaningfully, since allocation actually succeeds — moved from blocked to open |
-| O | this is Phase 3, in progress |
+**This invalidates every allocation result recorded before that date**,
+including the first Phase 3 baseline: they were measured on a network where
+most pending applications belonged to users with no access point at all.
 
 ---
 
@@ -237,53 +238,17 @@ applications belonged to users with no access point at all.
 
 **Goal:** `leosim` stops depending on the LLM stack.
 
-### What changed
+The engine no longer imports `agno` or knows what a model is. The allocation
+strategy arrives as a plain callable with the same signature as the built-in
+algorithms, and the composition root assembles it: `app/ui/sidebar.py` for the
+dashboard, `main.py` for the CLI. `LLMAllocator.allocate` lives in
+`app/agents/allocation/` and is injected, which is what lets the same simulator
+run with `best_fit_allocation` or with a model behind it and nothing else
+change.
 
-`GroundStation` went from 424 lines to 109. It lost the `agno` imports, the
-`Agent` built in its constructor, `llm_params`, `decision_history`,
-`allocate_apps` and the 250-line `resource_management_algorithm`. What
-remains is a network component: connectivity, links and export.
-
-The allocation agent moved to `app/agents/allocation/`, split by
-responsibility:
-
-| Module | Lines | Responsibility |
-| --- | --- | --- |
-| `state.py` | 169 | Selecting the slice of network state the agent sees |
-| `allocator.py` | 159 | Running the agent, applying and recording the decision |
-| `prompt.py` | 58 | Building the prompt and the history section |
-| `decision.py` | 43 | The output schema and splitting into disjoint lists |
-
-`LLMAllocator.allocate(model, parameters)` has the same signature as
-`best_fit_allocation`, so the engine injects it like any other algorithm and
-never learns it is talking to a model.
-
-The three parsing fallbacks (JSON → regex → `ast.literal_eval`) are gone.
-`agno`'s `output_schema` constrains generation to a Pydantic model, so the
-reply arrives already validated — verified against `llama3.1:8b`.
-
-`Simulator.step` lost its dead `resource_management_algorithm is True`
-branch, which no entry point ever reached.
-
-### Composition root
-
-`app/core` must not import `app/agents`, so `build_simulator` and
-`create_session` accept an injected `allocation_algorithm`. The UI assembles
-it: `app/ui/sidebar.py` builds an `LLMAllocator` when the operator selects
-`llm_allocation`, and a restart preserves the injected strategy.
-
-### Coverage
-
-Three new layering tests (the engine never imports the LLM stack, the domain
-never imports the agent package, and a runtime check that building a
-simulation does not load `agno`) plus `tests/test_allocation.py` — eleven
-tests without a model and one integration test against Ollama.
-
-### Note on cost
-
-An LLM tick asks every ground station in turn. With the RNP topology that is
-28 model calls per step, minutes of wall clock. Tests exercise a single
-station; batch runs should expect this cost.
+**The cost this exposed** is Phase 3's subject: one model call per ground
+station per tick, which the engine now performs faithfully instead of silently
+skipping.
 
 ---
 
@@ -292,338 +257,83 @@ station; batch runs should expect this cost.
 **Goal:** make an LLM tick affordable. This is the first of the three problems
 the thesis is actually about.
 
-### The measured problem
+### Frozen, 30 September 2026
 
-`LLMAllocator.allocate` is called once per ground station per tick. With the
-RNP topology that is **28 model calls per step**, minutes of wall clock. A
-functional test that tried to run two ticks was killed after 560 s without
-finishing one.
+Closed for the demonstration. A tick is **47% faster with the allocation
+outcome unchanged**, which is the shape the demonstration asks for: cost before
+and after, with provisioning held constant.
 
-The prompt is the other half. Phase 2 already trims the state to what bears on
-the pending applications, but a small local model still receives the whole
-JSON of satellites, users, process units and topology for its neighbourhood.
-
-**Baseline, measured 25 September 2026.** Built on the RNP topology, walking
-every station through `collect_state` and `build_allocation_prompt` without
-calling a model, at step 1 (step 0 has no pending applications, so all 28
-stations skip):
-
-| Users / satellites | Stations asked | Prompt tokens, median | Prompt tokens, max | Tokens per tick |
-| --- | --- | --- | --- | --- |
-| 20 / 15 (dashboard default) | 26 of 28 | ~1 140 | ~1 360 | **~28 000** |
-| 60 / 50 | 28 of 28 | ~2 510 | ~2 960 | ~63 000 |
-| 100 / 100 (sidebar maximum) | 28 of 28 | ~3 600 | ~4 130 | ~89 000 |
-
-Tokens are estimated at four characters each. Assembling the state costs
-0.1-0.6 s for all 28 stations, so the state builder is not the bottleneck: the
-model calls are.
-
-**What the numbers change.** A single prompt is not what breaks a small model —
-1 140 tokens fits any of them comfortably, and even the largest scenario stays
-near 4 000. The cost is that the *same* work happens 26 to 28 times per step,
-and that number barely moves with scenario size while the prompt triples. So
-the directions that cut the call count (2 and 4 below) are worth more than the
-one that shortens the prompt (3), and direction 1 is worth measuring first
-because it costs almost nothing.
-
-### Directions, cheapest first
-
-1. **Skip when nothing changed.** A station already returns early when it has
-   no pending applications. Extend that: if the pending set and the reachable
-   satellites are unchanged since the last decision, reuse it instead of asking
-   again.
-2. **Batch the stations.** One call carrying several stations' states, instead
-   of one call per station. Cuts calls by the batch factor at the cost of a
-   longer prompt.
-3. **Summarize instead of serializing.** The state goes in as JSON today.
-   A compact tabular or natural-language digest of the same facts is far
-   shorter for the same information; `summarize_snapshot` already does this for
-   the dashboard agent and could be adapted.
-4. **Decide policy, not placements.** Ask the model for a *strategy* per
-   station (or per region) and let deterministic code apply it to every
-   application. One decision covers many placements. This is the direction that
-   converges with Phase 4.
-5. **Ask only the stations that matter.** Stations with no reachable satellite
-   and no local process unit already skip. Stations whose neighbourhood is
-   unchanged could skip too.
-
-### Decided: scope the question first, then cache
-
-Settled 26 September 2026 as "cache first", **revised 28 September 2026 after
-measuring**. Phase 3 remains the demonstration scope.
-
-**What the measurement found.** The pending application list is built once for
-the whole network and handed to every station: 26 of 26 stations receive the
-identical list. Each station sees its own satellites and process units, so the
-*infrastructure* view is local — but the *question* is global. A station in
-Porto Alegre is asked to choose a strategy for applications belonging to users
-it could never serve.
-
-That is why caching alone is worthless. The list changes whenever anything is
-placed or requested anywhere, so "nothing changed since last time" almost never
-holds:
-
-| Cache key | Hit rate |
-| --- | --- |
-| Pending set + exact reachable satellites | 6.7% |
-| Pending set + count of reachable satellites | 6.7% |
-| Pending set only | 7.5% |
-| Pending set, with issue M fixed | **1.8%** |
-
-Loosening the key barely helps, which rules out satellite motion as the cause.
-And the more correct the simulation becomes, the *less* the cache is worth:
-once applications can actually be placed, they leave the pending set and churn
-increases.
-
-**Scoping the question changes the picture.** Asking each station only about
-applications whose user it could plausibly serve — the user shares a satellite
-with the station, or sits on it:
-
-| | Calls | Applications per prompt |
-| --- | --- | --- |
-| Global question (today) | 228 | 9.6 |
-| Scoped to the station | 224 | **4.5** |
-
-The call count barely moves, because with satellites overhead almost every
-station can reach something. But the question halves, and **the cache then
-reaches 22.3% instead of 1.8%** — a scoped pending set changes far less often.
-Together: roughly 174 calls where there are 228 today, with prompts half the
-size.
-
-The reason to do this first is not the number. It is that **the localized
-decision the thesis is about does not exist yet**. Today there are 26 answers
-to one global question. Scoping is what makes them local.
-
-**Order:** scope, measure, then cache on top of the scoped question.
-
-**Direction 2 stays rejected.** Batching several stations into one call merges
-the local decisions the thesis argues should be local.
-
-**Directions 3 and 4 stay absorbed into Phase 4.** Under the settled
-orchestrator design the station receives a digest and answers a closed
-question, which is summarization and policy arrived at through the
-architecture.
-
-### Baseline with the model, 28 September 2026
-
-Three ticks of `LLMAllocator` on the RNP topology with `llama3.1:8b`, 20 users
-and 15 satellites, measured **after** issues K, L and M were fixed. Everything
-recorded before that date was measured on a network where most pending
-applications belonged to users with no access point, and is not comparable.
-
-| Tick | Calls | Skipped | Applications asked | Prompt tokens (~) | Wall clock |
-| --- | --- | --- | --- | --- | --- |
-| 1 | 9 | 19 | 60 | 14 296 | 474 s |
-| 2 | 26 | 2 | 356 | 23 638 | 968 s |
-| 3 | 24 | 4 | 78 | 13 742 | 533 s |
-| **mean** | **19.7** | 8.3 | **164.7** | **17 225** | **658 s** |
-
-**A tick costs 8 to 16 minutes.** That is the number Phase 3 has to move.
-
-Two things the table shows that a single tick would have hidden:
-
-* **Calls swing from 9 to 26.** Stations are visited in sequence within a tick,
-  and each one's allocation empties part of the pending list, so the stations
-  visited later find nothing to do and skip. One tick is not a measurement.
-* **Tick 2 asks about 356 applications** in a scenario that contains 20. Every
-  station is asked about nearly all of them, which is the global question
-  restated as a number.
-
-**The allocator's `provisioned` and `failed` counters cannot be used for
-quality.** They are summed across stations, so with a global question the same
-application is counted by every station asked about it — tick 2 reports 198
-failures among 20 applications. Scoping removes that double counting by
-itself, which would look like an improvement it did not make. The outcome
-metric is therefore read from the simulator: how many *distinct* applications
-are placed at the end of a tick.
-
-### Result of the scoping, 28 September 2026
-
-Three ticks per arm, `llama3.1:8b`, same seed, same scenario. The *global* arm
-reproduces the pre-scoping behaviour exactly — same calls, same tokens as the
-baseline above — which is what makes the two comparable.
-
-| Per tick | Global question | Scoped to the station | |
-| --- | --- | --- | --- |
-| Model calls | 19.7 | 20.7 | +5% |
-| Applications asked about | 164.7 | 101.7 | **−38%** |
-| Prompt tokens (~) | 17 225 | 16 619 | −3.5% |
-| Tokens per call (~) | 876 | 804 | −8% |
-| Wall clock | 579.5 s | 531.0 s | **−8.4%** |
-| Distinct applications placed | 13.3 | 13.0 | −2% |
-
-**As a cost reduction this is a negative result.** 8.4% of wall clock, across
-three ticks, is inside the noise: tick to tick the same arm varies by a factor
-of two. Scoping did not make the tick affordable.
-
-Two things went differently from the structural estimate made without the
-model:
-
-* **Calls went up, not down.** With a global question, once the first stations
-  place the pending applications the list empties and every station visited
-  later skips with "no pending apps". That saving was an accident of visit
-  order, not locality, and scoping removes it. A station is now asked when *its*
-  users have work, which is the correct criterion and costs one more call per
-  tick.
-* **Cutting applications barely cut tokens.** The application list is 37% of the
-  prompt, so removing 42% of it removes about 15% of the prompt at best. The
-  estimate had assumed applications drove prompt size.
-
-**What the run did establish** is where the cost lives. Across 121 model calls,
-elapsed time against prompt length gives **r = 0.98**; against the number of
-applications, only 0.65. Time is almost exactly linear in prompt characters:
-
-| Applications in the prompt | Calls | Median time |
-| --- | --- | --- |
-| 0-3 | 47 | 18.4 s |
-| 4-8 | 41 | 24.7 s |
-| 9-15 | 17 | 29.3 s |
-| 16-30 | 16 | 42.9 s |
-
-And the prompt is not mostly applications:
-
-| Section of the state | Share of the prompt |
-| --- | --- |
-| applications | 37% |
-| process_units | 25% |
-| satellites | 16% |
-| topology | 11% |
-| ground_station | 3% |
-
-**Keep the scoping anyway.** It is not a cost win, but it is the property the
-thesis rests on: before it, 26 stations answered one network-wide question, and
-no decision was local. It is also what Phase 4's orchestrator needs in order to
-skip stations that have nothing to do with a request.
-
-**The next lever is direction 3, not the cache.** With r = 0.98 against prompt
-length, halving the prompt halves the tick. That means replacing the serialized
-JSON of process units, satellites and topology — 52% of the prompt between them
-— with a digest carrying the same facts. The cache stays after that: a scoped,
-digested question is the one worth caching.
-
-### Next: a deterministic translator, not a cache
-
-Assessed 28 September 2026, after the scoping result pointed at prompt length.
-
-The proposal: a module that *translates* the infrastructure state and the
-applications to be provisioned into what each relevant station needs to decide,
-instead of serializing the state as JSON. Measured on 24 stations at step 3:
-
-| | Chars | Tokens (~) |
-| --- | --- | --- |
-| Serialized JSON prompt, today | 2 642 | 660 |
-| Rendered digest, same decision-relevant facts | 473 | 118 |
-| | **−82%** | |
-
-Nothing an allocation strategy reads is dropped. What goes is JSON
-punctuation, fields that are always zero (`sto` everywhere), and raw inputs the
-code can turn into the number the model actually uses — a satellite's three
-future positions become "visible for N steps", and `cpu_total`/`cpu_used`
-become `cpu_free`.
-
-**Projected cost.** Fitting elapsed time against prompt length over the 121
-real calls of the comparison gives `t = 1.03 s + 7.89 s per 1000 chars`
-(r = 0.98, measured between 931 and 12 943 chars):
-
-| | Per call | Per tick, at 20.7 calls |
-| --- | --- | --- |
-| Today | 21.9 s | 453 s |
-| With the digest | 4.8 s | **99 s** |
-
-That is a projection, and 473 chars sits **below the measured range**, so the
-intercept is doing more work than the data supports. It needs a confirming run
-before it is quoted as a result.
-
-**The digest is also what makes caching possible at all.** Over 12 ticks with
-scoping on:
-
-| Cache key | Hit rate |
-| --- | --- |
-| The full JSON state | **0.0%** |
-| The facts a digest carries | **19.2%** |
-
-The raw state never repeats — a delay written as `3.8731589318491397` changes
-every tick, and so does every satellite position. Rounded, derived facts do
-repeat. This settles the order: digest first, cache second, because a cache
-over the raw state can never hit.
-
-### What it changes about the orchestrator
-
-The translation is mechanical, so it does not need a model. That splits the
-orchestrator's job in two, and only one half needs language:
-
-| Job | How often | Needs a model |
-| --- | --- | --- |
-| Turning operator intent into objectives | once per run, or when the intent changes | **yes** |
-| Turning state into each station's question | every tick | **no** — this is the translator |
-| Choosing a strategy for the question | every tick, per station | yes, and this is the thesis claim |
-
-This is better than the settled design in two ways: the per-tick orchestrator
-call disappears, and the chewing becomes reproducible and testable instead of
-being a model output that has to be trusted.
-
-**The boundary, settled 29 September 2026.** If the translator decides *which*
-units to show and in what order, it has made the placement judgment and the
-station agent is a rubber stamp — the contribution would live in the Python,
-not in the agents. So:
-
-> The translator **translates**. It turns the infrastructure, the context, the
-> history and the pertinent parts of the state into a digest a small model can
-> ingest, and it filters out the stations that cannot serve the applications at
-> hand so no call is spent on them. It does not rank, score or recommend.
-
-| Allowed | Not allowed |
-| --- | --- |
-| Including every process unit the station can reach | Sorting them by how well they fit |
-| Computing free capacity from total and used | Dropping ones that "would not be chosen" |
-| Computing remaining visibility from the future positions | Naming a best candidate |
-| Skipping a station that can serve nothing this step | Skipping a station because its answer seems predictable |
-
-The last row is the subtle one. Filtering by *capability* is translation —
-the station genuinely has nothing to decide. Filtering by *expected answer* is
-deciding, and it belongs to the agent.
-
-The falsification test is the one the evaluation needs anyway: if replacing the
-model with a fixed strategy produces the same allocation outcome, the agent is
-not contributing and the translator has absorbed the decision.
-
-### One gap found while prototyping
-
-`build_network_state` pops the `pu` field from each satellite after collecting
-the unit ids, so the state no longer records **which satellite a process unit
-rides on**. A digest cannot then say "this unit is on a satellite visible for
-N more steps", which is the column that makes `longest_duration` decidable. The
-link has to be preserved before the digest can carry it.
-
-### Measured: the digest, 29 September 2026
-
-Three arms, three ticks each, `llama3.1:8b`, same seed and scenario. The
-`unit_hosts` link was restored first, so the digest can say which satellite a
-process unit rides on.
-
-| Per tick | Global question | Scoped | Scoped + digest |
+| Per tick, `llama3.1:8b`, 3 ticks per arm | Global question | Scoped | Scoped + digest |
 | --- | --- | --- | --- |
 | Model calls | 19.7 | 20.7 | 20.0 |
 | Applications asked about | 164.7 | 101.7 | 101.7 |
-| Prompt tokens per tick (~) | 17 225 | 16 619 | **3 034** |
 | Prompt tokens per call (~) | 876 | 804 | **152** |
 | Wall clock | 579.5 s | 531.0 s | **308.4 s** |
 | Distinct applications placed | 13.3 | 13.0 | 13.0 |
 
-**A tick is 47% faster than where Phase 3 started, with the allocation outcome
-unchanged.** 9.7 minutes down to 5.1.
+Two things were deliberately left undone rather than rushed: the **stability
+filter**, because building it forces the history question below, and the
+**evaluation arm against `best_fit`**, which belongs with the harness of
+Phase 8 and measures a different claim — whether the agent decides *well*, not
+whether it decides *cheaply*.
 
-### The projection was wrong, and the reason matters
+**Issue Q was closed first.** A reply that omitted applications left no trace,
+so 19% of decisions were invisible and every number above described a sample
+with a hole in it.
 
-Phase 3 projected 99 s per tick from a linear fit of elapsed time against
-prompt length (`t = 1.03 s + 7.89 s per 1000 chars`, r = 0.98). The prompt
-reduction landed as predicted — 82%, within a point of the estimate. The time
-reduction did not: 47% against a predicted 78%.
+### The problem, and the baseline it started from
 
-The fit was taken over prompts of 931 to 12 943 characters, and the digest is
-574. Below the measured range a per-call floor appears that the fit had
-attributed to slope. Measured inside the digest arm, where prompt length is
-nearly constant:
+`LLMAllocator.allocate` runs once per ground station per tick: **26 to 28 model
+calls per step** on the RNP topology. Assembling the state costs 0.1-0.6 s for
+all 28 stations, so the state builder was never the bottleneck.
+
+| Users / satellites | Stations asked | Prompt tokens, median | Tokens per tick |
+| --- | --- | --- | --- |
+| 20 / 15 (dashboard default) | 26 of 28 | ~1 140 | ~28 000 |
+| 60 / 50 | 28 of 28 | ~2 510 | ~63 000 |
+| 100 / 100 | 28 of 28 | ~3 600 | ~89 000 |
+
+A single prompt was never what breaks a small model. The cost is that the same
+work happens 26 to 28 times per step, and that number barely moves with
+scenario size while the prompt triples.
+
+### Decisions that still bind
+
+**Scope the question before caching.** The pending application list was built
+once for the whole network and handed to every station: 26 of 26 received an
+identical list, so a station in Porto Alegre was choosing a strategy for users
+it could never serve. Caching over that is worthless — the list changes
+whenever anything is placed anywhere, and the hit rate was **1.8%** once issue M
+was fixed. Scoped to what a station could plausibly serve, the same key reaches
+**22.3%**.
+
+**Scoping was a negative result on cost and is kept anyway.** Measured: 8.4% of
+wall clock, and the call count went *up* (19.7 → 20.7), because the "skips" in
+the global arm were an accident of visit order rather than a property of the
+question. It stays because **the localized decision the thesis is about did not
+exist before it** — there were 26 answers to one global question.
+
+**Batching stations into one call stays rejected.** It merges the local
+decisions the thesis argues should be local.
+
+**Summarization and policy are absorbed into Phase 4.** Under the settled
+orchestrator design the station receives a digest and answers a closed
+question, which is both, arrived at through the architecture.
+
+### The digest, and what it taught
+
+`app/agents/allocation/digest.py` renders the same decision-relevant facts as a
+table instead of JSON: 2 642 characters became 473, a **−82%** reduction that
+landed within a point of the estimate. The module translates and does not
+decide — the moment it sorts, scores or omits a candidate, the station agent
+stops deciding and starts rubber-stamping.
+
+**The projection was wrong by a factor of three, and the reason matters.** A
+linear fit of elapsed time against prompt length (`t = 1.03 s + 7.89 s per
+1000 chars`, r = 0.98) predicted 99 s per tick. The measurement gave 308 s. The
+fit was taken over prompts of 931 to 12 943 characters and the digest is 574:
+**below the measured range a per-call floor appears that the fit had attributed
+to slope.**
 
 | Applications in the call | Calls | Median time |
 | --- | --- | --- |
@@ -631,126 +341,77 @@ nearly constant:
 | 4-8 | 8 | 18.9 s |
 | 9-20 | 13 | 18.7 s |
 
-**Fourteen seconds for the smallest possible question.** At 20 calls per tick
-that is a 280 s floor, and the digest has brought the tick to 308 s — within
-10% of it.
+Fourteen seconds for the smallest possible question. At 20 calls per tick that
+is a 280 s floor, and the digest brought the tick to 308 s — within 10% of it.
+The extrapolation was labelled a projection when it was made, which is why it
+was scheduled for confirmation rather than quoted as a result.
 
-The extrapolation was flagged as one when it was made, which is why it was
-labelled a projection and scheduled for confirmation rather than quoted as a
-result. It still overstated the gain by a factor of three.
+**Prompt size is no longer the lever; the number of calls is.** Two things act
+on it: a stability filter, since the digest's facts repeat 19.2% of the time
+between ticks where the raw JSON state repeated **0.0%**; and a smaller answer,
+since time still correlates with the application count (r = 0.70) at constant
+prompt length, because the reply is two lists of ids that grow with it.
+Phase 4's design — one option out of a fixed set — collapses that reply to a
+single token's worth of choice, which is also what makes a typed-decision model
+such as Jev interesting: its published 70-500 ms attacks this floor, not prompt
+size.
 
-### What this means for the rest of Phase 3
+### The history section — **open, not decided**
 
-**Prompt size is no longer the lever; the number of calls is.** The remaining
-cost is per-call overhead, not reading. Two things act on it:
+The prompt carries the station's own past decisions, and that section grows
+after every answer, so even at unchanged infrastructure the prompt differs
+between ticks and a filter keyed on infrastructure alone would reuse a decision
+the agent might have revised.
 
-* **The stability filter**, now worth building: the digest's facts repeat 19.2%
-  of the time between ticks where the raw state repeated 0%. Cutting one call
-  in five removes ~60 s from a tick.
-* **A smaller answer.** Within the digest arm, time still correlates with the
-  application count (r = 0.70) even at constant prompt length, because the
-  reply is two lists of application ids that grow with it. Phase 4's design —
-  one option out of a fixed set — collapses that reply to a single token's
-  worth of choice.
+**The case for dropping it.** Re-asking at an unchanged state returns a
+different answer about 39% of the time, for no reason a reader could defend.
+Without the section the prompt becomes a pure function of the infrastructure,
+which makes the filter's key exact rather than approximate.
 
-The second is also what makes a typed-decision model such as Jev interesting:
-its published 70-500 ms is an attack on exactly this floor, not on prompt size.
+**The case against.** Reading one's own past decisions and their outcomes is
+close to the definition of an agent that improves — *if I chose X and it went
+badly, I should try Y*. Removing it removes the mechanism the design exists to
+demonstrate, on the strength of a measurement that says the mechanism is not
+working *today*, with *this* model.
 
-### The history section, and what asking about it uncovered
+**The question underneath.** Adding anything to the prompt moves the answer,
+even when it carries no new information. So the 39% does not distinguish
 
-Raised 29 September 2026: the prompt carries the station's own past decisions,
-and that section grows after every answer. So even at an unchanged
-infrastructure the prompt differs between ticks, and a stability filter keyed
-on infrastructure alone would be reusing a decision the agent might have
-revised. The objection is correct as stated. Measured at a fixed state,
-temperature 0, so the same prompt always gives the same answer:
+* the history section being **badly structured** — a list of ids and counts,
+  with no statement of what went wrong or what to do differently; from
+* the small model being **too unsteady for any prompt content to be
+  attributed**, in which case the whole project rests on a base where no prompt
+  change can be read as causal.
 
-| | Stations where the answer changed |
-| --- | --- |
-| Adding one history entry | **5 of 6** |
+The second reading is the serious one and nothing measured so far separates
+them. **What would:** three arms at a fixed infrastructure, same model, same
+seed — no history, the history as written today, and a history rewritten to
+state outcomes rather than list ids. If the rewritten arm wins, the section was
+badly structured. If all three sit inside the no-op noise band, the model is
+the problem and the thesis has to say so.
 
-But the next question decides what to do about it. Is the answer tracking the
-feedback, or moving under any perturbation at all? Two controls:
-
-| | Stations |
-| --- | --- |
-| Success and failure gave *different* answers | 3 of 6 |
-| A filler line carrying no information changed the answer | **5 of 6** |
-
-The filler was `This station reports nominal operation.` It moved the decision
-more often than the difference between "you placed everything" and "you placed
-nothing". **The answer is not tracking feedback. It is unstable under any
-change to the prompt, and the history is one more thing that perturbs it.**
-
-### How much moves
-
-Measured over 8 stations and 68 application decisions, comparing a prompt
-against the same prompt plus the filler line:
-
-| | Share of decisions |
-| --- | --- |
-| Changed strategy, `best_fit` ↔ `longest_duration` | 10% |
-| **Dropped from the answer entirely** | **19%** |
-| Appeared, having been absent before | 10% |
-
-The strategy flips are the small part. The large one is the model silently
-omitting applications, against an instruction that says every pending id must
-appear in exactly one of the two lists.
-
-`hybrid_allocation` iterates only the ids it is given. An application in
-neither list is never looked at: not placed, not counted as failed, absent from
-the `details`. About one application in five disappears under a change to the
-prompt that carries no information. This is issue Q.
-
-### What it means for the stability filter
-
-**Build it, and drop the history section.**
-
-Reusing a previous decision is not less principled than re-asking — it is
-*more* so. Re-asking at an unchanged state currently returns a different answer
-about 39% of the time for no reason a reader could defend. Reuse is at least
-deterministic, and it is defensible in writing: the inputs are identical, so
-the decision is.
-
-Dropping the history costs nothing that was working. It does not transmit
-feedback, it spends tokens, and it is what would otherwise force the filter's
-key to include a section that grows every tick. Without it the prompt becomes a
-pure function of the infrastructure, which makes the filter's key exact instead
-of approximate.
-
-There is a caveat worth stating: dropping it removes the *possibility* of
-learning from outcomes, which the design intended. The measurement says that
-possibility is not being realised today. If a later model does use feedback,
-the section comes back — and the filter's key has to grow with it.
+Until then the section stays as it is. The stability filter is not built, and
+building it is what forces the decision.
 
 ### What it means for the thesis
 
-This is the uncomfortable part. If a station's answer moves under a no-op
-perturbation, then some of what "the ground station decided" is measuring is
-noise. Two things follow:
+If a station's answer moves under a no-op perturbation, then some of what "the
+ground station decided" is measuring is noise. Two things follow:
 
 * **The evaluation baseline stops being optional.** The arm that matters is the
-  per-station model against deterministic `best_fit`. If the agent's answers
-  are substantially arbitrary, that comparison is where it shows.
+  per-station model against deterministic `best_fit`.
 * **It sharpens the case for a calibrated, typed-decision model.** A closed
-  output set cannot silently omit an application, and a confidence score would
-  distinguish a station that is genuinely indifferent from one that is merely
-  unsteady. See the Jev assessment below.
+  output set cannot silently omit an application — the exact failure issue Q
+  documents — and a confidence score would distinguish a station that is
+  genuinely indifferent from one that is merely unsteady.
 
 ### How to measure
 
-Record per tick: number of model calls, prompt length in characters and
-tokens, wall clock, and allocation outcome (provisioned / failed). The
-baseline to beat is the current per-station call, measured above. Any
-reduction has to be shown not to degrade allocation quality, so the outcome
-must be recorded alongside the cost.
-
-For the demonstration the number that tells the story is **model calls per
-tick, before and after, with the provisioned/failed count unchanged**.
-
-**Risk:** low for direction 1 — the decision reused is a decision the model
-already made. The risk is staleness: reusing a choice when the neighbourhood
-*did* change in a way the skip test does not capture.
+Record per tick: model calls, prompt length in characters and tokens, wall
+clock, and allocation outcome (provisioned / failed / omitted). Any reduction
+has to be shown not to degrade allocation quality, so the outcome is recorded
+alongside the cost. `app/agents/allocation/metrics.py` writes one row per
+station visit and `summarize_by_step` aggregates them.
 
 ---
 
@@ -802,100 +463,43 @@ operator intent
   ORCHESTRATOR          keeps (digest, choices) as the record of the round
 ```
 
-Two properties follow, and they are what make this design worth building:
+Two properties follow, and they are what make the design worth building:
 
-1. **The station's input shrinks by construction.** It no longer receives the
-   network JSON for its neighbourhood. It receives a digest the orchestrator
-   already reduced, plus the question. This is why Phase 4 subsumes directions
-   3 and 4 of Phase 3 rather than competing with them — the summarization is
-   the architecture, not an optimization bolted onto it.
-2. **The station's output space is closed.** The reply is one option out of an
-   enumerated set — plus an explicit **agnostic** answer, meaning the local
-   view does not favour any of them. A closed set is cheap to generate, trivial
-   to validate, and makes disagreement between stations measurable.
+1. **The station's input shrinks by construction.** It receives a digest the
+   orchestrator already reduced, not the network JSON for its neighbourhood.
+   Summarization is the architecture rather than an optimization bolted on.
+2. **The station's output space is closed.** One option out of an enumerated
+   set — `best_fit`, `longest_duration`, or an explicit **agnostic**. Cheap to
+   generate, trivial to validate, and a closed set cannot be under-filled,
+   which is the failure mode issue Q and Phase 6 both found.
 
-The agnostic answer is not a failure mode. It is information: it tells the
-orchestrator which decisions the local level genuinely constrains and which it
-does not, which is the thesis's central claim made falsifiable.
+**Agnostic is not a failure mode.** It tells the orchestrator which decisions
+the local level genuinely constrains and which it does not, which is the
+thesis's central claim made falsifiable. It also doubles as conflict
+prevention: a station that does not care is a station that will not fight over
+a process unit.
 
-### Settled: one shared digest, a fixed option set, agnostic doing double duty
+### The constraints that make or break it
 
-Settled 26 September 2026.
+**One digest, not one per station.** The orchestrator emits a single overview
+and sends the same one to every station. Emitting N tailored digests would need
+the whole network state in and a long structured reply out, moving the context
+problem up a level instead of removing it. A side effect worth measuring: the
+28 station prompts then share a byte-identical prefix, so a server reusing a KV
+cache across requests pays for it once.
 
-**One digest, not one per station.** The orchestrator produces a single
-overview of the infrastructure and sends the same one to every station. Two
-consequences, and the second is the interesting one:
+**The digest must be a summary, not a serialization.** A global view written as
+JSON is larger than the local neighbourhood JSON it replaces, and the cure
+becomes the disease. `app/agents/allocation/digest.py`, built in Phase 3, is
+the shape to reuse: 2 642 characters of JSON became 473.
 
-* The orchestrator's own output stays small and bounded. Emitting N tailored
-  digests would need the whole network state on the way in and a long
-  structured reply on the way out, which moves the context problem up a level
-  instead of removing it.
-* **The 28 station prompts now share a prefix.** The digest is byte-identical
-  across them, so a server that reuses a KV cache across requests pays for it
-  once. Worth measuring with Ollama before counting on it, but it is free if it
-  works.
+**The orchestrator asks only the stations that are involved**, by the same rule
+Phase 3 established — a station that cannot serve an application has no
+business being asked about it.
 
-**The constraint that makes or breaks this:** the digest must be a *summary*,
-not a serialization. A global view written out as JSON is larger than the local
-neighbourhood JSON it replaces, and the cure becomes the disease. The target is
-a digest smaller than today's ~1 140-token per-station prompt, carrying the
-operator's objectives and the state that bears on them.
-
-**A fixed option set.** `best_fit`, `longest_duration`, `agnostic` — the
-strategies that already exist and are already executable. Letting the
-orchestrator invent options per question is more expressive, but every invented
-option would need validating against something that can actually run.
-
-**Agnostic does double duty.**
-
-1. *As a default.* The orchestrator ran before, so it is not around afterwards
-   to break ties without paying for a second pass. The policy it emitted
-   carries a default; agnostic means "apply it here", at zero extra cost.
-2. *As a tie-breaker.* When stations disagree, the agnostic ones are not
-   counted on either side. They shrink the conflict set instead of padding it,
-   which is what makes the disagreement that remains worth looking at.
-
-**The orchestrator asks only the stations that are involved.** The same rule
-Phase 3 applies to applications applies one level up: a station with nothing to
-do with the request at the current step is not consulted at all. Two filters,
-and they compose:
-
-* *Relevance.* The station cannot serve any application in the request — skip
-  it. This is Phase 3's scoping, read from the orchestrator's side.
-* *Stability.* Nothing significant changed in that station's neighbourhood
-  since it last answered — reuse its answer instead of asking again.
-
-"Significant" needs a definition that is written down and measured, not
-guessed. The candidates are the ones Phase 3 measures: the scoped application
-set, the reachable satellites, and whether any reachable process unit still has
-capacity. Whatever is chosen, the orchestrator must be able to say *why* it
-skipped a station, because that is the record the thesis argues from.
-
-**The digest and the answers are kept together.** After the round, the
-orchestrator holds the pair `(digest, {station: choice})`. That pair is the
-unit of history: it records what the network looked like, what each station
-concluded, and what followed. `LLMAllocator.decisions_by_station` already keeps
-per-station decisions; this widens it to a per-tick record that later rounds can
-be grounded in.
-
-Storing it is cheap. *Feeding it back* into a later prompt is not — it is the
-context problem again, one level up, and it needs its own measurement before
-being switched on.
-
-### What this changes in the code
-
-`AllocationDecision` today splits pending application ids into `best_fit` and
-`longest_duration` lists. Under this design it becomes a single choice:
-
-```python
-class StationChoice(BaseModel):
-    option: str      # "best_fit", "longest_duration" or "agnostic"
-    reason: str      # one sentence, for the run report
-```
-
-`LLMAllocator` keeps its signature — it stays an allocation algorithm the
-engine injects — but `allocate` grows an orchestrator pass before the
-per-station loop, and a record of `(digest, choices)` after it.
+**Ground station agents are built on function calling, not skills.** Phase 6
+measured the alternative: the model that will run them cannot pass arguments to
+a skill.
 
 ### Still open
 
@@ -903,23 +507,23 @@ per-station loop, and a record of `(digest, choices)` after it.
    answers shrink the conflict set but do not empty it. Deterministic
    arbitration is cheaper and more defensible than asking a model a second
    time. Undecided.
-2. **What does the orchestrator get compared against?** Without a baseline
-   there is no result. Three arms: deterministic `best_fit`, per-station LLM
-   *without* orchestrator, and the orchestrator. The middle one is the
-   comparison that matters — it isolates the orchestrator's contribution from
-   the contribution of merely using a model.
+2. **What does the orchestrator get compared against?** Three arms:
+   deterministic `best_fit`, per-station LLM *without* orchestrator, and the
+   orchestrator. **The middle one is the comparison that matters** — it
+   isolates the orchestrator's contribution from the contribution of merely
+   using a model.
 
 ### Cost
 
 The call *count* barely moves: one orchestrator call plus the same per-station
 calls. What changes is the price of each. The station's prompt drops from a
-neighbourhood digest of roughly 1 140 tokens to a question with a handful of
-options, and its output drops from a list of application ids to one token's
-worth of choice. The orchestrator's own call is the expensive one, and keeping
-it bounded is what open question 1 is about.
+neighbourhood digest to a question with a handful of options, and its output
+from a list of ids to one token's worth of choice — which is the lever Phase 3
+identified, since the remaining cost is per-call overhead and reply length, not
+prompt size. The orchestrator's own call is the expensive one, and keeping it
+bounded is what open question 1 is about.
 
-This is measurable only against the Phase 3 baseline, which is why Phase 3 is
-sequenced first.
+Measurable only against the Phase 3 baseline, which is why Phase 3 came first.
 
 ---
 
@@ -967,60 +571,122 @@ Builds on Phase 4: an intent that mentions objectives has to reach something
 that reconciles them across stations.
 
 ---
-## Phase 6 — Agent capability model: Tools vs Skills
+## Phase 6 — Agent capability model: Tools vs Skills — **closed**
 
 **Goal:** make the second agent mode real, so the two ways of giving an agent
 capabilities can be compared rather than assumed.
 
-### Current state
+### Conclusion, 30 September 2026
 
-The sidebar offers "Tools" and "Skills" as agent modes, but only Tools works.
-Selecting Skills raises `TypeError` the moment the operator sends a message,
-and it has done so since before the Phase 1 refactor. Two API mismatches
-against the installed `agno`:
+**`llama3.1:8b` fails consistently at passing arguments to a skill.** It names
+the skill and the script correctly and then omits the argument list, so the
+script runs bare and proposes nothing. Six runs out of six, at both context
+sizes, with terse skill documentation and with exhaustive skill documentation.
+Function calling, given the same commands, is 6 of 6 correct.
 
-* `LocalSkills()` is called with no arguments, but `path` is a required
-  positional argument.
-* `Skills(local_skills=...)` does not match the signature, which is
-  `Skills(loaders: List[SkillLoader])`.
+**The scope of that claim is one model.** It says what this SLM does, not what
+progressive disclosure costs in general. Repeating these runs across more
+models — and at least one materially larger — is what would turn it into a
+statement about the pattern. `benchmark_modes.py` takes `--model`, so the
+experiment is one flag away from being repeated; that is why the skills, the
+harness and this section are kept rather than deleted.
 
-No skill has ever been written. The `Skills/` folder held only an empty
-`__init__.py` and was removed with the rest of the old agent package.
+**What it means for Phase 4.** It was to be decided here whether the
+orchestrator's ground station agents should be built on skills or on function
+calling. They should be built on function calling: the model that will run them
+cannot pass arguments to a skill.
 
-### What it takes
+### The evidence
 
-1. **Fix the construction:** `Skills(loaders=[LocalSkills(path=SKILLS_DIR)])`.
-2. **Write the skills.** A skill is a folder containing `SKILL.md`: YAML
-   frontmatter (`name`, `description`, optionally `license`, `metadata`,
-   `compatibility`) followed by instructions in the body. One skill per
-   capability the agent has today as a tool — advancing the simulation,
-   restarting it, adding nodes, users and applications.
-3. **Decide how a skill produces a proposal.** Tools write into the
-   `ProposalBuffer` because they are Python callables. A skill is
-   instructions, not a callable, so the confirmation gate needs a path from
-   skill output to `ProposedAction` — most likely a structured reply parsed
-   into a payload, reusing the validation already in `app/core/actions.py`.
-4. **Keep the modes symmetric.** Both must end at the same gate, so the
-   comparison measures the capability model and not two different pipelines.
+Eighteen runs, three commands, two context sizes — 113 characters against
+10 361, the same command in the same wording both times.
 
-### The comparison
+| Arm | Short context | Full context |
+| --- | --- | --- |
+| Tools | **3/3** | **3/3** |
+| Skills, terse skill docs | 0/3 | 0/3 |
+| Skills, exhaustive skill docs | 0/3 | 0/3 |
 
-This is what the second mode exists for. Once the harness of Phase 8 is in
-place, run the same operator commands through both modes and measure:
+**Context load is not the explanation.** That was the hypothesis going in and
+the experiment refutes it: Skills fails identically at 113 characters, where
+Tools is perfect and fast (29-43 s). The two documentation variants came from
+two skill trees differing only in the guidance below the call shape; only the
+exhaustive one is kept, the terse tree having answered its question.
 
-* whether the intended action was proposed at all;
-* whether its parameters were correct;
-* how often the reply had to be recovered from text instead of arriving as a
-  proper call — `app/agents/tool_call_recovery.py` already detects this and
-  only needs a counter;
-* tokens consumed and latency per command.
+**What fails is one thing.** Three of the four parameters of `get_skill_script`
+arrive correct and the fourth is absent:
 
-**Why here in the order:** the answer informs Phase 4. If skills steer a small
-local model more reliably than function calling, the ground station agents of
-the orchestrator should be built that way from the start.
+```
+args: {'execute': True, 'script_path': 'propose.py', 'skill_name': 'add-user'}
+stderr: propose.py: error: the following arguments are required: --lat, --lon
+```
 
-**Risk:** low for the existing system — Tools mode is untouched. The open
-question is design, not stability: step 3 above has no obvious answer yet.
+`args: Optional[List[str]]` is never populated. Before the skill docs spelled
+the call out, the same model passed `args` as the *string* `"['/step', '3']"`.
+Making the documentation explicit moved the failure from malformed to absent;
+it did not fix it.
+
+**This is issue Q one layer up.** There, the allocation agent omitted
+applications from the `best_fit` and `longest_duration` lists of a Pydantic
+schema — 19% of decisions. Here it omits the `args` list entirely. Two agents,
+two frameworks, one behaviour: **this model does not reliably produce
+list-valued parameters.** Whether it is lists specifically or optional
+parameters generally is not separable here, since agno's signature is fixed and
+the parameter is both; the allocation agent's lists were *required* and were
+still under-filled, which favours the first reading.
+
+**Tokens, against the calculation this phase opened with.** Progressive
+disclosure costs about 950 tokens more per command at either context size —
+agno's scaffold plus six skill descriptions against six tool schemas. The
+calculation predicted that (~2 543 chars per call for Tools against ~3 700-4 300
+for Skills) and the measurement confirms it.
+
+| | Short context | Full context |
+| --- | --- | --- |
+| Tools | 1 785-1 829 | 8 811-8 855 |
+| Skills | 2 729-2 790 | 9 755-9 828 |
+
+**Where the trade would turn.** Break-even is set by how much per-action
+context each capability needs. Six actions with ~1 300 characters of
+instruction each fit comfortably in a system prompt. An agent with twenty
+actions, or with one that needs a page of explanation, is where loading on
+demand starts to pay.
+
+### Three defects had to be fixed before any of this measured the right thing
+
+Each one hid the next, and the first two made Skills look like it worked.
+
+1. **The shared prompt named the tools.** It said "call
+   `propose_run_simulation`"; Skills mode has no such tool, so the model wrote
+   the call out as text and `tool_call_recovery` turned it into a proposal.
+   Nothing had opened a skill. Both prompts are mechanism-free now and
+   `tests/test_skills.py` fails if a tool name comes back.
+2. **No skill script could execute.** agno runs a script directly through its
+   shebang; none had one and four had no executable bit, so every real attempt
+   returned `Exec format error`. With the recovery net on this was invisible
+   from the dashboard — **Skills mode had never once run a skill in the
+   interface.**
+3. **`#!/usr/bin/env python3` resolved to the system interpreter**, which has
+   no `agno`. `runner.ensure_interpreter_on_path` puts the running
+   interpreter's directory first on PATH for child processes.
+
+### The harness
+
+`benchmark_modes.py`, one JSON line per run in `logs/mode_benchmark.jsonl`. It
+sends a fixed set of operator commands through both modes with `--arms`, holds
+the context fixed with `--contexts` so load can be separated from the command,
+and takes `--model`. It records whether the intended action was proposed,
+whether its parameters were correct, and tokens and latency per command.
+
+### What is still unmeasured
+
+For a model that *can* make the call: whether it opens the right skill and how
+often it acts without opening one, whether it composes the command line
+correctly, wall clock per command including the extra round trip, and the
+no-op perturbation test the allocation agent failed. Two things would settle
+the rest: the same eighteen runs against more models, and a check of whether
+the failure is lists or optional parameters, which needs a skill invocation
+whose arguments are not both at once.
 
 ---
 
@@ -1059,46 +725,9 @@ place and one component class at a time.
 
 ## Phase 9 — Orbital propagation: traces to SGP4 — **deferred**
 
-> **Explored in September 2026, then rolled back.** A working implementation
-> existed and was reverted to keep the demonstration path clear. Nothing below
-> is speculation: it was built, measured and verified. The code is gone; the
-> findings are not. Re-implementing should start from this section rather than
-> from scratch.
-
-### What was built and verified
-
-* `dataset_generator/trace_builder.py` — fetches TLEs from Celestrak
-  (`--group`, `--satellites`, `--match-dataset`, `--limit`,
-  `--format manifest|trace`, `--min-altitude`) and propagates locally.
-* `leosim/orbit_models/sgp4_propagation.py` — TEME to geodetic conversion and
-  an `sgp4_mobility` model sharing `linear_estimation`'s signature.
-* `dataset_generator/load_satellites.py` — reads both dataset shapes and three
-  orbit modes.
-* `SimulationConfig.orbit_model` with `trace` / `sgp4` / `hybrid`, wired
-  through `bootstrap` and `dataset.load_topology`.
-
-All four combinations ran end to end, with `tick_duration` taken from the
-dataset (60 s) instead of the unread default of 1 s.
-
-### Facts that cost effort to establish
-
-* **The bulk fetch works.** `GROUP=starlink` returns ~10,700 TLEs in one
-  request. The per-satellite `CATNR` query is what is slow. Celestrak throttles
-  repeated bulk requests for about two hours, per address — not permanently.
-  An earlier report that this phase was "blocked on data" was wrong for this
-  reason.
-* **98.8% of the captured constellation is still in orbit**: 10,352 of 10,476
-  satellites still have a current TLE; 34 more sit below 300 km and are
-  reentering (one at 90 km).
-* **The captured dataset's epoch is unrecoverable.** Fitting a current TLE back
-  to its recorded positions gives a 630 km sequence error, because the
-  satellite decayed 29 km in between. The captured file carries no timestamps,
-  so trace and SGP4 live in different, unknowable time frames.
-* **The captured dataset is sampled at ~60 s per step**, not 56. Measured
-  against a trace of known interval; 840 steps therefore cover 14 hours.
-* **Storage forces two formats.** All satellites at all steps would be 1.44 GB.
-  A manifest (TLEs plus timing, no positions) covers 10,318 satellites in
-  2.1 MB; a trace of 100 satellites over 840 steps is 6.5 MB.
+**Goal:** a satellite's position comes from orbital mechanics rather than from
+a recorded trace. Explored and reverted; what follows is what the exploration
+established, so none of it has to be rediscovered.
 
 ### The measurement that matters most
 
@@ -1107,145 +736,55 @@ Coverage over Brasília, 1500 km range, satellites in range per step:
 | Satellites | Real TLE subset | Walker Delta (53°, 550 km) |
 | --- | --- | --- |
 | 15 | `[0,0,0,0,0,0]` | `[0,0,1,0,0,0]` |
-| 100 | `[0,1,1,0,2,0]` | — |
 | 300 | `[7,6,2,0,2,0]` — 2 gaps | `[3,3,4,4,3,3]` — **no gaps** |
 | 1000 | `[13,11,7,4,9,8]` | — |
 | 1584 | — | `[18,15,18,16,18,16]` |
 
-Two conclusions:
-
 1. **The captured dataset is survivorship-biased.** It recorded only satellites
-   already above the reference point, so its first 15 satellites look like a
-   dense constellation. Under unbiased propagation the same 15 give zero
-   coverage. Earlier allocation results may therefore rest on artificially high
-   satellite availability.
+   already above the reference point, so its first 15 look like a dense
+   constellation; under unbiased propagation the same 15 give zero coverage.
+   **Earlier allocation results may rest on artificially high availability.**
 2. **Uniformity beats size.** A Walker constellation reaches continuous
    coverage at ~300 satellites where an arbitrary real subset needs ~1000.
 
-### What the literature does instead
+### Facts that cost effort to establish
 
-Simulators do not use real TLEs as the experimental base. Hypatia takes shell
-parameters — altitude, inclination, satellites per plane, number of planes —
-and **generates** TLEs from them. Real TLEs are used to *validate* the
-synthetic constellation, not to drive it.
+* **`linear_estimation` diverges from a real orbit by 1 000 km in 10 minutes**
+  and 2 700 km in 20. It extrapolates latitude and longitude in a straight
+  line, which is not an orbit. Wherever a trace runs out, the positions past
+  that point are not meaningful.
+* **The captured dataset is sampled at ~60 s per step**, not 56, and its epoch
+  is unrecoverable — fitting a current TLE back to it does not converge.
+* **98.8% of the captured constellation is still in orbit** (10 352 of 10 476),
+  so a real-TLE manifest is a viable validation set.
+* **Storage forces two formats.** All satellites at all steps would be 1.44 GB;
+  propagation on demand plus a manifest is the workable shape.
+* **The literature does not use real TLEs as the experimental base.** Hypatia
+  generates TLEs from shell parameters and uses real ones to *validate*. If
+  this phase resumes, the recommended shape is three datasets: the captured
+  file as historical reference, a real-TLE manifest for validation, and a
+  **Walker Delta shell as the experimental base**, added as a `--walker`
+  mode to `trace_builder.py`.
 
-If this phase is resumed, the recommended shape is three datasets with
-distinct roles: the captured file as historical reference, a real-TLE manifest
-for validation, and a **Walker Delta shell as the experimental base**. Adding a
-`--walker P/S/i/h` mode to `trace_builder.py` would reuse the propagation and
-output format already written.
+### Decided design, if resumed
 
-### Also discovered, still open
+**Hybrid by default, global switch for experiments.** `Satellite.step()`
+already calls a per-satellite mobility model, and the model choice plus its
+parameters survive `save_scenary` → `Simulator.initialize`, verified end to
+end: two models can run side by side in one tick with no structural change. A
+field on `SimulationConfig` forces one model for every satellite when an
+experiment needs comparability.
 
-`linear_estimation` diverges from a real orbit by **1000 km in 10 minutes**
-and 2700 km in 20 — it extrapolates latitude and longitude in a straight line,
-which is not an orbit. Wherever a trace runs out, positions past that point are
-not meaningful.
+**Visibility becomes geometric.** A minimum elevation angle replaces the range
+sphere; see Phase 10.
 
----
+**Blocking dependency:** `tick_duration` has to mean something first (issue D).
+SGP4 propagates to an absolute epoch, so the simulator needs a real start time
+and a real seconds-per-tick. A tick is currently ~60 s of trace time while
+`tick_duration` defaults to 1 s and is read by nobody.
 
-**Goal:** a satellite's position comes from orbital mechanics, not from a
-recorded observation table.
-
-### Why
-
-The traces file is the orbit model today. That has three consequences:
-
-* A satellite can only exist where the file has data. Creating one means
-  searching the catalog for a real satellite that passes nearby and borrowing
-  its ground track.
-* A satellite appears in the file only while it is above the reference point.
-  Only 680 of 10,476 satellites have contiguous appearances; the median is 26
-  appearances out of 840 steps. The scenario loader pads the gaps with `None`
-  (the satellite goes inactive, correctly), but `get_coordinates_trace` — the
-  path used when the agent adds a satellite — compacts them, so the satellite
-  teleports between orbital passes (issue C).
-* `linear_estimation`, the fallback when the trace runs out, extrapolates
-  latitude and longitude linearly. A LEO ground track is a sinusoid drifting
-  west as the Earth rotates beneath it, so the estimate diverges quickly.
-
-### What it takes
-
-1. **Add the `sgp4` dependency** (not currently installed).
-2. **Acquire TLE data.** The current file has none — `satid` and
-   `intDesignator` identify the satellite in a catalog, but the positions are
-   already propagated server-side by N2YO. TLEs come from Celestrak or
-   Space-Track by NORAD id.
-3. **Write `leosim/orbit_models/sgp4_propagation.py`**, a mobility model with
-   the same signature as `linear_estimation`: takes the satellite, returns
-   `(lat, lon, alt)`.
-4. **Store the TLE in `mobility_model_parameters`.** That field is already
-   serialized by `Satellite.export()` and restored by `Simulator.initialize`,
-   so orbital elements survive the scenario round trip with no format change.
-5. **Give `tick_duration` meaning.** SGP4 propagates to an absolute epoch, so
-   the simulator needs a real start time and a real seconds-per-tick (issue
-   D). A tick is currently ~56 s of trace time while `tick_duration` defaults
-   to 1 s and is read by nobody.
-6. **Retire the catalog lookup.** Creating a satellite becomes: pick orbital
-   elements, propagate. `SatelliteCatalog`, `get_closest_satellite` and the
-   haversine ranking all become unnecessary.
-
-### Decided design: hybrid by default, global switch for experiments
-
-The two models coexist rather than one replacing the other. This was verified
-end to end: a per-satellite model choice and its parameters survive
-`save_scenary` → `Simulator.initialize`, and two models run side by side in
-the same tick.
-
-Three properties of the existing code make this work with no structural
-change:
-
-* `mobility_model` is an instance attribute, so each satellite carries its own.
-* `Satellite.export()` stores `mobility_model.__name__` and
-  `Simulator.initialize` resolves it through the `leosim.simulator` namespace,
-  so the choice survives the scenario round trip. A new model must therefore
-  be exported by `leosim/orbit_models/__init__.py`, which today exports only
-  `coordinates_history`.
-* `mobility_model_parameters` round-trips as plain data — that is where the
-  TLE lives, with no scenario format change.
-
-**Default mode — fallback hybrid.** `Satellite.step()` already calls the
-mobility model only where the trace has no value:
-
-```python
-needs_calculation = (len(self.coordinates_trace) <= steps) or (self.coordinates_trace[steps] is None)
-if needs_calculation:
-    new_position = self.mobility_model(self)
-```
-
-A scenario satellite holds 179 positions of which roughly 176 are `None` —
-precisely the gaps between orbital passes. With SGP4 as the model, a satellite
-follows **real observations during a pass and propagated physics through the
-gaps**, which is exactly where the teleport of issue C occurs.
-
-**Experiment switch — global choice.** A field on `SimulationConfig` and a
-sidebar selector pick the orbit model for the whole constellation, so
-`traces only`, `SGP4 only` and `hybrid` become three comparable
-configurations.
-
-### Decided: visibility becomes geometric
-
-Today a satellite with no recorded position goes `active = False`. The code
-uses **absence of data as a proxy for "not overhead"**.
-
-Once propagation fills the gaps a satellite always has a position, so
-visibility must be decided **geometrically** — distance against
-`max_connection_range` — whenever the trace file is not the source of the
-position. This is physically correct and it changes what coverage means, so
-it is a deliberate decision rather than a side effect.
-
-Trace-driven satellites keep the current behaviour, so the two modes stay
-comparable only through the experiment switch, never by accident.
-
-### Blocking dependency
-
-There is no TLE data. `satid` and `intDesignator` identify a satellite in a
-catalog, but the file carries positions already propagated server-side by
-N2YO. TLEs must be fetched from Celestrak or Space-Track by NORAD id before
-any of this can run.
-
-**Risk: high for results.** Satellite dynamics change, so every metric
-changes. Do this **before** collecting data for publication, not after.
+**Risk: high for results.** Satellite dynamics change, so every metric measured
+before the switch has to be re-measured after it.
 
 ---
 
@@ -1365,115 +904,40 @@ demonstration.
 
 ## Possible future contribution: Jev for the station decision
 
-Assessed 29 September 2026, **not scheduled**. Recorded so the question does
-not have to be reopened from scratch.
+Assessed 29 September 2026. A hosted "System One" model for typed decisions:
+unstructured state in, a value from a closed set out, with a calibrated
+confidence score. Published figures are **70-500 ms end to end** and 40x-200x
+faster than a reasoning model — all from the vendor's announcement, none
+independently verified.
 
-### What it is
+**Why it fits this system unusually well.** A ground station agent reads a
+digest of its neighbourhood and returns one strategy from a fixed set. That is
+the shape Jev takes, and Phase 4's design narrows it further to one option out
+of a known list. The attack is on the **per-call floor**, which Phase 3 measured
+at 14 s and identified as the remaining cost — not on prompt size.
 
-Jev is TypeSafe AI's first "System One Model": *unstructured state in, typed
-probabilistic decisions out*. It is not a text generator. The vendor describes
-a separate architecture with a parallel sampler that emits all outputs in a
-single query rather than one token at a time, trained with Reinforcement
-Learning for Calibrated Decisions rather than RLHF — the stated target being
-epistemically honest probabilities instead of human preference.
-
-Published figures: end-to-end **70 ms to 500 ms**, claimed **40x-200x faster**
-than an LLM at equivalent intelligence, input at **$0.042/MTok with output
-tokens free**. Outputs are type-safe values drawn from a declared set, each
-carrying a confidence score. The use cases named are "smart if-statements",
-map-reduce over large data, real-time applications and verification.
-
-*All of these come from the vendor's own announcement; none is independently
-verified here.*
-
-### Why it fits this system unusually well
-
-The ground station agent is close to the archetype that model is built for.
-
-| What the station agent does | What Jev takes |
+| | Per tick, at 20.7 calls |
 | --- | --- |
-| Reads a digest of its neighbourhood | unstructured state in |
-| Answers `best_fit`, `longest_duration` or `agnostic` | a declared, closed output set |
-| Is called 20.7 times per tick, 28 stations in parallel | parallel sampling, per-call latency in milliseconds |
-| Needs no prose — its answer is consumed by code | typed value, not text |
-
-The settled Phase 4 design already narrows the station's reply to one option
-out of a fixed set with a one-sentence reason. Drop the sentence and that is
-exactly a typed decision.
-
-**Projected tick cost**, at 20.7 calls per tick:
-
-| | Per tick |
-| --- | --- |
-| `llama3.1:8b` today | 453 s |
-| `llama3.1:8b` with the digest (projected) | 99 s |
+| Today, `llama3.1:8b` | 308 s |
 | Jev at the slow end, 500 ms | **10.3 s** |
 | Jev at the fast end, 70 ms | **1.4 s** |
 
-At the digest's ~118 tokens per call, a 180-step run sends about 440k input
-tokens: **$0.018 per run**, or roughly $18 for a thousand runs. Cost is not
-what would decide this.
+**The confidence score is the genuinely interesting part for the thesis.** It
+replaces self-reported agnosticism with a measurement, which is exactly what
+threat 1 needs: a station that is indifferent and a station that is unsteady
+currently look the same. And a closed output set cannot be under-filled, which
+is the failure issue Q documents and the one Phase 6 found again in the
+`args` list.
 
-### The part that is genuinely interesting for the thesis
+**Where it does not fit.** It is a hosted API and the thesis is about small
+models on ground stations; a hosted model can change under a published result;
+every tick would need the network. It is future work, not a substitution.
 
-**The confidence score replaces self-reported agnosticism with a measurement.**
+**Phase 3's work is the input pipeline either way.** "Unstructured state in" is
+the digest, and it was built for a local model.
 
-The current design asks the station to *declare* itself indifferent. A station
-that says "agnostic" might be indifferent, or might be a small model failing to
-commit. Those are not the same thing, and nothing in the reply distinguishes
-them.
-
-A calibrated probability does distinguish them: 51%/49% between two options is
-indifference expressed numerically, and 95% is a station whose local view
-genuinely determines the answer. That turns the thesis's central claim — that
-localized decisions carry information — from something argued into something
-plotted.
-
-### Where it does not fit
-
-**The dashboard agent.** It converses with the operator, explains what
-happened, and writes the report at the end of an automatic run. That is prose,
-and a typed-decision model does not produce prose.
-
-**The orchestrator's intent translation.** Turning "simulate a scenario where a
-region loses two gateways and tell me what happens to latency" into objectives
-and a configuration is a language task.
-
-So the shape would be **hybrid**, which also matches the System One / System
-Two framing the vendor uses: an LLM at the two language-facing boundaries, a
-typed-decision model for the high-volume decision inside the simulation loop.
-
-### What would have to be settled first
-
-* **It is a hosted API, and the thesis is about small models on ground
-  stations.** Whether that contradicts the premise depends on what "localized"
-  means in the claim: locality of *decision scope in the network topology*, or
-  locality of *where inference runs*. The dissertation has to say which, and
-  the answer changes whether this is a contribution or a contradiction.
-* **Reproducibility.** A hosted model can change under a result. Measurements
-  taken against a pinned local model in Ollama can be rerun in two years; ones
-  taken against a managed endpoint may not be. For the dissertation's headline
-  numbers this matters more than speed.
-* **The claims are the vendor's.** 40x-200x and "cannot hallucinate" need
-  independent measurement on this workload before being repeated.
-* **Offline operation disappears.** Every tick needs the network.
-
-### What it does not change
-
-**Phase 3's work is the input pipeline either way.** "Unstructured state in"
-still has to be produced, and a smaller, cleaner state is better for a typed
-decision model too — cheaper per call, and more stable between ticks, which is
-what makes the skip filter work. The translator is not wasted if this happens;
-it is the prerequisite.
-
-### When to revisit
-
-After the demonstration, and after Phase 8 exists to measure it against the
-local-model baseline. The number to beat is the one Phase 3 is establishing.
-
-### Source
-
-* [Introducing System One Models and Jev](https://typesafe.ai/blog/introducing-system-one-models-and-jev), TypeSafe AI
+Source: [Introducing System One Models and Jev](https://typesafe.ai/blog/introducing-system-one-models-and-jev),
+TypeSafe AI.
 
 ---
 

@@ -1,75 +1,69 @@
-import sys
+"""Tests for the centralized slash command registry.
+
+`SLASH_COMMANDS` is read by three consumers that cannot see each other: the
+router, the help message and the JavaScript autocomplete menu inside
+`accessibility.js`. A command added in one shape and consumed in another fails
+only in the browser, which is why the registry is checked here rather than at
+each consumer.
+
+This was one 75-line test wrapped in a hand-rolled stdout capture that printed
+its own SUCCESS line and bypassed `run_module_tests`; a failure named nothing.
+"""
+
+import json
 import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.core.slash_commands import SLASH_COMMANDS, get_help_message, get_commands_for_js
+from app.core.slash_commands import SLASH_COMMANDS, get_commands_for_js, get_help_message
+
+REQUIRED_KEYS = ("cmd", "desc", "auto_submit", "local")
 
 
-def test_slash_commands_registry():
-    """Validates the centralized slash command registry structure and outputs."""
-    import io
-    from contextlib import contextmanager
+def test_every_command_carries_the_keys_its_consumers_read():
+    for command in SLASH_COMMANDS:
+        for key in REQUIRED_KEYS:
+            assert key in command, f"{command.get('cmd', command)} has no {key!r}"
 
-    @contextmanager
-    def capture_output(test_name):
-        buffer = io.StringIO()
-        old_stdout = sys.stdout
-        old_stderr = sys.stderr
-        sys.stdout = buffer
-        sys.stderr = buffer
-        try:
-            yield buffer
-            sys.stdout = old_stdout
-            sys.stderr = old_stderr
-            print(f"=> {test_name}: SUCCESS")
-        except Exception as e:
-            sys.stdout = old_stdout
-            sys.stderr = old_stderr
-            print(buffer.getvalue(), end="")
-            raise e
 
-    with capture_output("test_slash_commands_registry"):
-        # Checking that every command carries the required keys.
-        for cmd in SLASH_COMMANDS:
-            assert "cmd" in cmd, f"Missing 'cmd' key in {cmd}"
-            assert "desc" in cmd, f"Missing 'desc' key in {cmd}"
-            assert "auto_submit" in cmd, f"Missing 'auto_submit' key in {cmd}"
-            assert "local" in cmd, f"Missing 'local' key in {cmd}"
-        print(f"Registry has {len(SLASH_COMMANDS)} commands, all with valid keys.")
+def test_help_is_registered_and_answered_without_the_agent():
+    """`/help` is the one command the router answers locally; if the registry
+    stops saying so, it goes to the model and costs a round trip."""
+    help_command = next((c for c in SLASH_COMMANDS if c["cmd"] == "/help"), None)
 
-        # /help must exist and be local
-        help_cmd = next((c for c in SLASH_COMMANDS if c["cmd"] == "/help"), None)
-        assert help_cmd is not None, "/help command not found in registry"
-        assert help_cmd["local"] is True, "/help must be a local command"
-        print("/help found and marked as local.")
+    assert help_command is not None
+    assert help_command["local"] is True
 
-        # Checking that get_help_message mentions every command.
-        help_msg = get_help_message()
-        assert isinstance(help_msg, str)
-        assert len(help_msg) > 0
-        for cmd in SLASH_COMMANDS:
-            cmd_stripped = cmd["cmd"].strip()
-            assert cmd_stripped in help_msg, f"Command '{cmd_stripped}' not found in help message"
-        print("get_help_message() includes all commands.")
 
-        # Checking the structure get_commands_for_js returns.
-        js_cmds = get_commands_for_js()
-        assert len(js_cmds) == len(SLASH_COMMANDS)
-        for jc in js_cmds:
-            assert "cmd" in jc, f"Missing 'cmd' in JS command: {jc}"
-            assert "desc" in jc, f"Missing 'desc' in JS command: {jc}"
-            assert "autoSubmit" in jc, f"Missing 'autoSubmit' in JS command: {jc}"
-        print("get_commands_for_js() returns correct structure.")
+def test_the_help_message_mentions_every_command():
+    """A command absent from the help message exists only for whoever already
+    knows it is there."""
+    message = get_help_message()
 
-        # Serializing to JSON, which catches circular references and types that
-        # cannot cross into JavaScript.
-        import json
+    for command in SLASH_COMMANDS:
+        assert command["cmd"].strip() in message, f"{command['cmd']} is missing from the help message"
 
-        serialized = json.dumps(js_cmds, ensure_ascii=False)
-        assert len(serialized) > 10
-        print(f"JSON serialization OK ({len(serialized)} chars).")
+
+def test_the_javascript_menu_offers_the_same_commands_in_its_own_shape():
+    """`accessibility.js` reads `autoSubmit`, not `auto_submit`."""
+    for_js = get_commands_for_js()
+
+    assert len(for_js) == len(SLASH_COMMANDS)
+    for command in for_js:
+        for key in ("cmd", "desc", "autoSubmit"):
+            assert key in command, f"{command.get('cmd', command)} has no {key!r}"
+
+
+def test_the_menu_survives_the_trip_into_javascript():
+    """It is interpolated into the script as JSON, so a value that cannot be
+    serialized breaks the slash menu and nothing else, silently."""
+    serialized = json.dumps(get_commands_for_js(), ensure_ascii=False)
+
+    assert json.loads(serialized) == get_commands_for_js()
 
 
 if __name__ == "__main__":
-    test_slash_commands_registry()
+    from runner import run_module_tests
+
+    sys.exit(1 if run_module_tests(globals()) else 0)

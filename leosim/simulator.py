@@ -84,6 +84,12 @@ class Simulator(ComponentManager):
         self.stopping_criterion = stopping_criterion
         self.running = False
 
+        if resource_management_algorithm is not None and not callable(resource_management_algorithm):
+            raise TypeError(
+                f"resource_management_algorithm must be callable or None, got "
+                f"{resource_management_algorithm!r}. A non-callable value would leave every tick "
+                f"without allocation and say nothing."
+            )
         self.resource_management_algorithm = resource_management_algorithm
 
         # Copying the parameters into a fresh dictionary: using the signature
@@ -197,7 +203,7 @@ class Simulator(ComponentManager):
         self.scheduler.step()
         self.topology_management_algorithm(topology=self.topology, **self.topology_management_parameters)
 
-        if callable(self.resource_management_algorithm):
+        if self.resource_management_algorithm is not None:
             for gs in GroundStation.all():
                 params = dict(self.resource_management_algorithm_parameters)
                 params["ground_station"] = gs

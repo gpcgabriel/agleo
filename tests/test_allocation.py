@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.agents.allocation.allocator import LLMAllocator
 from app.agents.allocation.decision import AllocationDecision, reconcile
 from app.agents.allocation.prompt import build_allocation_prompt, build_history_section
-from app.agents.allocation.state import collect_state, find_pending_app_ids, should_skip
+from app.agents.allocation.state import collect_state, find_pending_app_ids
 from app.core.config import SimulationConfig
 from app.core.session import create_session
 from app.helper_functions.ollama_helper import is_ollama_running, list_local_models
@@ -117,22 +117,6 @@ def test_only_pending_applications_are_collected():
     all_apps = {"App_1": {"pending": True}, "App_2": {"pending": False}, "App_3": {"pending": True}}
 
     assert sorted(find_pending_app_ids(all_apps)) == [1, 3]
-
-
-def test_a_station_with_nothing_it_can_serve_is_skipped():
-    """The list `should_skip` receives is the station's own, not the network's."""
-    session = make_session()
-    station = GroundStation.all()[0]
-
-    assert should_skip(station, [], {1, 2}) == "no servable pending apps"
-
-
-def test_a_station_with_no_reach_and_no_server_is_skipped():
-    session = make_session()
-    station = GroundStation.all()[0]
-    station.process_unit = []
-
-    assert should_skip(station, [1], set()) == "no satellites or process units in range"
 
 
 def test_collect_state_reports_a_skip_reason_instead_of_a_partial_state():

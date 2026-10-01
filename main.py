@@ -37,9 +37,16 @@ def stopping_criterion(model):
 def main(args):
     os.makedirs(DATASETS_DIR, exist_ok=True)
 
-    args.algorithm = args.algorithm if not args.llm else "llm_orchestrator"
+    # Building the LLM allocator here rather than naming it in ALGORITHMS: the
+    # engine must not import the agent package, so the CLI assembles it the way
+    # the dashboard's sidebar does.
+    if args.llm:
+        from app.agents.allocation import LLMAllocator
 
-    algorithm = "llm_orchestrator" if args.llm else ALGORITHMS[args.algorithm]
+        args.algorithm = "llm_allocation"
+        algorithm = LLMAllocator(model_name=args.model).allocate
+    else:
+        algorithm = ALGORITHMS[args.algorithm]
 
     for rep in range(1, args.repetitions + 1):
 
@@ -95,20 +102,9 @@ def main(args):
 
         sim = Simulator(
             stopping_criterion=stopping_criterion,
-            resource_management_algorithm=args.llm if args.llm else algorithm,
+            resource_management_algorithm=algorithm,
             topology_management_algorithm=default_topology_management,
-            ignore_list=[
-                # NetworkFlow,
-                # DynamicDurationAccessModel,
-                # FixedDurationAccessModel,
-                # NetworkLink,
-                # Application,
-                # ProcessUnit,
-                # Satellite,
-                # User,
-                # GroundStation,
-                # Topology
-            ],
+            ignore_list=[],
             clean_data_in_memory=True,
             logs_directory=log_dir,
         )
@@ -139,7 +135,8 @@ if __name__ == "__main__":
     parser.add_argument("--num_steps", type=int, default=15)
     parser.add_argument("--logs_dir", default="logs")
     parser.add_argument("--repetitions", type=int, default=1)
-    parser.add_argument("--llm", action="store_true", help="Enable LLM orchestrator in GS")
+    parser.add_argument("--llm", action="store_true", help="Enable the LLM allocator in each ground station")
+    parser.add_argument("--model", default="llama3.1:8b", help="Ollama model the LLM allocator asks")
 
     args = parser.parse_args()
 

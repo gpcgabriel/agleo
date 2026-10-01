@@ -79,15 +79,32 @@ def test_a_disconnected_user_is_nobody_s_to_serve():
 
 
 def test_only_applications_still_pending_are_returned():
-    """An application already placed is not pending, so it is not asked about."""
+    """An application already placed is not pending, so it is not asked about.
+
+    The station can reach the user either way; what decides it is whether the
+    id arrives in the pending list.
+    """
     reset_components()
     station = GroundStation(coordinates=(0.0, 0.0, 0.0))
     satellite = Satellite(coordinates=(0.0, 0.0, 550.0))
     _, application = make_user_with_application([satellite])
+    reachable = {satellite.id}
 
-    servable = find_servable_app_ids(station, pending_app_ids=[], reachable_satellite_ids={satellite.id})
+    asked = find_servable_app_ids(station, [application.id], reachable)
+    not_asked = find_servable_app_ids(station, [], reachable)
 
-    assert servable == []
+    assert asked == [application.id]
+    assert not_asked == []
+
+
+def test_a_station_with_no_reach_and_no_server_is_skipped():
+    """Moved here from tests/test_allocation.py, where the same assertion cost
+    a whole simulation session to set up."""
+    reset_components()
+    station = GroundStation(coordinates=(0.0, 0.0, 0.0))
+    station.process_unit = []
+
+    assert should_skip(station, [1], set()) == "no satellites or process units in range"
 
 
 def test_two_stations_reaching_different_users_get_different_questions():

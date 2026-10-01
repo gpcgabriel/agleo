@@ -2,6 +2,8 @@ from leosim import *
 from dataset_generator import *
 from random import choices, randint, sample
 
+from app.core.infrastructure import GROUND_STATION_LINK_DELAY, SATELLITE_LINK_DELAY
+
 
 def load_topology(ground_topology: str, leo_topology, max_satellites) -> Topology:
     t = load_ground_topology_from_gml(ground_topology)
@@ -48,7 +50,7 @@ def add_process_unit_to_satellites(topology, num_process_units: int):
     for satellite in targets:
         unit = ProcessUnit(cpu=randint(30, 50), memory=randint(30, 50), storage=randint(30, 50))
         unit.coordinates = satellite.coordinates
-        create_link(unit, satellite, 1, bandwidth=NetworkLink.default_bandwidth, topology=topology)
+        create_link(unit, satellite, SATELLITE_LINK_DELAY, bandwidth=NetworkLink.default_bandwidth, topology=topology)
         satellite.process_unit = unit
 
 
@@ -58,7 +60,7 @@ def add_process_unit_to_ground_stations(topology, num_process_units: int):
     for station in targets:
         unit = ProcessUnit(cpu=randint(50, 100), memory=randint(50, 100), storage=randint(50, 100))
         unit.coordinates = station.coordinates
-        create_link(unit, station, 10, NetworkLink.default_bandwidth, topology=topology)
+        create_link(unit, station, GROUND_STATION_LINK_DELAY, NetworkLink.default_bandwidth, topology=topology)
         station.connect_server(unit)
 
 

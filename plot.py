@@ -195,6 +195,7 @@ def plot_migrations(algorithm_names, scenarios, num_repetitions, current_path):
                     file_path = build_path(current_path, alg, scenario, "Application.jsonl", rep)
 
                 if not os.path.isfile(file_path):
+                    print(f"WARNING: {file_path} not found")
                     continue
 
                 curr_steps = []
@@ -257,6 +258,7 @@ def plot_avg_topology(algorithm_names, scenarios, num_repetitions, current_path)
                         file_path = build_path(current_path, alg, scenario, "Application.jsonl", rep)
 
                     if not os.path.isfile(file_path):
+                        print(f"WARNING: {file_path} not found")
                         continue
 
                     for data in read_jsonl(file_path):
@@ -323,6 +325,7 @@ def plot_provisioned_in_topology(algorithm_names, scenarios, num_repetitions, cu
                         file_path = build_path(current_path, alg, scenario, "User.jsonl", rep)
 
                     if not os.path.isfile(file_path):
+                        print(f"WARNING: {file_path} not found")
                         continue
 
                     last_accesses = {}
@@ -399,6 +402,7 @@ def plot_groundstation_links_by_id(algorithm_names, scenarios, num_repetitions, 
                     file_path = build_path(current_path, alg, scenario, "GroundStation.jsonl", rep)
 
                 if not os.path.isfile(file_path):
+                    print(f"WARNING: {file_path} not found")
                     continue
 
                 curr_steps = []
@@ -460,6 +464,7 @@ def plot_delay_by_groundstation(algorithm_names, scenarios, num_repetitions, cur
                     file_path = build_path(current_path, alg, scenario, "User.jsonl", rep)
 
                 if not os.path.isfile(file_path):
+                    print(f"WARNING: {file_path} not found")
                     continue
 
                 curr_steps = []
@@ -533,6 +538,7 @@ def plot_avg_resource_consumption(algorithm_names, scenarios, num_repetitions, c
                     file_path = build_path(current_path, alg, scenario, "Application.jsonl", rep)
 
                 if not os.path.isfile(file_path):
+                    print(f"WARNING: {file_path} not found")
                     continue
 
                 cpu_sum = {}

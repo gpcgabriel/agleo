@@ -75,15 +75,13 @@ def test_the_skills_directory_travels_with_the_package():
     assert os.path.isdir(SKILLS_DIRECTORY)
 
 
-def test_every_skill_on_disk_is_valid():
-    """`LocalSkills` validates on load, so an invalid skill raises here."""
+def test_each_skill_declares_a_name_and_a_description():
+    """`LocalSkills` validates on load, so an invalid skill raises before the
+    assertions below are reached."""
     skills = load_skills()
 
     assert skills, "no skills found"
-
-
-def test_each_skill_declares_a_name_and_a_description():
-    for skill in load_skills():
+    for skill in skills:
         assert skill.name, f"{skill.source_path} has no name"
         assert skill.description, f"{skill.name} has no description"
         assert skill.instructions.strip(), f"{skill.name} has no instructions"

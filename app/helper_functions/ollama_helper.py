@@ -3,7 +3,8 @@ import time
 import requests
 from typing import List, Callable, Optional
 
-DEFAULT_MODEL = "llama3.1"
+DEFAULT_MODEL = "llama3.1:8b"
+DEFAULT_HOST = "http://localhost:11434"
 
 
 def is_ollama_running() -> bool:
@@ -13,7 +14,7 @@ def is_ollama_running() -> bool:
         bool: True if reachable, False otherwise.
     """
     try:
-        response = requests.get("http://localhost:11434/api/tags", timeout=2)
+        response = requests.get(f"{DEFAULT_HOST}/api/tags", timeout=2)
         return response.status_code == 200
     except requests.exceptions.RequestException:
         return False
@@ -57,7 +58,7 @@ def list_local_models() -> List[str]:
         List[str]: A list of downloaded model names.
     """
     try:
-        response = requests.get("http://localhost:11434/api/tags", timeout=3)
+        response = requests.get(f"{DEFAULT_HOST}/api/tags", timeout=3)
         if response.status_code == 200:
             data = response.json()
             models_list = data.get("models", [])
@@ -97,9 +98,8 @@ def pull_model(model_name: str, progress_callback: Optional[Callable[[str], None
 def model_is_available(model_name: str, local_models=None) -> bool:
     """Tells whether a model is available locally, tolerating the tag.
 
-    The sidebar selector works with full names ("llama3.1:8b"), while
-    DEFAULT_MODEL is the untagged name ("llama3.1"). This comparison accepts
-    either form.
+    A name may or may not carry its tag: "llama3.1" and "llama3.1:8b" refer to
+    the same local model, and either form can reach here.
 
     Args:
         model_name (str): Name of the model being looked for.
