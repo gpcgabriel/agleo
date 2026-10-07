@@ -159,9 +159,9 @@ def get_satellites_from_api(coordinates: tuple, sat_range: int, api_category: in
 def build_satellites(steps: list[list[dict]], max_satellites: int) -> None:
     """Creates the satellites a capture saw, each with its trace through the capture's steps.
 
-    A satellite joins the trace at the step it is first seen. The slots of earlier steps, and
-    of steps it is missing from, hold None, which `Satellite.step` fills from its mobility
-    model.
+    Every trace holds one slot per step. The slots of the steps before a satellite is first
+    seen, and of the steps it is missing from, hold None, which `Satellite.step` fills from
+    its mobility model.
 
     Args:
         steps (list): One list of N2YO satellite descriptions per step.
@@ -188,7 +188,7 @@ def build_satellites(steps: list[list[dict]], max_satellites: int) -> None:
                 satellites[satellite_id] = satellite
 
         for satellite in Satellite.all():
-            if len(satellite.coordinates_trace) < index:
+            if len(satellite.coordinates_trace) <= index:
                 satellite.coordinates_trace.append(None)
 
     for satellite in Satellite.all():

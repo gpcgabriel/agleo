@@ -118,6 +118,26 @@ def test_a_satellite_first_seen_later_starts_with_empty_slots():
     assert second.coordinates is None
 
 
+def test_a_satellite_missing_from_a_step_keeps_an_empty_slot_for_it():
+    """The positions measured after the gap stay at the steps they were measured in."""
+    clear_components()
+    build_satellites([[seen(1, -10.0)], [], [seen(1, -12.0)], [seen(1, -13.0)]], max_satellites=10)
+
+    assert Satellite.all()[0].coordinates_trace == [
+        (-10.0, -47.0, 550.0),
+        None,
+        (-12.0, -47.0, 550.0),
+        (-13.0, -47.0, 550.0),
+    ]
+
+
+def test_every_trace_holds_one_slot_per_step():
+    clear_components()
+    build_satellites([[seen(1, -10.0)], [seen(2, -20.0)], []], max_satellites=10)
+
+    assert [len(satellite.coordinates_trace) for satellite in Satellite.all()] == [3, 3]
+
+
 def test_the_first_satellites_seen_are_the_ones_kept():
     clear_components()
     build_satellites([[seen(1, -10.0), seen(2, -11.0), seen(3, -12.0)]], max_satellites=2)
