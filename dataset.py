@@ -23,9 +23,7 @@ from leosim.components import (
 def load_topology(ground_topology: str, leo_topology, max_satellites) -> Topology:
     t = load_ground_topology_from_gml(ground_topology)
 
-    create_satellite_topology(
-        topology=t, filename=leo_topology, max_steps=180, sat_range=500, max_satellites=max_satellites
-    )
+    create_satellite_topology(topology=t, filename=leo_topology, max_steps=180, max_satellites=max_satellites)
 
     for sat in Satellite.all():
         sat.is_gateway = True
