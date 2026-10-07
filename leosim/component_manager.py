@@ -5,6 +5,9 @@ import json
 class ComponentManager:
     model = None
 
+    # Recording whether `save_scenary` writes this class's instances to the scenario file.
+    saved_in_scenario = True
+
     def __str__(self) -> str:
         """Define an object representation
         Returns:
@@ -81,12 +84,10 @@ class ComponentManager:
     @classmethod
     def save_scenary(cls, ignore_list: list | None = None, filename: str = "dataset.json") -> dict:
         # Exporting the context of the components of interest.
-        from .simulator import Simulator, Topology
-
         scenary = {}
 
         for component_class in cls.__subclasses__():
-            if component_class not in [*(ignore_list or []), Simulator, Topology]:
+            if component_class.saved_in_scenario and component_class not in (ignore_list or []):
                 components = []
 
                 for component in component_class.all():

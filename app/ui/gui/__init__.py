@@ -1,2 +1,1 @@
-from .icons import *
-from .styles import *
+"""Icons, themes and the accessibility script of the interface."""

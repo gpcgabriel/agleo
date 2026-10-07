@@ -51,7 +51,7 @@ def script_of(skill_name):
     return os.path.join(SKILLS_DIRECTORY, skill_name, "scripts", "propose.py")
 
 
-def run_skill(skill_name, arguments):
+def run_skill(skill_name: str, arguments: list[str]) -> dict:
     """Runs one skill's script with the running interpreter and returns what it printed.
 
     Args:

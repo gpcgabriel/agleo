@@ -34,7 +34,7 @@ def imported_modules(path):
     return names
 
 
-def run_in_a_fresh_interpreter(statements):
+def run_in_a_fresh_interpreter(statements: str) -> subprocess.CompletedProcess:
     """Runs Python statements in a new interpreter that has the repository on its path.
 
     Args:

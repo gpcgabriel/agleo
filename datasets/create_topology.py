@@ -26,7 +26,7 @@ def haversine(lat1, lon1, lat2, lon2):
 # =========================================
 
 
-def extract_field(block, field):
+def extract_field(block: str, field: str) -> str | None:
     """Returns the value of one field in a GML node block, or None when the block lacks it."""
     match = re.search(rf'{field}\s+"?([^"\n]+)"?', block)
     return match.group(1) if match else None

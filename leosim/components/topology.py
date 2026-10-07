@@ -29,6 +29,9 @@ class Topology(ComponentManager, nx.Graph):
     _instances = []
     _object_count = 0
 
+    # Leaving the topology out of the scenario file: `Simulator.initialize` rebuilds it from the links.
+    saved_in_scenario = False
+
     def __init__(self, obj_id: int = 0, existing_graph: nx.Graph = None) -> None:
         """Initializes a Topology instance.
 

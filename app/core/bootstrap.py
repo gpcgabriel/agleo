@@ -3,9 +3,8 @@
 import random
 
 import dataset as ds
-from leosim import ComponentManager, Simulator, default_topology_management
-from leosim.components import Satellite
-from leosim.components.allocation_algorithms import best_fit_allocation, longest_duration_allocation
+from leosim import ComponentManager, Simulator, clear_components
+from leosim.components import Satellite, best_fit_allocation, default_topology_management, longest_duration_allocation
 
 DEFAULT_SCENARY_PATH = "datasets/temp_dashboard_scenary.json"
 DEFAULT_LOGS_DIRECTORY = "logs/dashboard"
@@ -19,17 +18,6 @@ ALLOCATION_ALGORITHMS = {
     "best_fit_allocation": best_fit_allocation,
     "longest_duration_allocation": longest_duration_allocation,
 }
-
-
-def clear_components():
-    """Resets the instance registry of every engine component.
-
-    Required before assembling a new scenario, because each component class
-    keeps its own instance list in a class attribute.
-    """
-    for component_class in ComponentManager.__subclasses__():
-        if component_class.__name__ != "Simulator":
-            component_class.clear()
 
 
 def resolve_algorithm(name):

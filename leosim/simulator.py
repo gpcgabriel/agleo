@@ -1,12 +1,39 @@
-# Importing the simulator components.
+"""The simulator: loads a scenario from a file and runs it tick by tick."""
+
 import datetime
 import json
 import os
 from collections.abc import Callable
 from typing import Any
 
-from .components import *
-from .scheduler import *
+from .component_manager import ComponentManager
+from .components import (
+    GroundStation,
+    NetworkLink,
+    ProcessUnit,
+    Satellite,
+    Topology,
+    coordinates_history,
+    default_topology_management,
+    deterministic_failure_model,
+    linear_estimation,
+    random_failure_model,
+    random_mobility_model,
+)
+from .scheduler import Scheduler
+
+# Naming the functions a scenario file may refer to, which are the models a component runs:
+# `save_scenary` writes a model by its `__name__`, and `initialize` reads it back from here.
+SCENARIO_FUNCTIONS = {
+    function.__name__: function
+    for function in (
+        coordinates_history,
+        linear_estimation,
+        random_mobility_model,
+        deterministic_failure_model,
+        random_failure_model,
+    )
+}
 
 
 class Simulator(ComponentManager):
@@ -26,6 +53,9 @@ class Simulator(ComponentManager):
     _object_count = 0
 
     time_units = ["seconds", "minutes", "hours"]
+
+    # Leaving the simulator out of the scenario file: it loads the file rather than belonging to it.
+    saved_in_scenario = False
 
     def __init__(
         self,
@@ -115,8 +145,10 @@ class Simulator(ComponentManager):
         # Converting the time unit through timedelta, for a single standard.
         self.tick_duration = datetime.timedelta(**{time_unit: tick_duration}).total_seconds()
 
+        # Adding the caller's own models to the ones a scenario file may name.
+        self.scenario_functions = dict(SCENARIO_FUNCTIONS)
         for function in user_defined_functions or []:
-            globals()[function.__name__] = function
+            self.scenario_functions[function.__name__] = function
 
         ComponentManager.model = self
 
@@ -134,10 +166,7 @@ class Simulator(ComponentManager):
             FileNotFoundError: If the dataset path is invalid.
             json.JSONDecodeError: If the file is not a valid JSON.
         """
-        # Clearing the previous component states.
-        for component_class in ComponentManager.__subclasses__():
-            if component_class.__name__ != "Simulator":
-                globals()[component_class.__name__].clear()
+        clear_components()
 
         with open(dataset, encoding="UTF-8") as file:
             dataset_data = json.load(file)
@@ -146,8 +175,9 @@ class Simulator(ComponentManager):
 
         # Instantiating the objects described by the dataset schema.
         for class_name, components in dataset_data.items():
+            component_class = find_component_class(class_name)
             for component in components:
-                obj = globals()[class_name]()
+                obj = component_class()
                 obj.set_attributes(**component)
                 obj.relationships = component["relationships"]
                 created_components.append(obj)
@@ -155,27 +185,7 @@ class Simulator(ComponentManager):
         # Resolving the relationships between objects.
         for obj in created_components:
             for key, value in obj.relationships.items():
-                # Resolving a reference to a global function.
-                if isinstance(value, str) and globals().get(value):
-                    setattr(obj, key, globals()[value])
-
-                # Resolving a relationship to a single object.
-                elif isinstance(value, dict) and "class" in value and "id" in value:
-                    object_relation = globals()[value["class"]].find_by("id", value["id"])
-                    setattr(obj, key, object_relation)
-
-                # Resolving a mapping held in a global dictionary.
-                elif isinstance(value, dict) and all(globals().get(v) for v in value.values()):
-                    object_relation = {k: globals().get(v) for k, v in value.items()}
-                    setattr(obj, key, object_relation)
-
-                # Resolving a list of object references.
-                elif isinstance(value, list) and all("id" in c and "class" in c for c in value):
-                    components_list = [globals()[comp["class"]].find_by("id", comp["id"]) for comp in value]
-                    setattr(obj, key, components_list)
-
-                elif value is None:
-                    setattr(obj, key, None)
+                self.resolve_relationship(obj, key, value)
 
         # Adding the network nodes to the topology manager.
         for agent in GroundStation.all() + Satellite.all() + ProcessUnit.all():
@@ -186,6 +196,37 @@ class Simulator(ComponentManager):
             self.topology.add_edge(link["nodes"][0], link["nodes"][1])
             self.topology._adj[link["nodes"][0]][link["nodes"][1]] = link
             self.topology._adj[link["nodes"][1]][link["nodes"][0]] = link
+
+    def resolve_relationship(self, obj: ComponentManager, key: str, value: Any) -> None:
+        """Restores one relationship of a loaded component from what the scenario file recorded.
+
+        A value that matches none of the recorded shapes leaves the attribute
+        at its constructor default.
+
+        Args:
+            obj (ComponentManager): The component being restored.
+            key (str): The attribute the relationship fills.
+            value (Any): What the file holds: a model's name, a reference such as
+                {"class": "User", "id": 3}, a mapping to model names, a list of
+                references, or None.
+        """
+        functions = self.scenario_functions
+
+        if isinstance(value, str) and value in functions:
+            setattr(obj, key, functions[value])
+
+        elif isinstance(value, dict) and "class" in value and "id" in value:
+            setattr(obj, key, find_component_class(value["class"]).find_by("id", value["id"]))
+
+        elif isinstance(value, dict) and all(name in functions for name in value.values()):
+            setattr(obj, key, {label: functions[name] for label, name in value.items()})
+
+        elif isinstance(value, list) and all("id" in reference and "class" in reference for reference in value):
+            referenced = [find_component_class(ref["class"]).find_by("id", ref["id"]) for ref in value]
+            setattr(obj, key, referenced)
+
+        elif value is None:
+            setattr(obj, key, None)
 
     def initialize_logs(self) -> None:
         """Sets up the directory and data structures for metric logging."""
@@ -270,3 +311,33 @@ class Simulator(ComponentManager):
                 self.running = False
 
         self.dump_data()
+
+
+def find_component_class(class_name: str) -> type[ComponentManager]:
+    """Returns the component class a scenario file names.
+
+    Args:
+        class_name (str): The class's `__name__`, as `save_scenary` wrote it.
+
+    Returns:
+        type: The component class.
+
+    Raises:
+        ValueError: If no component class has that name.
+    """
+    for component_class in ComponentManager.__subclasses__():
+        if component_class.__name__ == class_name:
+            return component_class
+
+    known = sorted(component_class.__name__ for component_class in ComponentManager.__subclasses__())
+    raise ValueError(f"Unknown component class: {class_name!r}. Expected one of {known}.")
+
+
+def clear_components() -> None:
+    """Empties the instance registry of every component class, so a new scenario starts from nothing.
+
+    Simulators keep theirs: a simulator loads a scenario rather than being part of one.
+    """
+    for component_class in ComponentManager.__subclasses__():
+        if component_class is not Simulator:
+            component_class.clear()
