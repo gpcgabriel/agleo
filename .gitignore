@@ -6,7 +6,6 @@ __pycache__/
 logs/
 
 .agents
-CLAUDE.md
 .claude/
 dev-docs/
 
