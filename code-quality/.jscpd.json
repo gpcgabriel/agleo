@@ -1,0 +1,7 @@
+{
+  "threshold": 3,
+  "minTokens": 50,
+  "reporters": ["console"],
+  "gitignore": true,
+  "ignore": ["**/.git/**", "**/.venv/**", "**/node_modules/**", "**/build/**", "**/dist/**", "**/coverage/**", "**/*.lock"]
+}

@@ -1,2 +1,39 @@
 [tool.ruff]
 line-length = 120
+
+# Configuring the quality gate (added by /quality-init)
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "C90", "PL", "S"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/test_*.py" = ["S101", "PLR2004"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.pylint]
+max-args = 5
+max-branches = 12
+max-returns = 6
+max-statements = 50
+
+[tool.complexipy]
+max-complexity-allowed = 15
+
+[tool.pyright]
+typeCheckingMode = "strict"
+
+[tool.pytest.ini_options]
+addopts = "--cov --cov-fail-under=80"
+pythonpath = ["."]
+
+[tool.coverage.run]
+omit = ["**/test_*.py"]
+
+[tool.vulture]
+paths = ["."]
+exclude = [".venv/", "build/", "**/test_*.py"]
+min_confidence = 80
+
+[dependency-groups]
+dev = ["pyright>=1.1.414", "pytest>=9.1.1", "pytest-cov>=7.1.0", "vulture>=2.16"]

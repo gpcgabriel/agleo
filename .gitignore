@@ -20,3 +20,5 @@ node_modules/
 datasets/temp_dashboard_scenary.json
 planning-draft.md
 output.log
+
+build/
