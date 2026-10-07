@@ -217,6 +217,12 @@ class User(ComponentManager):
 
         self.applications_access_models.append(access_model)
 
+        # Recording the link on the user's side too. `export()` writes this
+        # list and `app/core/snapshot.py` reads it, so it is the only path by
+        # which the map, the agent's context summary and the run report learn
+        # that a user has applications at all.
+        self.applications.append(application)
+
     def connect_to_access_point(self, access_point: Any) -> None:
         """Registers a connection with a network access point.
 

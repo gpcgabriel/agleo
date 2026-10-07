@@ -117,6 +117,7 @@ def test_tool_list_exposes_every_proposal_tool():
     assert sorted(names) == sorted(
         [
             "propose_run_simulation",
+            "propose_run_full_simulation",
             "propose_restart_simulation",
             "propose_add_process_unit",
             "propose_add_user",

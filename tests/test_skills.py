@@ -34,6 +34,7 @@ from app.core.config import SimulationConfig
 MODEL_FOR_ASSEMBLY = "llama3.2:3b"
 EXPECTED_SKILLS = {
     "run-simulation": ["--steps", "5"],
+    "run-full-simulation": ["--steps", "20", "--num-users", "40"],
     "add-user": ["--lat", "-23.5", "--lon", "-46.6"],
     "add-nodes": ["--node-types", "Satellite", "--latitudes", "-7.2", "--longitudes", "-35.8"],
     "add-process-unit": ["--target-type", "Satellite", "--target-id", "3", "--cpu", "40", "--memory", "40"],
@@ -41,9 +42,9 @@ EXPECTED_SKILLS = {
     "restart-simulation": ["--num-users", "40", "--scenario", "leo"],
 }
 
-# Restarting is resolved against the configuration in use, which the subprocess
-# cannot see, so its script prints arguments the runner completes.
-DEFERRED_SKILLS = {"restart-simulation"}
+# These are resolved against the configuration in use, which the subprocess
+# cannot see, so their scripts print arguments the runner completes.
+DEFERRED_SKILLS = {"restart-simulation", "run-full-simulation"}
 
 
 def script_of(skill_name):
@@ -193,6 +194,12 @@ def test_each_skill_proposes_the_action_it_is_named_for():
 
         assert "proposal" in printed, f"{skill_name}: {printed}"
         assert printed["proposal"]["action_type"] == skill_name.replace("-", "_")
+
+        # A deferred skill cannot build its payload here, so the gate has
+        # nothing to show the operator unless the script writes the
+        # description itself.
+        if skill_name in DEFERRED_SKILLS:
+            assert printed["proposal"]["description"], f"{skill_name} left the gate with nothing to show"
 
 
 def test_a_node_gets_an_altitude_without_being_asked_for_one():

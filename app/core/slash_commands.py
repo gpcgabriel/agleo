@@ -24,6 +24,12 @@ SLASH_COMMANDS = [
         "local": False,
     },
     {
+        "cmd": "/simulate ",
+        "desc": "Run a complete new simulation for n steps and report its metrics",
+        "auto_submit": False,
+        "local": False,
+    },
+    {
         "cmd": "/restart",
         "desc": "Reset simulation back to Step 0",
         "auto_submit": True,

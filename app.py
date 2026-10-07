@@ -10,6 +10,7 @@ import streamlit as st
 
 from app.core.actions import ActionType
 from app.core.executor import execute_action
+from app.core.report import collect_run_metrics, summarize_run
 from app.ui.chat import render_chat_panel
 from app.ui.css import inject_CSS
 from app.ui.gui.styles import apply_theme, inject_accessibility_script
@@ -70,7 +71,7 @@ def resolve_pending_action(session):
 
     action = get_pending()
 
-    if action.action_type == ActionType.RUN_SIMULATION:
+    if action.action_type in (ActionType.RUN_SIMULATION, ActionType.RUN_FULL_SIMULATION):
         spinner_message = f"⚙️ Running Network Simulation: {action.description}..."
     else:
         spinner_message = f"🔧 Applying physical network change: {action.description}..."
@@ -126,11 +127,36 @@ def advance_scheduled_steps(session, progress_slot):
     while not finished and time.perf_counter() < deadline:
         finished = session.run_next_pending_step()
 
-    if finished:
+    # Saying nothing when a plan is finishing: `report_finished_plan` answers
+    # that run with its metrics, and a bare "completed successfully" above the
+    # report would be the same news twice.
+    if finished and session.active_plan is None:
         push_chat("system", "Step advancement completed successfully.")
         queue_toast("Simulation completed successfully!")
 
     return finished
+
+
+def report_finished_plan(session):
+    """Writes the report of a plan whose run has just ended.
+
+    A plan is approved once and then runs unattended, so the metrics are the
+    whole answer: the operator was not watching the ticks go by. This covers a
+    run the operator stopped early too, which reports over what did run.
+
+    Args:
+        session (SimulationSession): Active simulation.
+
+    Returns:
+        bool: True if a report was written.
+    """
+    plan = session.take_finished_plan()
+    if plan is None:
+        return False
+
+    push_chat("assistant", summarize_run(plan, collect_run_metrics(session.history)))
+    queue_toast("Simulation finished — report in the chat.")
+    return True
 
 
 def render_simulation(session, is_dark, agent_mode, ollama_ok, locked):
@@ -197,6 +223,10 @@ def main_app():
 
         if session.has_pending_steps():
             just_finished = advance_scheduled_steps(session, progress_slot)
+
+        # Before the dashboard is drawn, so the report lands in the chat this
+        # render instead of appearing one render late.
+        report_finished_plan(session)
 
         with notice_slot:
             toast_message = consume_toast()

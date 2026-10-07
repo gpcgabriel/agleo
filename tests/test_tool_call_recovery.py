@@ -5,6 +5,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from app.agents.dashboard.runner import UNUSABLE_TOOL_CALL_MESSAGE, answer_for_a_reply_that_is_a_call
 from app.agents.dashboard.tool_call_recovery import looks_like_tool_call, parse_tool_call, recover
 from app.agents.dashboard.tools import ProposalBuffer
 from app.core.actions import ActionType
@@ -23,6 +24,34 @@ def test_recovers_the_call_observed_in_the_dashboard():
     action = buffer.get_last_proposal()
     assert action.action_type == ActionType.ADD_NODES
     assert abs(action.payload.nodes[0].lat - (-7.2406)) < 1e-6, "the arithmetic was not evaluated"
+
+
+def test_a_call_that_went_through_is_not_reported_as_a_failure():
+    """Observed 1 October 2026: the model called the tool properly *and*
+    repeated the call as its whole reply. The proposal reached the gate while
+    the message beside it told the operator nothing had been proposed."""
+    buffer = ProposalBuffer()
+    buffer.propose_run_simulation(steps=5)
+
+    reply = answer_for_a_reply_that_is_a_call(buffer)
+
+    assert "Advance simulation by 5 steps" in reply
+    assert reply != UNUSABLE_TOOL_CALL_MESSAGE
+
+
+def test_a_call_that_went_nowhere_still_asks_the_operator_to_rephrase():
+    assert answer_for_a_reply_that_is_a_call(ProposalBuffer()) == UNUSABLE_TOOL_CALL_MESSAGE
+
+
+def test_the_blob_itself_never_reaches_the_chat():
+    """Whichever branch answers, the raw call must not be what the operator
+    reads — that is the whole reason this replacement exists."""
+    buffer = ProposalBuffer()
+    buffer.propose_run_simulation(steps=5)
+
+    for reply in (answer_for_a_reply_that_is_a_call(buffer), answer_for_a_reply_that_is_a_call(ProposalBuffer())):
+        assert not looks_like_tool_call(reply)
+        assert "propose_" not in reply
 
 
 def test_plain_prose_is_not_mistaken_for_a_tool_call():

@@ -38,9 +38,16 @@ def dashboard_agent_instructions():
         "skipping steps: 1. check that every mandatory parameter is present in the request; "
         "2. propose exactly the change that was asked for, with the parameters exactly as given; "
         "3. tell the operator what was proposed and that it is waiting to be confirmed or declined.",
-        "Slash commands: '/step <n>' asks for the simulation to advance by n steps and '/restart' "
-        "asks for it to be restarted back to the beginning. Both are changes, so follow the change "
-        "procedure.",
+        "Two different things move the simulation forward, and confusing them wastes the "
+        "operator's time. Advancing keeps the simulation that is on screen, with everything "
+        "already in it, and moves it on by a number of steps. Carrying out a whole simulation "
+        "builds a new one from the settings the operator names, runs it from the beginning to "
+        "the end without stopping, and answers with the metrics it measured — it is what "
+        '"run a simulation for me" asks for, and it always needs a number of steps.',
+        "Slash commands: '/step <n>' asks for the simulation to advance by n steps, "
+        "'/simulate <n>' asks for a whole new simulation of n steps to be carried out and "
+        "reported, and '/restart' asks for the simulation to be restarted back to the "
+        "beginning. All three are changes, so follow the change procedure.",
         "'/review' is a question, not a change. Follow the question procedure and answer with a "
         "textual analysis of the current topology, drawn from the context you were given.",
         "Parameters: coordinates are plain numbers already computed, such as -21.042, never an "

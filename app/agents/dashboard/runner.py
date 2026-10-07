@@ -189,6 +189,30 @@ def collect_script_proposals(response, buffer):
     return recorded
 
 
+def answer_for_a_reply_that_is_a_call(buffer):
+    """Writes the reply for a run whose text came back as a tool call.
+
+    The blob itself must never reach the chat, but "nothing was proposed" is
+    only true when nothing was. A model that calls the tool through the proper
+    channel *and* repeats the call as its whole reply is common here, and the
+    operator was being told the command failed while the proposal sat in the
+    gate beside the message saying so.
+
+    Args:
+        buffer (ProposalBuffer): Buffer the run's tools wrote into.
+
+    Returns:
+        str: What is waiting at the gate, or the sentence asking the operator
+        to rephrase when the call really did go nowhere.
+    """
+    proposals = buffer.get_proposals()
+    if not proposals:
+        return UNUSABLE_TOOL_CALL_MESSAGE
+
+    registered = "; ".join(proposal.description for proposal in proposals)
+    return f"Proposed: {registered}. Confirm or cancel it in the control panel."
+
+
 def read_usage(response):
     """Reads the token counts off a run, tolerating a model that omits them.
 
@@ -256,6 +280,6 @@ def run_agent(
             text = recovered
 
     if looks_like_tool_call(text):
-        text = UNUSABLE_TOOL_CALL_MESSAGE
+        text = answer_for_a_reply_that_is_a_call(buffer)
 
     return AgentResult(text=text, proposals=buffer.get_proposals(), usage=read_usage(response))

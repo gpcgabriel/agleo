@@ -40,6 +40,9 @@ class SimulationSession:
         self.history = []
         self.current_step_index = 0
         self.steps_remaining = 0
+        # The plan this run was approved as, when it was approved as one. A
+        # session the operator drives by hand never has it.
+        self.active_plan = None
 
         # Connecting the access points before the first draw: a freshly loaded
         # scenario has not gone through a tick yet, so step 0 would otherwise
@@ -145,6 +148,38 @@ class SimulationSession:
             )
 
         self.steps_remaining = max(0, int(steps))
+
+    def start_plan(self, plan):
+        """Schedules a whole plan's run.
+
+        Args:
+            plan (SimulationPlan): What the operator approved at the gate.
+
+        Raises:
+            RuntimeError: If steps are already running.
+        """
+        self.request_steps(plan.steps)
+        self.active_plan = plan
+
+    def take_finished_plan(self):
+        """Hands back the plan whose run has ended, once.
+
+        The report is written where the run ends, which is the interface loop,
+        and this is what lets that loop ask "did something just finish?"
+        without keeping its own copy of the run's bookkeeping. A plan the
+        operator stopped early counts as finished: ticks ran, and there are
+        metrics to show for them.
+
+        Returns:
+            SimulationPlan or None: The plan, the first time it is asked for
+            after its last step.
+        """
+        if self.active_plan is None or self.has_pending_steps():
+            return None
+
+        plan = self.active_plan
+        self.active_plan = None
+        return plan
 
     def has_pending_steps(self):
         """Returns: bool: True if scheduled steps remain."""

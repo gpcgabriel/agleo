@@ -7,11 +7,13 @@ from app.core.handlers import (
     add_process_unit,
     add_user,
     restart_simulation,
+    run_full_simulation,
     run_simulation,
 )
 
 HANDLERS = {
     ActionType.RUN_SIMULATION: run_simulation.handle,
+    ActionType.RUN_FULL_SIMULATION: run_full_simulation.handle,
     ActionType.RESTART_SIMULATION: restart_simulation.handle,
     ActionType.ADD_PROCESS_UNIT: add_process_unit.handle,
     ActionType.ADD_NODES: add_nodes.handle,

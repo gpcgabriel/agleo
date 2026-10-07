@@ -5,6 +5,8 @@ Each action has its own type and a payload with named, validated fields.
 
 from random import randint
 
+from app.core.plan import SimulationPlan
+
 
 class ActionType:
     """Identifiers of the supported actions.
@@ -14,6 +16,7 @@ class ActionType:
     """
 
     RUN_SIMULATION = "run_simulation"
+    RUN_FULL_SIMULATION = "run_full_simulation"
     RESTART_SIMULATION = "restart_simulation"
     ADD_PROCESS_UNIT = "add_process_unit"
     ADD_NODES = "add_nodes"
@@ -22,6 +25,7 @@ class ActionType:
 
     ALL = (
         RUN_SIMULATION,
+        RUN_FULL_SIMULATION,
         RESTART_SIMULATION,
         ADD_PROCESS_UNIT,
         ADD_NODES,
@@ -60,6 +64,18 @@ class RunSimulationPayload:
     def describe(self):
         """Returns: str: Human-readable description shown in the gate."""
         return f"Advance simulation by {self.steps} steps"
+
+
+class RunFullSimulationPayload:
+    """Data for building a fresh simulation and running it to the end."""
+
+    def __init__(self, plan):
+        """Args: plan (SimulationPlan): Configuration and step budget of the run."""
+        self.plan = plan
+
+    def describe(self):
+        """Returns: str: Human-readable description shown in the gate."""
+        return self.plan.describe()
 
 
 class RestartSimulationPayload:
@@ -248,8 +264,10 @@ class ProposedAction:
 SCRIPTABLE_ACTIONS = ActionType.ALL
 
 # Actions whose payload cannot be built where the script runs, so the script
-# prints the arguments and the runner completes them.
-ACTIONS_NEEDING_CURRENT_CONFIG = (ActionType.RESTART_SIMULATION,)
+# prints the arguments and the runner completes them. Both of these name only
+# the settings to change and resolve them against the configuration currently
+# loaded, which only the dashboard's own process holds.
+ACTIONS_NEEDING_CURRENT_CONFIG = (ActionType.RESTART_SIMULATION, ActionType.RUN_FULL_SIMULATION)
 
 
 def build_payload(action_type, arguments, current_config=None):
@@ -276,6 +294,20 @@ def build_payload(action_type, arguments, current_config=None):
         if current_config is None:
             raise ValueError("restart_simulation needs the configuration currently loaded.")
         return RestartSimulationPayload(current_config.copy_with(**arguments))
+
+    if action_type == ActionType.RUN_FULL_SIMULATION:
+        if current_config is None:
+            raise ValueError("run_full_simulation needs the configuration currently loaded.")
+
+        settings = dict(arguments)
+        # Naming the missing field rather than letting a KeyError out. A reply
+        # that leaves out an argument is the failure this project keeps
+        # meeting, and it has to say which one.
+        if "steps" not in settings:
+            raise ValueError("run_full_simulation needs a step budget, and none was given.")
+
+        steps = settings.pop("steps")
+        return RunFullSimulationPayload(SimulationPlan(current_config.copy_with(**settings), steps))
 
     if action_type == ActionType.RUN_SIMULATION:
         return RunSimulationPayload(arguments["steps"])
