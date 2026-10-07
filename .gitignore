@@ -22,3 +22,4 @@ planning-draft.md
 output.log
 
 build/
+.coverage
