@@ -17,9 +17,9 @@ def best_fit_allocation(model, parameters):
     def best_fit(app, process_units):
         return min(
             process_units,
-            key=lambda unit: (unit.cpu - app.cpu_demand)
-            + (unit.memory - app.memory_demand)
-            + (unit.storage - app.storage_demand),
+            key=lambda unit: (
+                (unit.cpu - app.cpu_demand) + (unit.memory - app.memory_demand) + (unit.storage - app.storage_demand)
+            ),
         )
 
     applications_to_be_allocated = []

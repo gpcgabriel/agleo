@@ -25,9 +25,7 @@ def handle(session, payload):
     create_application_to_user(user, payload.cpu_demand, payload.memory_demand)
     session.apply_infrastructure_change()
 
-    description = (
-        f"Added application (CPU={payload.cpu_demand}, Mem={payload.memory_demand}) " f"to User {payload.user_id}"
-    )
+    description = f"Added application (CPU={payload.cpu_demand}, Mem={payload.memory_demand}) to User {payload.user_id}"
     return ActionResult(
         messages=[{"role": "system", "content": f"Action executed successfully: {description}"}],
         toast=f"Action completed: {description}",

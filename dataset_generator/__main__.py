@@ -64,7 +64,6 @@ class DatasetGenerator:
         G = nx.read_gml(filepath)
 
         for i, node in enumerate(G.nodes()):
-
             if not G.nodes[node].get("Country"):
                 continue
 

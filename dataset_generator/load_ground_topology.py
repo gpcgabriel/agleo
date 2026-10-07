@@ -12,7 +12,6 @@ def load_ground_topology_from_gml(filepath: str, default_delay: int = 1) -> Topo
     nodes_to_remove = []
 
     for node in G.nodes():
-
         if not G.nodes[node].get("Country"):
             nodes_to_remove.append(node)
             continue

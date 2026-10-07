@@ -16,8 +16,7 @@ from app.core.config import SimulationConfig
 from app.helper_functions.ollama_helper import DEFAULT_MODEL, is_ollama_running, list_local_models
 
 QUICK_COMMAND_CONTEXT = (
-    "Quick Command Mode (Slash Command). "
-    "Execute the corresponding action immediately by calling the appropriate tool."
+    "Quick Command Mode (Slash Command). Execute the corresponding action immediately by calling the appropriate tool."
 )
 
 

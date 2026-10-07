@@ -34,7 +34,6 @@ class ComponentManager:
         metrics = []
 
         for obj in cls.all():
-
             obj_metrics = obj.collect_metrics()
 
             if obj_metrics:

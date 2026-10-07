@@ -49,7 +49,6 @@ def main(args):
         algorithm = ALGORITHMS[args.algorithm]
 
     for rep in range(1, args.repetitions + 1):
-
         print(f"\n--- Repetition {rep}/{args.repetitions} ---")
 
         current_seed = rep

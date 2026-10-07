@@ -11,8 +11,7 @@ HELP_COMMANDS = ("/", "/help")
 REVIEW_COMMAND = "/review"
 
 QUICK_COMMAND_CONTEXT = (
-    "Quick Command Mode (Slash Command). "
-    "Execute the corresponding action immediately by calling the appropriate tool."
+    "Quick Command Mode (Slash Command). Execute the corresponding action immediately by calling the appropriate tool."
 )
 
 VIEWING_HISTORY_MESSAGE = (

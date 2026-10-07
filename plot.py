@@ -28,7 +28,6 @@ def plot(data_dict, steps_dict, xlabel, ylabel, filename, current_path):
     plt.figure(figsize=(12, 7))
 
     for i, label in enumerate(data_dict):
-
         plt.plot(steps_dict[label], data_dict[label], label=label, marker=markers[i % len(markers)])
 
     plt.xlabel(xlabel, fontsize=18)
@@ -65,7 +64,6 @@ def build_path(current_path, alg, scenario, filename, rep=None):
 # ==========================================================
 def compare_algorithms_averaged(algorithm_names, scenarios, num_repetitions, current_path):
     for scenario in scenarios:
-
         print(f"Processing scenario: {scenario}")
 
         avg_provisioned = {}
@@ -74,14 +72,12 @@ def compare_algorithms_averaged(algorithm_names, scenarios, num_repetitions, cur
         avg_steps = {}
 
         for alg in algorithm_names:
-
             reps_prov = []
             reps_delay = []
             reps_not = []
             captured_steps = []
 
             for rep in range(1, num_repetitions + 1):
-
                 if num_repetitions == 1:
                     file_path = build_path(current_path, alg, scenario, "User.jsonl")
                 else:
@@ -99,7 +95,6 @@ def compare_algorithms_averaged(algorithm_names, scenarios, num_repetitions, cur
                 last_accesses = {}
 
                 for data in read_jsonl(file_path):
-
                     step = data["Step"]
 
                     step_prov = 0
@@ -107,7 +102,6 @@ def compare_algorithms_averaged(algorithm_names, scenarios, num_repetitions, cur
                     not_prov = 0
 
                     for metric in data["metrics"]:
-
                         current = metric["Access to Applications"][0]
 
                         if metric["ID"] not in last_accesses:
@@ -120,7 +114,6 @@ def compare_algorithms_averaged(algorithm_names, scenarios, num_repetitions, cur
                             not_prov += 1
 
                         elif current["Is Provisioned"] or current["Provisioning"]:
-
                             step_prov += 1
 
                             if current["Delay"] != float("inf"):
@@ -141,7 +134,6 @@ def compare_algorithms_averaged(algorithm_names, scenarios, num_repetitions, cur
                     captured_steps = curr_steps
 
             if reps_prov:
-
                 avg_provisioned[alg] = calculate_average(reps_prov)
                 avg_delay[alg] = calculate_average(reps_delay)
                 avg_not_provisioned[alg] = calculate_average(reps_not)
@@ -176,19 +168,16 @@ def compare_algorithms_averaged(algorithm_names, scenarios, num_repetitions, cur
 def plot_migrations(algorithm_names, scenarios, num_repetitions, current_path):
 
     for scenario in scenarios:
-
         print(f"Processing migrations for scenario: {scenario}")
 
         avg_migrations = {}
         avg_steps = {}
 
         for alg in algorithm_names:
-
             total_migrations = []
             captured_steps = []
 
             for rep in range(1, num_repetitions + 1):
-
                 if num_repetitions == 1:
                     file_path = build_path(current_path, alg, scenario, "Application.jsonl")
                 else:
@@ -202,7 +191,6 @@ def plot_migrations(algorithm_names, scenarios, num_repetitions, current_path):
                 curr_migrations = []
 
                 for data in read_jsonl(file_path):
-
                     step = data["Step"]
 
                     migrations = sum(
@@ -222,7 +210,6 @@ def plot_migrations(algorithm_names, scenarios, num_repetitions, current_path):
                     captured_steps = curr_steps
 
             if total_migrations:
-
                 avg_migrations[alg] = calculate_average(total_migrations)
 
                 min_len = len(avg_migrations[alg])
@@ -243,15 +230,11 @@ def plot_avg_topology(algorithm_names, scenarios, num_repetitions, current_path)
     scenario_topology_step = {scenario: {} for scenario in scenarios}
 
     for topology in topologies:
-
         topology_path = os.path.join(current_path, topology)
 
         for alg in algorithm_names:
-
             for scenario in scenarios:
-
                 for rep in range(1, num_repetitions + 1):
-
                     if num_repetitions == 1:
                         file_path = build_path(current_path, alg, scenario, "Application.jsonl")
                     else:
@@ -262,7 +245,6 @@ def plot_avg_topology(algorithm_names, scenarios, num_repetitions, current_path)
                         continue
 
                     for data in read_jsonl(file_path):
-
                         step = data["Step"]
 
                         migrations = sum(
@@ -278,12 +260,10 @@ def plot_avg_topology(algorithm_names, scenarios, num_repetitions, current_path)
                         ).append(migrations)
 
     for scenario, topo_data in scenario_topology_step.items():
-
         data = {}
         steps = {}
 
         for topology, step_data in topo_data.items():
-
             sorted_steps = sorted(step_data.keys())
 
             data[topology] = [sum(step_data[s]) / len(step_data[s]) for s in sorted_steps]
@@ -310,15 +290,11 @@ def plot_provisioned_in_topology(algorithm_names, scenarios, num_repetitions, cu
     scenario_topology_step = {scenario: {} for scenario in scenarios}
 
     for topology in topologies:
-
         topology_path = os.path.join(current_path, topology)
 
         for alg in algorithm_names:
-
             for scenario in scenarios:
-
                 for rep in range(1, num_repetitions + 1):
-
                     if num_repetitions == 1:
                         file_path = build_path(current_path, alg, scenario, "User.jsonl")
                     else:
@@ -331,13 +307,11 @@ def plot_provisioned_in_topology(algorithm_names, scenarios, num_repetitions, cu
                     last_accesses = {}
 
                     for data in read_jsonl(file_path):
-
                         step = data["Step"]
 
                         prov = 0
 
                         for metric in data["metrics"]:
-
                             current = metric["Access to Applications"][0]
                             metric_id = metric["ID"]
 
@@ -355,12 +329,10 @@ def plot_provisioned_in_topology(algorithm_names, scenarios, num_repetitions, cu
                         ).append(prov)
 
     for scenario, topo_data in scenario_topology_step.items():
-
         data = {}
         steps = {}
 
         for topology, step_data in topo_data.items():
-
             sorted_steps = sorted(step_data.keys())
 
             data[topology] = [sum(step_data[s]) / len(step_data[s]) for s in sorted_steps]
@@ -383,19 +355,16 @@ def plot_provisioned_in_topology(algorithm_names, scenarios, num_repetitions, cu
 def plot_groundstation_links_by_id(algorithm_names, scenarios, num_repetitions, current_path, ground_station_id):
 
     for scenario in scenarios:
-
         print(f"Processing GroundStation {ground_station_id} scenario: {scenario}")
 
         avg_links = {}
         avg_steps = {}
 
         for alg in algorithm_names:
-
             reps_links = []
             captured_steps = []
 
             for rep in range(1, num_repetitions + 1):
-
                 if num_repetitions == 1:
                     file_path = build_path(current_path, alg, scenario, "GroundStation.jsonl")
                 else:
@@ -409,7 +378,6 @@ def plot_groundstation_links_by_id(algorithm_names, scenarios, num_repetitions, 
                 curr_links = []
 
                 for data in read_jsonl(file_path):
-
                     step = data["Step"]
 
                     for gs in data["metrics"]:
@@ -425,7 +393,6 @@ def plot_groundstation_links_by_id(algorithm_names, scenarios, num_repetitions, 
                         captured_steps = curr_steps
 
             if reps_links:
-
                 avg_links[alg] = calculate_average(reps_links)
 
                 min_len = len(avg_links[alg])
@@ -452,12 +419,10 @@ def plot_delay_by_groundstation(algorithm_names, scenarios, num_repetitions, cur
         avg_steps = {}
 
         for alg in algorithm_names:
-
             reps_delay = []
             captured_steps = []
 
             for rep in range(1, num_repetitions + 1):
-
                 if num_repetitions == 1:
                     file_path = build_path(current_path, alg, scenario, "User.jsonl")
                 else:
@@ -471,12 +436,10 @@ def plot_delay_by_groundstation(algorithm_names, scenarios, num_repetitions, cur
                 curr_delay = []
 
                 for data in read_jsonl(file_path):
-
                     step = data["Step"]
                     step_delay = 0
 
                     for metric in data["metrics"]:
-
                         # Filter only users connected to the desired GS
                         if f"GroundStation_{ground_station_id}" not in metric.get("Network Access Points", []):
                             continue
@@ -484,7 +447,6 @@ def plot_delay_by_groundstation(algorithm_names, scenarios, num_repetitions, cur
                         current = metric["Access to Applications"][0]
 
                         if current["Is Provisioned"] or current.get("Provisioning"):
-
                             d = current.get("Delay", 0)
 
                             if d != float("inf") and d is not None:
@@ -500,7 +462,6 @@ def plot_delay_by_groundstation(algorithm_names, scenarios, num_repetitions, cur
                         captured_steps = curr_steps
 
             if reps_delay:
-
                 avg_delay[alg] = calculate_average(reps_delay)
 
                 min_len = len(avg_delay[alg])
@@ -546,7 +507,6 @@ def plot_avg_resource_consumption(algorithm_names, scenarios, num_repetitions, c
                 count_apps = {}
 
                 for data in read_jsonl(file_path):
-
                     step = data["Step"]
 
                     cpu_sum.setdefault(step, 0)
@@ -554,22 +514,18 @@ def plot_avg_resource_consumption(algorithm_names, scenarios, num_repetitions, c
                     count_apps.setdefault(step, 0)
 
                     for metric in data["metrics"]:
-
                         if metric.get("Process Unit") and metric.get("Available"):
-
                             cpu_sum[step] += metric.get("CPU Demand", 0)
                             mem_sum[step] += metric.get("Memory Demand", 0)
                             count_apps[step] += 1
 
                 if cpu_sum:
-
                     steps = sorted(cpu_sum.keys())
 
                     curr_cpu = []
                     curr_mem = []
 
                     for step in steps:
-
                         if count_apps[step] > 0:
                             curr_cpu.append(cpu_sum[step] / count_apps[step])
                             curr_mem.append(mem_sum[step] / count_apps[step])
@@ -584,7 +540,6 @@ def plot_avg_resource_consumption(algorithm_names, scenarios, num_repetitions, c
                         captured_steps = steps
 
             if reps_cpu:
-
                 avg_cpu[alg] = calculate_average(reps_cpu)
                 avg_mem[alg] = calculate_average(reps_mem)
 

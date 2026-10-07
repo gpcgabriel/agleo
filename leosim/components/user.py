@@ -82,7 +82,6 @@ class User(ComponentManager):
                     current_access["provisioned_time"] += 1
 
                     if current_access["making_request"].get(str(access_model.model.scheduler.steps)):
-
                         if access_model.flow and access_model.flow.status == "active":
                             current_access["access_time"] += 1
 
