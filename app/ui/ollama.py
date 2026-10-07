@@ -43,7 +43,8 @@ def ollama_setup() -> bool:
                     st.rerun()
                 else:
                     st.error(
-                        f"Failed to download model '{DEFAULT_MODEL}'. Please run 'ollama pull {DEFAULT_MODEL}' in terminal."
+                        f"Failed to download model '{DEFAULT_MODEL}'. "
+                        f"Please run 'ollama pull {DEFAULT_MODEL}' in terminal."
                     )
 
     return ollama_ok

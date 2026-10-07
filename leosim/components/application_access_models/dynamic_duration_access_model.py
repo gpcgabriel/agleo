@@ -37,10 +37,10 @@ class DynamicDurationAccessModel(ComponentManager):
         user: Any | None = None,
         application: Any | None = None,
         start: int = 1,
-        duration_values: list[int] = [],
-        connection_duration_values: list[int] = [],
-        interval_values: list[int] = [],
-        connection_interval_values: list[int] = [],
+        duration_values: list[int] | None = None,
+        connection_duration_values: list[int] | None = None,
+        interval_values: list[int] | None = None,
+        connection_interval_values: list[int] | None = None,
     ) -> None:
         """Initializes a DynamicDurationAccessModel instance."""
         self.__class__._instances.append(self)
@@ -48,10 +48,10 @@ class DynamicDurationAccessModel(ComponentManager):
 
         self.id = self.__class__._object_count
 
-        self.duration_values = duration_values
-        self.interval_values = interval_values
-        self.connection_duration_values = connection_duration_values
-        self.connection_interval_values = connection_interval_values
+        self.duration_values = duration_values if duration_values is not None else []
+        self.interval_values = interval_values if interval_values is not None else []
+        self.connection_duration_values = connection_duration_values if connection_duration_values is not None else []
+        self.connection_interval_values = connection_interval_values if connection_interval_values is not None else []
 
         self.history = []
         self.request_provisioning = False
@@ -156,7 +156,7 @@ class DynamicDurationAccessModel(ComponentManager):
                         )
                         connection_paths.append(path)
 
-                path = min(connection_paths, key=lambda p: len(p), default=[])
+                path = min(connection_paths, key=len, default=[])
                 self.flow = NetworkFlow(
                     start=self.model.scheduler.steps + 1,
                     source=user,

@@ -75,8 +75,8 @@ def coerce_list(value, field_name):
     if isinstance(value, str):
         try:
             value = json.loads(value)
-        except json.JSONDecodeError:
-            raise ValueError(f"Could not read {field_name} as a list: {value!r}")
+        except json.JSONDecodeError as error:
+            raise ValueError(f"Could not read {field_name} as a list: {value!r}") from error
 
     if not isinstance(value, (list, tuple)):
         value = [value]

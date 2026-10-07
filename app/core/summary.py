@@ -55,12 +55,14 @@ def summarize_snapshot(snapshot):
                 else:
                     alloc = "NOT ALLOCATED (waiting for resources)"
                 app_details.append(
-                    f"App ID {app['id']} [CPU Req: {app['cpu_demand']}, Mem Req: {app['memory_demand']} - Status: {alloc}]"
+                    f"App ID {app['id']} [CPU Req: {app['cpu_demand']}, "
+                    f"Mem Req: {app['memory_demand']} - Status: {alloc}]"
                 )
             app_info = " | ".join(app_details) if app_details else "No active applications"
 
             summary.append(
-                f"  - User ID {u['id']}: Lat/Lon: {u['lat']:.4f}, {u['lon']:.4f} | Status: {conn_status} | Applications: {app_info}"
+                f"  - User ID {u['id']}: Lat/Lon: {u['lat']:.4f}, {u['lon']:.4f} | "
+                f"Status: {conn_status} | Applications: {app_info}"
             )
     else:
         summary.append("  No active users in the simulation.")

@@ -248,7 +248,6 @@ class Satellite(ComponentManager):
                 (round(c[0], 1), round(c[1], 1)) if c else None for c in sat.coordinates_trace[step + 1 : step + 16]
             ]
             pu = sat.process_unit
-            pu_avail = pu.available if pu else None
             pu_info = None
             if pu:
                 pu_info = {

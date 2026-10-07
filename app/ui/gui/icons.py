@@ -82,7 +82,8 @@ def icon_sun(size: int = 20) -> str:
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 20 20" '
         'fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'
         '<circle cx="10" cy="10" r="3" />'
-        '<path d="M10 2v2M10 16v2M4.34 4.34l1.42 1.42M14.24 14.24l1.42 1.42M2 10h2M16 10h2M5.76 14.24l-1.42 1.42M15.66 4.34l-1.42 1.42" />'
+        '<path d="M10 2v2M10 16v2M4.34 4.34l1.42 1.42M14.24 14.24l1.42 1.42'
+        'M2 10h2M16 10h2M5.76 14.24l-1.42 1.42M15.66 4.34l-1.42 1.42" />'
         "</svg>"
     )
 
@@ -99,4 +100,7 @@ def icon_moon(size: int = 20) -> str:
 
 def wrap_icon(svg_str: str, margin_right: int = 6) -> str:
     """Helper to wrap SVG string in a styled span block for inline alignment."""
-    return f'<span style="display: inline-flex; align-self: center; align-items: center; justify-content: center; vertical-align: middle; margin-right: {margin_right}px; line-height: 1;">{svg_str}</span>'
+    return (
+        '<span style="display: inline-flex; align-self: center; align-items: center; justify-content: center; '
+        f'vertical-align: middle; margin-right: {margin_right}px; line-height: 1;">{svg_str}</span>'
+    )

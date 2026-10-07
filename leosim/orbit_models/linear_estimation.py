@@ -1,3 +1,9 @@
+from ..geometry import MAX_LATITUDE
+
+# Estimating a velocity takes two recorded positions: the current one and the one before.
+POSITIONS_FOR_A_VELOCITY = 2
+
+
 def linear_estimation(sat) -> tuple[float, float, float]:
     """
     Estimates the next position of the satellite based on linear inertia.
@@ -10,11 +16,11 @@ def linear_estimation(sat) -> tuple[float, float, float]:
 
     if last_coord is None:
         current_step = sat.model.scheduler.steps
-
-        if current_step >= 2:
-            last_coord = sat.coordinates_trace[current_step - 2]
-        else:
-            last_coord = sat.coordinates
+        last_coord = (
+            sat.coordinates_trace[current_step - POSITIONS_FOR_A_VELOCITY]
+            if current_step >= POSITIONS_FOR_A_VELOCITY
+            else sat.coordinates
+        )
 
     last_lat, last_lon, _ = last_coord
 
@@ -26,10 +32,10 @@ def linear_estimation(sat) -> tuple[float, float, float]:
     new_lat = curr_lat + delta_lat
     new_lon = curr_lon + delta_lon
 
-    if new_lat > 90.0:
+    if new_lat > MAX_LATITUDE:
         new_lat = 180.0 - new_lat
         new_lon += 180.0
-    elif new_lat < -90.0:
+    elif new_lat < -MAX_LATITUDE:
         new_lat = -180.0 - new_lat
         new_lon += 180.0
 

@@ -51,6 +51,22 @@ def script_of(skill_name):
     return os.path.join(SKILLS_DIRECTORY, skill_name, "scripts", "propose.py")
 
 
+def run_skill(skill_name, arguments):
+    """Runs one skill's script with the running interpreter and returns what it printed.
+
+    Args:
+        skill_name (str): The skill's folder name.
+        arguments (list): Command-line tokens for its script.
+
+    Returns:
+        dict: The script's output, parsed from JSON.
+    """
+    result = subprocess.run(
+        [sys.executable, script_of(skill_name), *arguments], capture_output=True, text=True, timeout=60, check=False
+    )
+    return json.loads(result.stdout)
+
+
 class FakeExecution:
     """Stands in for one agno tool execution."""
 
@@ -187,10 +203,7 @@ def test_there_is_one_skill_per_tool():
 
 def test_each_skill_proposes_the_action_it_is_named_for():
     for skill_name, arguments in EXPECTED_SKILLS.items():
-        result = subprocess.run(
-            [sys.executable, script_of(skill_name)] + arguments, capture_output=True, text=True, timeout=60
-        )
-        printed = json.loads(result.stdout)
+        printed = run_skill(skill_name, arguments)
 
         assert "proposal" in printed, f"{skill_name}: {printed}"
         assert printed["proposal"]["action_type"] == skill_name.replace("-", "_")
@@ -204,13 +217,7 @@ def test_each_skill_proposes_the_action_it_is_named_for():
 
 def test_a_node_gets_an_altitude_without_being_asked_for_one():
     """Altitude follows from the node type; asking the operator for it is noise."""
-    result = subprocess.run(
-        [sys.executable, script_of("add-nodes")] + EXPECTED_SKILLS["add-nodes"],
-        capture_output=True,
-        text=True,
-        timeout=60,
-    )
-    proposal = json.loads(result.stdout)["proposal"]
+    proposal = run_skill("add-nodes", EXPECTED_SKILLS["add-nodes"])["proposal"]
 
     assert "550km" in proposal["description"]
     assert "altitude" in proposal["chosen_automatically"]
@@ -218,45 +225,26 @@ def test_a_node_gets_an_altitude_without_being_asked_for_one():
 
 def test_the_description_never_carries_the_note_the_model_reads():
     """The agent once passed "[chosen automatically: altitude]" back as a parameter."""
-    result = subprocess.run(
-        [sys.executable, script_of("add-nodes")] + EXPECTED_SKILLS["add-nodes"],
-        capture_output=True,
-        text=True,
-        timeout=60,
-    )
-    proposal = json.loads(result.stdout)["proposal"]
+    proposal = run_skill("add-nodes", EXPECTED_SKILLS["add-nodes"])["proposal"]
 
     assert "chosen" not in proposal["description"].lower()
     assert "[" not in proposal["description"]
 
 
 def test_a_skill_script_rejects_what_the_payload_rejects():
-    result = subprocess.run(
-        [sys.executable, script_of("run-simulation"), "--steps", "0"], capture_output=True, text=True, timeout=60
-    )
-
-    assert json.loads(result.stdout)["error"].startswith("steps must be >= 1")
+    assert run_skill("run-simulation", ["--steps", "0"])["error"].startswith("steps must be >= 1")
 
 
 def test_restarting_proposes_only_the_settings_the_operator_named():
     """Anything left out has to keep what the simulation is running with, so an
     absent setting must not travel as None and overwrite it."""
-    result = subprocess.run(
-        [sys.executable, script_of("restart-simulation"), "--num-users", "40"],
-        capture_output=True,
-        text=True,
-        timeout=60,
-    )
-    arguments = json.loads(result.stdout)["proposal"]["arguments"]
+    arguments = run_skill("restart-simulation", ["--num-users", "40"])["proposal"]["arguments"]
 
     assert arguments == {"num_users": 40}
 
 
 def test_a_plain_restart_carries_no_settings_at_all():
-    result = subprocess.run(
-        [sys.executable, script_of("restart-simulation")], capture_output=True, text=True, timeout=60
-    )
-    proposal = json.loads(result.stdout)["proposal"]
+    proposal = run_skill("restart-simulation", [])["proposal"]
 
     assert proposal["arguments"] == {}
     assert "current configuration" in proposal["description"]
@@ -310,7 +298,8 @@ def test_every_skill_script_runs_by_itself():
 def test_no_skill_carries_more_than_one_action():
     """Two actions in one skill would be two reasons to load it."""
     for skill_name in EXPECTED_SKILLS:
-        source = open(script_of(skill_name), encoding="utf-8").read()
+        with open(script_of(skill_name), encoding="utf-8") as script:
+            source = script.read()
 
         assert source.count("ACTION = ActionType.") == 1, f"{skill_name} proposes more than one action"
 

@@ -8,6 +8,7 @@ candidate, the station agent stops deciding and starts rubber-stamping.
 
 import os
 import sys
+from json import dumps
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -131,8 +132,6 @@ def test_the_digest_names_the_step_and_the_station():
 
 def test_the_digest_is_far_shorter_than_the_serialized_state():
     """The whole reason it exists: elapsed time is linear in prompt length."""
-    from json import dumps
-
     state = make_state()
     digest = render_digest(state, pending_app_ids=[1, 2])
 

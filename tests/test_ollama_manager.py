@@ -68,19 +68,25 @@ def test_a_daemon_already_running_is_not_started_twice():
 
 
 def test_the_daemon_is_started_and_waited_for():
-    with patch(f"{HELPER}.is_ollama_running", side_effect=[False, True]):
-        with patch("subprocess.Popen") as mock_popen, patch("time.sleep"):
-            assert start_ollama() is True
-            mock_popen.assert_called_once()
+    with (
+        patch(f"{HELPER}.is_ollama_running", side_effect=[False, True]),
+        patch("subprocess.Popen") as mock_popen,
+        patch("time.sleep"),
+    ):
+        assert start_ollama() is True
+        mock_popen.assert_called_once()
 
 
 def test_a_daemon_that_never_answers_gives_up_instead_of_hanging():
     """Twenty polls at half a second: ten seconds, then False."""
-    with patch(f"{HELPER}.is_ollama_running", return_value=False):
-        with patch("subprocess.Popen") as mock_popen, patch("time.sleep") as mock_sleep:
-            assert start_ollama() is False
-            mock_popen.assert_called_once()
-            assert mock_sleep.call_count == 20
+    with (
+        patch(f"{HELPER}.is_ollama_running", return_value=False),
+        patch("subprocess.Popen") as mock_popen,
+        patch("time.sleep") as mock_sleep,
+    ):
+        assert start_ollama() is False
+        mock_popen.assert_called_once()
+        assert mock_sleep.call_count == 20
 
 
 # -- Listing what is installed ----------------------------------------------
@@ -102,8 +108,19 @@ def test_a_model_entry_without_a_name_is_left_out():
 
 
 def test_an_unreachable_daemon_lists_nothing_rather_than_raising():
-    with patch("requests.get", side_effect=Exception("HTTP Error")):
+    with patch("requests.get", side_effect=requests.exceptions.ConnectionError()):
         assert list_local_models() == []
+
+
+def test_a_reply_shaped_unlike_a_model_list_raises_instead_of_listing_nothing():
+    """Only an unreachable daemon means "no models". A reply in a shape this code does not
+    expect is a fault to surface, not an empty list to show the operator."""
+    with patch("requests.get", return_value=respond_with(200, ["llama3.1:latest"])):
+        try:
+            list_local_models()
+        except AttributeError:
+            return
+    raise AssertionError("a reply that is not a model list was read as an empty one")
 
 
 # -- Downloading one --------------------------------------------------------

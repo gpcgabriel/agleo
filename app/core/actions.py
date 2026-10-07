@@ -6,6 +6,7 @@ Each action has its own type and a payload with named, validated fields.
 from random import randint
 
 from app.core.plan import SimulationPlan
+from leosim.geometry import MAX_LATITUDE, MAX_LONGITUDE
 
 
 class ActionType:
@@ -45,9 +46,9 @@ def check_coordinates(lat, lon):
     """
     lat = float(lat)
     lon = float(lon)
-    if not -90.0 <= lat <= 90.0:
+    if not -MAX_LATITUDE <= lat <= MAX_LATITUDE:
         raise ValueError(f"Latitude outside the [-90, 90] range: {lat}.")
-    if not -180.0 <= lon <= 180.0:
+    if not -MAX_LONGITUDE <= lon <= MAX_LONGITUDE:
         raise ValueError(f"Longitude outside the [-180, 180] range: {lon}.")
     return lat, lon
 

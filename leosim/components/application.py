@@ -40,8 +40,8 @@ class Application(ComponentManager):
         cpu_demand: int | None = None,
         memory_demand: int | None = None,
         storage_demand: int | None = None,
-        dependency_labels: list[str] = [],
-        architectural_demands: dict[str, Any] = {},
+        dependency_labels: list[str] | None = None,
+        architectural_demands: dict[str, Any] | None = None,
         state: int = 0,
         sla: int = 0,
     ) -> None:
@@ -69,8 +69,8 @@ class Application(ComponentManager):
         self.storage_demand = storage_demand
         self.state = state
         self.sla = sla
-        self.dependency_labels = dependency_labels
-        self.architectural_demands = architectural_demands
+        self.dependency_labels = dependency_labels if dependency_labels is not None else []
+        self.architectural_demands = architectural_demands if architectural_demands is not None else {}
 
         self.user = None
         self.process_unit = None
@@ -123,11 +123,11 @@ class Application(ComponentManager):
             dependencies_on_process_unit = []
 
             # Treating data transfer as instantaneous, which is what the model does today.
-            if migr["status"] == "waiting":
-                if len(dependencies_on_process_unit) > 0 or len(dependencies_on_process_unit) == len(
-                    self.dependency_labels
-                ):
-                    migr["status"] = "download_dependencies"
+            if migr["status"] == "waiting" and (
+                len(dependencies_on_process_unit) > 0
+                or len(dependencies_on_process_unit) == len(self.dependency_labels)
+            ):
+                migr["status"] = "download_dependencies"
 
             # Transitioning straight to the next stage while dependency simulation is
             # still pending.

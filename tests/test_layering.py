@@ -34,6 +34,19 @@ def imported_modules(path):
     return names
 
 
+def run_in_a_fresh_interpreter(statements):
+    """Runs Python statements in a new interpreter that has the repository on its path.
+
+    Args:
+        statements (str): Statements separated by semicolons.
+
+    Returns:
+        subprocess.CompletedProcess: The finished process, with its output captured.
+    """
+    script = f"import sys; sys.path.insert(0, {str(ROOT)!r}); {statements}"
+    return subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, check=False)
+
+
 def test_domain_packages_never_import_streamlit():
     offenders = []
 
@@ -59,15 +72,12 @@ def test_domain_packages_never_import_the_ui_package():
 def test_domain_packages_import_without_streamlit_loaded():
     """Runtime check: importing the domain must not load Streamlit, not even
     indirectly."""
-    script = (
-        "import sys;"
-        "sys.path.insert(0, %r);"
+    completed = run_in_a_fresh_interpreter(
         "import app.core.session, app.core.executor, app.core.router,"
         " app.core.catalog, app.core.handlers, app.agents.dashboard.runner;"
-        "assert 'streamlit' not in sys.modules, 'streamlit was loaded';"
-        "print('ok')" % str(ROOT)
+        " assert 'streamlit' not in sys.modules, 'streamlit was loaded';"
+        " print('ok')"
     )
-    completed = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True)
 
     assert completed.returncode == 0, completed.stderr
     assert "ok" in completed.stdout
@@ -112,14 +122,11 @@ def test_the_domain_never_imports_the_agent_package():
 
 def test_the_domain_imports_without_the_llm_stack_loaded():
     """Runtime check: building a simulation must not load the agent framework."""
-    script = (
-        "import sys;"
-        "sys.path.insert(0, %r);"
+    completed = run_in_a_fresh_interpreter(
         "import app.core.session, app.core.bootstrap, app.core.handlers;"
-        "assert 'agno' not in sys.modules, 'agno was loaded';"
-        "print('ok')" % str(ROOT)
+        " assert 'agno' not in sys.modules, 'agno was loaded';"
+        " print('ok')"
     )
-    completed = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True)
 
     assert completed.returncode == 0, completed.stderr
     assert "ok" in completed.stdout

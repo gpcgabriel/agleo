@@ -6,6 +6,7 @@ a single ground station: a full tick asks every station in turn, which costs
 minutes.
 """
 
+import inspect
 import os
 import sys
 
@@ -195,8 +196,6 @@ def test_history_is_absent_until_there_is_one():
 def test_the_allocator_is_shaped_like_a_plain_allocation_algorithm():
     """The engine injects it exactly like best_fit_allocation, which is what
     keeps the LLM stack out of `leosim`."""
-    import inspect
-
     allocator = LLMAllocator(model_name="unused")
     parameters = list(inspect.signature(allocator.allocate).parameters)
 

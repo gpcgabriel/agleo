@@ -16,7 +16,7 @@ def is_ollama_running() -> bool:
     """
     try:
         response = requests.get(f"{DEFAULT_HOST}/api/tags", timeout=2)
-        return response.status_code == 200
+        return response.status_code == requests.codes.ok
     except requests.exceptions.RequestException:
         return False
 
@@ -60,14 +60,12 @@ def list_local_models() -> list[str]:
     """
     try:
         response = requests.get(f"{DEFAULT_HOST}/api/tags", timeout=3)
-        if response.status_code == 200:
-            data = response.json()
-            models_list = data.get("models", [])
-            # Extracting the names, tolerating variations in the response structure.
-            return [model["name"] for model in models_list if "name" in model]
-    except Exception:
-        pass
-    return []
+        models_list = response.json().get("models", []) if response.status_code == requests.codes.ok else []
+    except requests.exceptions.RequestException:
+        return []
+
+    # Extracting the names, tolerating variations in the response structure.
+    return [model["name"] for model in models_list if "name" in model]
 
 
 def pull_model(model_name: str, progress_callback: Callable[[str], None] | None = None) -> bool:

@@ -40,7 +40,7 @@ def collect(args):
     # asked for: `NodeSpec` fills them and records that it did.
     nodes = [
         {"node_type": kind, "lat": lat, "lon": lon, "defaulted": ["altitude"]}
-        for kind, lat, lon in zip(args.node_types, args.latitudes, args.longitudes)
+        for kind, lat, lon in zip(args.node_types, args.latitudes, args.longitudes, strict=True)
     ]
     return {"nodes": nodes}
 

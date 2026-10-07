@@ -79,14 +79,14 @@ class ComponentManager:
         cls._instances.remove(obj)
 
     @classmethod
-    def save_scenary(cls, ignore_list: list = [], filename: str = "dataset.json") -> dict:
+    def save_scenary(cls, ignore_list: list | None = None, filename: str = "dataset.json") -> dict:
         # Exporting the context of the components of interest.
         from .simulator import Simulator, Topology
 
         scenary = {}
 
         for component_class in cls.__subclasses__():
-            if component_class not in ignore_list + [Simulator, Topology]:
+            if component_class not in [*(ignore_list or []), Simulator, Topology]:
                 components = []
 
                 for component in component_class.all():

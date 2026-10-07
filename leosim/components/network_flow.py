@@ -23,9 +23,9 @@ class NetworkFlow(ComponentManager):
         source: object = None,
         target: object = None,
         start: int = 0,
-        path: list = [],
+        path: list | None = None,
         data_to_transfer: int = 0,
-        metadata: dict = {},
+        metadata: dict | None = None,
     ):
         """Initializes a NetworkFlow instance.
 
@@ -39,6 +39,8 @@ class NetworkFlow(ComponentManager):
             data_to_transfer (int): Total data volume to be transferred.
             metadata (dict): Additional context data for the flow.
         """
+
+        path = path if path is not None else []
 
         # Adding the object to the instance list.
         self.__class__._instances.append(self)
@@ -56,7 +58,7 @@ class NetworkFlow(ComponentManager):
         self.start = start
         self.end = None
         self.data_to_transfer = data_to_transfer
-        self.metadata = metadata
+        self.metadata = metadata if metadata is not None else {}
 
         self.path = path
         self.bandwidth = {}

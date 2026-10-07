@@ -112,7 +112,7 @@ class Topology(ComponentManager, nx.Graph):
                             )
                             connection_paths.append(new_path)
 
-                    path = min(connection_paths, key=lambda p: len(p), default=[])
+                    path = min(connection_paths, key=len, default=[])
 
                 elif nx.has_path(G=self, source=flow.source, target=flow.target):
                     path = nx.shortest_path(G=self, source=flow.source, target=flow.target, weight="delay")

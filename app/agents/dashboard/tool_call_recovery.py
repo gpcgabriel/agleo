@@ -40,7 +40,7 @@ def _evaluate(node):
         return node.value
 
     if isinstance(node, ast.Dict):
-        return {_evaluate(key): _evaluate(value) for key, value in zip(node.keys, node.values)}
+        return {_evaluate(key): _evaluate(value) for key, value in zip(node.keys, node.values, strict=True)}
 
     if isinstance(node, (ast.List, ast.Tuple, ast.Set)):
         return [_evaluate(element) for element in node.elts]

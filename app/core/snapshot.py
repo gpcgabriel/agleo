@@ -6,6 +6,7 @@ reads.
 """
 
 from leosim.components import GroundStation, Satellite, User
+from leosim.geometry import ALTITUDE_INDEX
 
 
 def serialize_state(sim):
@@ -48,7 +49,7 @@ def serialize_state(sim):
                     "id": gs.id,
                     "lat": gs.coordinates[0],
                     "lon": gs.coordinates[1],
-                    "alt": gs.coordinates[2] if len(gs.coordinates) > 2 else 0,
+                    "alt": gs.coordinates[ALTITUDE_INDEX] if len(gs.coordinates) > ALTITUDE_INDEX else 0,
                     "max_connection_range": gs.max_connection_range,
                     "wireless_delay": gs.wireless_delay,
                     "process_units": (
@@ -70,7 +71,7 @@ def serialize_state(sim):
                     "id": user.id,
                     "lat": user.coordinates[0],
                     "lon": user.coordinates[1],
-                    "alt": user.coordinates[2] if len(user.coordinates) > 2 else 0,
+                    "alt": user.coordinates[ALTITUDE_INDEX] if len(user.coordinates) > ALTITUDE_INDEX else 0,
                     "max_connection_range": user.max_connection_range,
                     "connected_aps": (
                         [{"id": ap.id, "class": type(ap).__name__} for ap in user.network_access_points]

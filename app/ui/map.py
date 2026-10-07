@@ -72,7 +72,10 @@ def render_map(session, is_dark: bool, locked: bool = False) -> None:
 
     # Rendering the ground stations.
     for gs in snapshot["ground_stations"]:
-        popup_html = f"<b>Ground Station {gs['id']}</b><br>Lat/Lon: {gs['lat']:.4f}, {gs['lon']:.4f}<br>Wireless Delay: {gs['wireless_delay']}ms<br>Server Capacity:"
+        popup_html = (
+            f"<b>Ground Station {gs['id']}</b><br>Lat/Lon: {gs['lat']:.4f}, {gs['lon']:.4f}"
+            f"<br>Wireless Delay: {gs['wireless_delay']}ms<br>Server Capacity:"
+        )
         for pu in gs["process_units"]:
             popup_html += f"<br>- Server {pu['id']} (CPU: {pu['cpu']} | MEM: {pu['memory']})"
 
@@ -88,9 +91,13 @@ def render_map(session, is_dark: bool, locked: bool = False) -> None:
         if not sat["active"]:
             continue
 
-        popup_html = f"<b>{sat['name']} (ID: {sat['id']})</b><br>Lat/Lon: {sat['lat']:.4f}, {sat['lon']:.4f}<br>Alt: {sat['alt']:.1f}km<br>Gateway: {sat['is_gateway']}"
+        popup_html = (
+            f"<b>{sat['name']} (ID: {sat['id']})</b><br>Lat/Lon: {sat['lat']:.4f}, {sat['lon']:.4f}"
+            f"<br>Alt: {sat['alt']:.1f}km<br>Gateway: {sat['is_gateway']}"
+        )
         if sat["process_unit"]:
-            popup_html += f"<br>- Process Unit {sat['process_unit']['id']} (CPU: {sat['process_unit']['cpu']} | MEM: {sat['process_unit']['memory']})"
+            unit = sat["process_unit"]
+            popup_html += f"<br>- Process Unit {unit['id']} (CPU: {unit['cpu']} | MEM: {unit['memory']})"
 
         # Drawing the coverage footprint as a circle.
         folium.Circle(
@@ -112,7 +119,10 @@ def render_map(session, is_dark: bool, locked: bool = False) -> None:
 
     # Rendering the users.
     for user in snapshot["users"]:
-        popup_html = f"<b>User {user['id']}</b><br>Lat/Lon: {user['lat']:.4f}, {user['lon']:.4f}<br>Range: {user['max_connection_range']}km"
+        popup_html = (
+            f"<b>User {user['id']}</b><br>Lat/Lon: {user['lat']:.4f}, {user['lon']:.4f}"
+            f"<br>Range: {user['max_connection_range']}km"
+        )
         if user["connected_aps"]:
             ap_list = ", ".join([f"{ap['class']} {ap['id']}" for ap in user["connected_aps"]])
             popup_html += f"<br>Connected APs: {ap_list}"

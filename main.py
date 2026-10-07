@@ -4,13 +4,12 @@ import random
 import shutil
 
 import dataset as ds
+from app.agents.allocation import LLMAllocator
 from leosim import *
 
 DATASETS_DIR = "datasets"
 
 ALGORITHMS = {
-    # "random_allocation": random_allocation,
-    # "simple_allocation": simple_allocation,
     "best_fit_allocation": best_fit_allocation,
     "longest_duration_allocation": longest_duration_allocation,
 }
@@ -33,8 +32,6 @@ def main(args):
     # engine must not import the agent package, so the CLI assembles it the way
     # the dashboard's sidebar does.
     if args.llm:
-        from app.agents.allocation import LLMAllocator
-
         args.algorithm = "llm_allocation"
         algorithm = LLMAllocator(model_name=args.model).allocate
     else:
@@ -102,16 +99,6 @@ def main(args):
 
         sim.initialize(dataset_file)
         sim.run()
-
-    # =============
-    # Plot results
-    # =============
-    # compare_algorithms_averaged([args.algorithm], [str(args.scenario)], args.repetitions, args.logs_dir)
-    # plot_migrations([args.algorithm], [str(args.scenario)], args.repetitions, args.logs_dir)
-    # plot_avg_topology([args.algorithm], [str(args.scenario)], args.repetitions, args.logs_dir)
-    # plot_provisioned_in_topology([args.algorithm], [str(args.scenario)], args.repetitions, args.logs_dir)
-    # plot_delay_by_groundstation([args.algorithm], [str(args.scenario)], args.repetitions, args.logs_dir, ground_station_id=1)
-    # plot_avg_resource_consumption([args.algorithm], [str(args.scenario)], args.repetitions, args.logs_dir)
 
 
 if __name__ == "__main__":

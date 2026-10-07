@@ -154,7 +154,7 @@ class User(ComponentManager):
                     "Is Provisioned": last_access["is_provisioned"],
                     "Provisioning": access_model.application._available,
                     "Making Request": making_request,
-                    "Connectivity": True if access_model.flow and access_model.flow.path != [] else False,
+                    "Connectivity": bool(access_model.flow and access_model.flow.path != []),
                     "Path": [str(node) for node in access_model.flow.path] if access_model.flow else [],
                     "Delay": delay,
                 }

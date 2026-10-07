@@ -39,7 +39,7 @@ class ProcessUnit(ComponentManager):
         storage: int = 0,
         coordinates: tuple[float, float, float] | None = None,
         model_name: str = "",
-        architecture: dict[str, Any] = {},
+        architecture: dict[str, Any] | None = None,
     ):
         """Initializes a ProcessUnit instance.
 
@@ -74,7 +74,7 @@ class ProcessUnit(ComponentManager):
         self.storage_demand = 0
 
         # Describing the architectural specifications.
-        self.architecture = architecture
+        self.architecture = architecture if architecture is not None else {}
 
         # Allowing integration with the relevant models.
         self.power_generation_model = None

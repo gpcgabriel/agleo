@@ -256,7 +256,9 @@ def summarize(records):
                 "proposed_when_asked": f"{sum(r['proposed'] for r in actionable)}/{len(actionable)}",
                 "right_action": f"{sum(r['right_action'] for r in actionable)}/{len(actionable)}",
                 "right_parameters": f"{sum(r['right_parameters'] for r in actionable)}/{len(actionable)}",
-                "stayed_quiet_when_asked_a_question": f"{sum(not r['proposed'] for r in informational)}/{len(informational)}",
+                "stayed_quiet_when_asked_a_question": (
+                    f"{sum(not r['proposed'] for r in informational)}/{len(informational)}"
+                ),
                 "errors": sum(1 for r in mine if r["error"]),
             }
         )

@@ -192,9 +192,11 @@ class Simulator(ComponentManager):
         os.makedirs(self.logs_directory, exist_ok=True)
 
         for component_class in ComponentManager.__subclasses__():
-            if component_class not in self.ignore_list + [self.__class__]:
-                if component_class.__name__ not in self.agent_metrics:
-                    self.agent_metrics[component_class.__name__] = []
+            if (
+                component_class not in [*self.ignore_list, self.__class__]
+                and component_class.__name__ not in self.agent_metrics
+            ):
+                self.agent_metrics[component_class.__name__] = []
 
     def step(self) -> None:
         """Executes a single simulation tick.

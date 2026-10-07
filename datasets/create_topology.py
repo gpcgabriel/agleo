@@ -26,19 +26,20 @@ def haversine(lat1, lon1, lat2, lon2):
 # =========================================
 
 
+def extract_field(block, field):
+    """Returns the value of one field in a GML node block, or None when the block lacks it."""
+    match = re.search(rf'{field}\s+"?([^"\n]+)"?', block)
+    return match.group(1) if match else None
+
+
 def parse_gml_locations(gml_text):
     locations = []
     blocks = re.findall(r"node\s*\[(.*?)\]", gml_text, re.S)
 
-    for b in blocks:
-
-        def extract(field):
-            m = re.search(rf'{field}\s+"?([^"\n]+)"?', b)
-            return m.group(1) if m else None
-
-        lat = extract("Latitude")
-        lon = extract("Longitude")
-        label = extract("label")
+    for block in blocks:
+        lat = extract_field(block, "Latitude")
+        lon = extract_field(block, "Longitude")
+        label = extract_field(block, "label")
 
         if lat and lon and label:
             locations.append({"label": label, "Latitude": float(lat), "Longitude": float(lon)})
@@ -128,7 +129,7 @@ def build_geo_topology(nodes, k_neighbors=3):
 
         distances.sort(key=lambda x: x[0])
 
-        for d, nj in distances[:k_neighbors]:
+        for _, nj in distances[:k_neighbors]:
             if not G.has_edge(ni["id"], nj["id"]):
                 profile = sample_link_profile()
 
