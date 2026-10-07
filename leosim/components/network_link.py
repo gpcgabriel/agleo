@@ -1,6 +1,6 @@
-from ..component_manager import ComponentManager
 from geopy.distance import geodesic
-from typing import Dict, Any, List
+
+from ..component_manager import ComponentManager
 
 
 class NetworkLink(ComponentManager, dict):

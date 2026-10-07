@@ -1,10 +1,9 @@
 """The simulation session: sole owner of a running simulation's state."""
 
-from leosim.components import GroundStation, Satellite, User
-
 from app.core.bootstrap import build_simulator
 from app.core.catalog import get_catalog
 from app.core.snapshot import serialize_state
+from leosim.components import GroundStation, Satellite, User
 
 
 def create_session(config, allocation_algorithm=None):

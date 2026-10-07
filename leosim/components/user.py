@@ -1,5 +1,7 @@
+from collections.abc import Callable
+from typing import Any
+
 from ..component_manager import ComponentManager
-from typing import List, Dict, Any, Optional, Tuple, Callable
 
 
 class User(ComponentManager):
@@ -29,7 +31,7 @@ class User(ComponentManager):
     _object_count = 0
 
     def __init__(
-        self, id: int = 0, coordinates: Optional[Tuple[float, float, float]] = None, max_connection_range: int = 300
+        self, id: int = 0, coordinates: tuple[float, float, float] | None = None, max_connection_range: int = 300
     ) -> None:
         """Initializes a User instance.
 
@@ -121,7 +123,7 @@ class User(ComponentManager):
 
         self.network_access_points = []
 
-    def collect_metrics(self) -> Dict[str, Any]:
+    def collect_metrics(self) -> dict[str, Any]:
         """Collects telemetry data from the user and their application accesses.
 
         Returns:
@@ -167,7 +169,7 @@ class User(ComponentManager):
 
         return metrics
 
-    def export(self) -> Dict[str, Any]:
+    def export(self) -> dict[str, Any]:
         """Generates a dictionary representation of the user for context saving.
 
         Returns:
@@ -192,7 +194,7 @@ class User(ComponentManager):
 
         return attributes
 
-    def set_mobility_model(self, model: Callable, parameters: Dict[str, Any]) -> None:
+    def set_mobility_model(self, model: Callable, parameters: dict[str, Any]) -> None:
         """Assigns a mobility model to the user.
 
         Args:
@@ -232,7 +234,7 @@ class User(ComponentManager):
         access_point.users.append(self)
 
     @staticmethod
-    def export_users() -> Dict:
+    def export_users() -> dict:
         users_data = {}
         for user in User._instances:
             upos = user.coordinates

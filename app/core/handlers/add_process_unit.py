@@ -1,13 +1,12 @@
 """Handler for attaching a process unit to an existing node."""
 
-from leosim.components import GroundStation, Satellite
-
 from app.core.action_result import ActionResult
 from app.core.infrastructure import (
     attach_process_unit_to_ground_station,
     attach_process_unit_to_satellite,
     build_process_unit,
 )
+from leosim.components import GroundStation, Satellite
 
 
 def handle(session, payload):

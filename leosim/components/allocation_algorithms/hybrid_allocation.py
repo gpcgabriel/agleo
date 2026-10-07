@@ -1,8 +1,10 @@
-from ..satellite import Satellite
-from ..application import Application
-from geopy.distance import geodesic
 from math import sqrt
+
 import networkx as nx
+from geopy.distance import geodesic
+
+from ..application import Application
+from ..satellite import Satellite
 
 
 def has_path(topology, origin, target):
@@ -36,7 +38,7 @@ def get_exposure_time(user, satellite):
 def get_eligible_pus(app, user, model, parameters):
     process_units = []
     for access_point in user.network_access_points:
-        if isinstance(access_point, Satellite) and getattr(access_point, "process_unit") is not None:
+        if isinstance(access_point, Satellite) and access_point.process_unit is not None:
             pu = access_point.process_unit
             if pu.has_capacity_to_host(app) and pu.available:
                 process_units.append(pu)

@@ -1,8 +1,10 @@
+from itertools import cycle
+from typing import Any
+
+import networkx as nx
+
 from ...component_manager import ComponentManager
 from ..network_flow import NetworkFlow
-from itertools import cycle
-import networkx as nx
-from typing import List, Dict, Any, Optional
 
 
 class DynamicDurationAccessModel(ComponentManager):
@@ -32,13 +34,13 @@ class DynamicDurationAccessModel(ComponentManager):
 
     def __init__(
         self,
-        user: Optional[Any] = None,
-        application: Optional[Any] = None,
+        user: Any | None = None,
+        application: Any | None = None,
         start: int = 1,
-        duration_values: List[int] = [],
-        connection_duration_values: List[int] = [],
-        interval_values: List[int] = [],
-        connection_interval_values: List[int] = [],
+        duration_values: list[int] = [],
+        connection_duration_values: list[int] = [],
+        interval_values: list[int] = [],
+        connection_interval_values: list[int] = [],
     ) -> None:
         """Initializes a DynamicDurationAccessModel instance."""
         self.__class__._instances.append(self)
@@ -61,7 +63,7 @@ class DynamicDurationAccessModel(ComponentManager):
         if application and user:
             self.get_next_access(start)
 
-    def export(self) -> Dict[str, Any]:
+    def export(self) -> dict[str, Any]:
         """Generates a dictionary representation for context saving."""
         component = {
             "id": self.id,
@@ -84,16 +86,16 @@ class DynamicDurationAccessModel(ComponentManager):
     def get_next_access(self, start: int) -> None:
         """Calculates the burst sequence for the next elastic access window."""
         if not hasattr(self, "duration_generator"):
-            setattr(self, "duration_generator", cycle(self.duration_values))
+            self.duration_generator = cycle(self.duration_values)
 
         if not hasattr(self, "connection_duration_generator"):
-            setattr(self, "connection_duration_generator", cycle(self.connection_duration_values))
+            self.connection_duration_generator = cycle(self.connection_duration_values)
 
         if not hasattr(self, "interval_generator"):
-            setattr(self, "interval_generator", cycle(self.interval_values))
+            self.interval_generator = cycle(self.interval_values)
 
         if not hasattr(self, "connection_interval_generator"):
-            setattr(self, "connection_interval_generator", cycle(self.connection_interval_values))
+            self.connection_interval_generator = cycle(self.connection_interval_values)
 
         interval = next(self.interval_generator)
         duration = next(self.duration_generator)

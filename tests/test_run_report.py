@@ -15,14 +15,13 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.core.actions import ActionType, RunFullSimulationPayload, build_payload
+from app.agents.dashboard.tools import ProposalBuffer
+from app.core.actions import ActionType, ProposedAction, RunFullSimulationPayload, build_payload
 from app.core.config import SimulationConfig
 from app.core.executor import execute_action
-from app.core.actions import ProposedAction
 from app.core.plan import SimulationPlan
 from app.core.report import collect_run_metrics, measure_snapshot, share, summarize_run
 from app.core.session import create_session
-from app.agents.dashboard.tools import ProposalBuffer
 
 
 def make_config(**changes):

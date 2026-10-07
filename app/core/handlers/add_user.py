@@ -1,8 +1,7 @@
 """Handler for creating a user."""
 
-from dataset_generator.create_components import create_user
-
 from app.core.action_result import ActionResult
+from dataset_generator.create_components import create_user
 
 
 def keep_user_in_place(user):

@@ -1,16 +1,18 @@
-from leosim.components import (
-    User,
-    Application,
-    FixedDurationAccessModel,
-    Topology,
-    NetworkLink,
-    Satellite,
-    mesh_network,
-)
 from json import load
 from random import choices
 from time import sleep
+
 import requests
+
+from leosim.components import (
+    Application,
+    FixedDurationAccessModel,
+    NetworkLink,
+    Satellite,
+    Topology,
+    User,
+    mesh_network,
+)
 
 N2YO_API_KEY = "API_KEY"
 REFERENCE_POINT = (-15.669171, -48.013922, 0)
@@ -130,7 +132,7 @@ def load_satellites_from_file(
 ) -> None:
     sats = {}
 
-    with open(filename, "r", encoding="UTF-8") as file:
+    with open(filename, encoding="UTF-8") as file:
         data = load(file)
 
     for i, current_step in enumerate(data[: max_steps if max_steps - 1 < len(data) else None]):

@@ -8,6 +8,7 @@ from json import load
 
 import numpy as np
 from geopy.distance import geodesic
+
 from leosim.components import Satellite
 
 EARTH_RADIUS_KM = 6371.0
@@ -52,7 +53,7 @@ class SatelliteCatalog:
         """
         self.path = path
 
-        with open(path, "r", encoding="UTF-8") as file:
+        with open(path, encoding="UTF-8") as file:
             steps = load(file)
 
         latitudes = []

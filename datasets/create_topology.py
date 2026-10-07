@@ -1,7 +1,8 @@
-import networkx as nx
 import math
 import random
 import re
+
+import networkx as nx
 
 # =========================================
 # Providing the mathematical helpers.
@@ -164,7 +165,7 @@ def create_topology_from_gml_locations(gml_text, N, k_neighbors=3, noise_km=5):
 # =========================================
 
 if __name__ == "__main__":
-    with open("datasets/rnp.gml", "r", encoding="utf-8") as f:
+    with open("datasets/rnp.gml", encoding="utf-8") as f:
         gml_text = f.read()
 
     N = 10  # number of nodes

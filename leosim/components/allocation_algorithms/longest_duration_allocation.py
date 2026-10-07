@@ -1,8 +1,10 @@
+from math import sqrt
+
+import networkx as nx
 from geopy.distance import geodesic
+
 from ..satellite import Satellite
 from ..user import User
-from math import sqrt
-import networkx as nx
 
 
 def has_path(topology, origin, target):
@@ -61,7 +63,7 @@ def longest_duration_allocation(model, parameters):
             else:
                 process_unit = access_model.application.process_unit
                 if (
-                    not any((process_unit in model.topology.neighbors(ap) for ap in user.network_access_points))
+                    not any(process_unit in model.topology.neighbors(ap) for ap in user.network_access_points)
                     or user.network_access_points == []
                 ):
                     applications_to_be_allocated.append(access_model)

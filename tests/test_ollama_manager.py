@@ -62,10 +62,9 @@ def test_an_error_status_means_the_daemon_is_not_running():
 
 
 def test_a_daemon_already_running_is_not_started_twice():
-    with patch(f"{HELPER}.is_ollama_running", return_value=True):
-        with patch("subprocess.Popen") as mock_popen:
-            assert start_ollama() is True
-            mock_popen.assert_not_called()
+    with patch(f"{HELPER}.is_ollama_running", return_value=True), patch("subprocess.Popen") as mock_popen:
+        assert start_ollama() is True
+        mock_popen.assert_not_called()
 
 
 def test_the_daemon_is_started_and_waited_for():

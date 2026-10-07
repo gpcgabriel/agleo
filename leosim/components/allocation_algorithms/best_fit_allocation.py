@@ -1,7 +1,7 @@
-from ..process_unit import ProcessUnit
+import networkx as nx
+
 from ..satellite import Satellite
 from ..user import User
-import networkx as nx
 
 
 def has_path(topology, origin, target):
@@ -37,10 +37,8 @@ def best_fit_allocation(model, parameters):
                 # Skipping what is not directly connected to a network access point.
                 if (
                     not any(
-                        (
-                            process_unit in model.topology.neighbors(access_point)
-                            for access_point in user.network_access_points
-                        )
+                        process_unit in model.topology.neighbors(access_point)
+                        for access_point in user.network_access_points
                     )
                     or user.network_access_points == []
                 ):
@@ -51,7 +49,7 @@ def best_fit_allocation(model, parameters):
         process_units = []
         # Searching for process units directly connected to network access points.
         for access_point in access_model.user.network_access_points:
-            if isinstance(access_point, Satellite) and getattr(access_point, "process_unit") is not None:
+            if isinstance(access_point, Satellite) and access_point.process_unit is not None:
                 process_unit = access_point.process_unit
 
                 if process_unit.has_capacity_to_host(access_model.application) and process_unit.available:

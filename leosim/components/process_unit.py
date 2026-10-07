@@ -1,5 +1,6 @@
+from typing import Any
+
 from ..component_manager import ComponentManager
-from typing import List, Dict, Any, Optional, Tuple
 
 
 class ProcessUnit(ComponentManager):
@@ -36,9 +37,9 @@ class ProcessUnit(ComponentManager):
         cpu: int = 0,
         memory: int = 0,
         storage: int = 0,
-        coordinates: Optional[Tuple[float, float, float]] = None,
+        coordinates: tuple[float, float, float] | None = None,
         model_name: str = "",
-        architecture: Dict[str, Any] = {},
+        architecture: dict[str, Any] = {},
     ):
         """Initializes a ProcessUnit instance.
 
@@ -173,7 +174,7 @@ class ProcessUnit(ComponentManager):
         return self.cpu >= cpu_demand and self.memory >= memory_demand and self.storage >= storage_demand
 
     @staticmethod
-    def export_processunits() -> Dict:
+    def export_processunits() -> dict:
         pu_data = {}
         for pu in ProcessUnit._instances:
             pu_data[f"PU_{pu.id}"] = {

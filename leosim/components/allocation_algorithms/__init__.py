@@ -1,5 +1,5 @@
 from .best_fit_allocation import best_fit_allocation
+from .hybrid_allocation import hybrid_allocation
+from .longest_duration_allocation import longest_duration_allocation
 from .random_allocation import random_allocation
 from .simple_allocation import simple_allocation
-from .longest_duration_allocation import longest_duration_allocation
-from .hybrid_allocation import hybrid_allocation

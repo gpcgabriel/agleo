@@ -1,7 +1,8 @@
 import json
 import os
-import matplotlib.pyplot as plt
 from pathlib import Path
+
+import matplotlib.pyplot as plt
 
 markers = ["o", "x", "s", "^", "D", "*", "v", "+"]
 

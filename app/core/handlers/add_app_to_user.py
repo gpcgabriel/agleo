@@ -1,9 +1,8 @@
 """Handler for attaching an application to a user."""
 
+from app.core.action_result import ActionResult
 from dataset_generator.create_components import create_application_to_user
 from leosim.components import User
-
-from app.core.action_result import ActionResult
 
 
 def handle(session, payload):

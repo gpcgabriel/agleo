@@ -1,7 +1,8 @@
 # Importing the simulator components.
+from typing import Any
+
 from ..component_manager import ComponentManager
 from .user import User
-from typing import List, Dict, Any, Optional
 
 
 class Application(ComponentManager):
@@ -36,11 +37,11 @@ class Application(ComponentManager):
     def __init__(
         self,
         id: int = 0,
-        cpu_demand: Optional[int] = None,
-        memory_demand: Optional[int] = None,
-        storage_demand: Optional[int] = None,
-        dependency_labels: List[str] = [],
-        architectural_demands: Dict[str, Any] = {},
+        cpu_demand: int | None = None,
+        memory_demand: int | None = None,
+        storage_demand: int | None = None,
+        dependency_labels: list[str] = [],
+        architectural_demands: dict[str, Any] = {},
         state: int = 0,
         sla: int = 0,
     ) -> None:
@@ -79,7 +80,7 @@ class Application(ComponentManager):
         self.being_provisioned = False
         self.completed = False
 
-    def collect_metrics(self) -> Dict[str, Any]:
+    def collect_metrics(self) -> dict[str, Any]:
         """Collects telemetry data from this specific application instance.
 
         Returns:
@@ -250,7 +251,7 @@ class Application(ComponentManager):
         self.process_unit = None
 
     @staticmethod
-    def export_applications() -> Dict:
+    def export_applications() -> dict:
         apps = {}
         for app in Application._instances:
             remaining = 0

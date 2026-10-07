@@ -5,10 +5,9 @@ attach a process unit, link the two. They are kept apart from the handlers so
 that each handler deals with one action, not with how a satellite is born.
 """
 
+from app.core.catalog import CATALOG_ID_ATTRIBUTE, get_taken_catalog_ids
 from dataset_generator.create_components import create_link
 from leosim.components import GroundStation, NetworkLink, ProcessUnit, Satellite
-
-from app.core.catalog import CATALOG_ID_ATTRIBUTE, get_taken_catalog_ids
 
 SATELLITE_LINK_DELAY = 1
 GROUND_STATION_LINK_DELAY = 10

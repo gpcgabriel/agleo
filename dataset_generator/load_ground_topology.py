@@ -1,6 +1,8 @@
-from leosim.components import GroundStation, NetworkLink, Topology
-from .create_components import MAX_RANGE
 import networkx as nx
+
+from leosim.components import GroundStation, NetworkLink, Topology
+
+from .create_components import MAX_RANGE
 
 
 def load_ground_topology_from_gml(filepath: str, default_delay: int = 1) -> Topology:

@@ -1,14 +1,16 @@
+import math
+from typing import Any
+
+import networkx as nx
+from geopy.distance import geodesic
+
 from ..component_manager import ComponentManager
+from .ground_station import GroundStation
 from .network_flow import NetworkFlow
 from .network_link import NetworkLink
 from .process_unit import ProcessUnit
-from geopy.distance import geodesic
 from .satellite import Satellite
 from .user import User
-from .ground_station import GroundStation
-import networkx as nx
-import math
-from typing import Dict, List, Any
 
 
 class Topology(ComponentManager, nx.Graph):
@@ -84,10 +86,7 @@ class Topology(ComponentManager, nx.Graph):
             path = flow.path
             need_to_reroute = False
 
-            if path == []:
-                need_to_reroute = True
-
-            elif (
+            if path == [] or (
                 flow.metadata.get("type", "default") == "request_response"
                 and path[0] not in flow.source.network_access_points
             ):
@@ -164,7 +163,7 @@ class Topology(ComponentManager, nx.Graph):
             for nodes in link_to_removed:
                 self.remove_edge(nodes[0], nodes[1])
 
-    def get_path_delay(self, path: List[Any]) -> float:
+    def get_path_delay(self, path: list[Any]) -> float:
         """Calculates the total propagation delay of a given path.
 
         Args:
@@ -240,7 +239,7 @@ class Topology(ComponentManager, nx.Graph):
 
         return math.sqrt(ground_distance**2 + air_distance**2)
 
-    def export_topology(self) -> Dict:
+    def export_topology(self) -> dict:
         user_sat_links = []
         for user in User.all():
             for sat in Satellite.all():

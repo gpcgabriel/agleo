@@ -1,7 +1,5 @@
 """The decision an allocation agent is asked to produce."""
 
-from typing import List
-
 from pydantic import BaseModel, Field
 
 
@@ -14,11 +12,11 @@ class AllocationDecision(BaseModel):
     to be recovered from free text.
     """
 
-    best_fit: List[int] = Field(
+    best_fit: list[int] = Field(
         default_factory=list,
         description="IDs of the applications to place with the best_fit strategy.",
     )
-    longest_duration: List[int] = Field(
+    longest_duration: list[int] = Field(
         default_factory=list,
         description="IDs of the applications to place with the longest_duration strategy.",
     )

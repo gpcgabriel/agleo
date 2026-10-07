@@ -53,7 +53,7 @@ def summarize_snapshot(snapshot):
                 if app["allocated_to"] is not None:
                     alloc = f"ALLOCATED/HOSTED on Server/ProcessUnit ID {app['allocated_to']}"
                 else:
-                    alloc = f"NOT ALLOCATED (waiting for resources)"
+                    alloc = "NOT ALLOCATED (waiting for resources)"
                 app_details.append(
                     f"App ID {app['id']} [CPU Req: {app['cpu_demand']}, Mem Req: {app['memory_demand']} - Status: {alloc}]"
                 )

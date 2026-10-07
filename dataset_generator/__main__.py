@@ -1,10 +1,12 @@
-from leosim.components import User, GroundStation, ProcessUnit, Satellite
+import argparse
+import json
 from random import randint
 from time import sleep
+
 import networkx as nx
-import argparse
 import requests
-import json
+
+from leosim.components import GroundStation, ProcessUnit, Satellite, User
 
 next_id = 0
 

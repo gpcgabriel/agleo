@@ -21,9 +21,9 @@ from statistics import median
 from app.agents.dashboard.runner import MODE_SKILLS, MODE_TOOLS, SKILLS_DIRECTORY, run_agent
 from app.core.actions import ActionType
 from app.core.config import SimulationConfig
+from app.core.router import QUICK_COMMAND_CONTEXT, build_agent_context
 from app.core.session import create_session
 from app.core.snapshot import find_default_node_position
-from app.core.router import QUICK_COMMAND_CONTEXT, build_agent_context
 from app.helper_functions.ollama_helper import DEFAULT_MODEL, is_ollama_running, model_is_available
 
 LOG_PATH = os.path.join("logs", "mode_benchmark.jsonl")

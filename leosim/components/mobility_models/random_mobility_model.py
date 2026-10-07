@@ -1,8 +1,10 @@
-from math import atan2, radians, degrees, sin, cos
-from ..ground_station import GroundStation
+from math import atan2, cos, degrees, radians, sin
+from random import choice
+
 from geopy.distance import geodesic
 from geopy.point import Point
-from random import choice
+
+from ..ground_station import GroundStation
 
 
 # Calculating the bearing between two points.

@@ -1,7 +1,8 @@
+import networkx as nx
+
 from ..process_unit import ProcessUnit
 from ..satellite import Satellite
 from ..user import User
-import networkx as nx
 
 
 def has_path(topology, origin, target):
@@ -50,7 +51,7 @@ def simple_allocation(model, parameters):
 
         # Looking for process units directly connected to network access points.
         for access_point in access_model.user.network_access_points:
-            if isinstance(access_point, Satellite) and getattr(access_point, "process_unit") is not None:
+            if isinstance(access_point, Satellite) and access_point.process_unit is not None:
                 process_unit = access_point.process_unit
 
                 if process_unit.has_capacity_to_host(access_model.application) and process_unit.available:

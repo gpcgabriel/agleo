@@ -1,8 +1,8 @@
-from leosim import *
-from dataset_generator import *
 from random import choices, randint, sample
 
 from app.core.infrastructure import GROUND_STATION_LINK_DELAY, SATELLITE_LINK_DELAY
+from dataset_generator import *
+from leosim import *
 
 
 def load_topology(ground_topology: str, leo_topology, max_satellites) -> Topology:

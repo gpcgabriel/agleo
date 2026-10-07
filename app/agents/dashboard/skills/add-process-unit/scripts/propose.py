@@ -9,10 +9,7 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), *[os.pardir] * 6)))
 
 from app.agents.dashboard.skill_support import run
-from app.core.actions import ActionType
-
-from app.core.actions import NodeSpec
-
+from app.core.actions import ActionType, NodeSpec
 
 ACTION = ActionType.ADD_PROCESS_UNIT
 

@@ -11,7 +11,6 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(
 from app.agents.dashboard.skill_support import run
 from app.core.actions import ActionType
 
-
 ACTION = ActionType.RESTART_SIMULATION
 
 

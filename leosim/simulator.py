@@ -1,8 +1,9 @@
 # Importing the simulator components.
+import datetime
 import json
 import os
-import datetime
-from typing import Callable, List, Dict, Any, Optional
+from collections.abc import Callable
+from typing import Any
 
 from .components import *
 from .scheduler import *
@@ -29,22 +30,22 @@ class Simulator(ComponentManager):
     def __init__(
         self,
         id: int = 0,
-        stopping_criterion: Optional[Callable] = None,
-        resource_management_algorithm: Optional[Callable] = None,
-        resource_management_algorithm_parameters: Optional[Dict[str, Any]] = None,
+        stopping_criterion: Callable | None = None,
+        resource_management_algorithm: Callable | None = None,
+        resource_management_algorithm_parameters: dict[str, Any] | None = None,
         topology_management_algorithm: Callable = default_topology_management,
-        topology_management_algorithm_parameters: Optional[Dict[str, Any]] = None,
-        user_defined_functions: Optional[List[Callable]] = None,
+        topology_management_algorithm_parameters: dict[str, Any] | None = None,
+        user_defined_functions: list[Callable] | None = None,
         scheduler: Callable = Scheduler,
         dump_interval: int = 100,
         logs_directory: str = "logs",
-        ignore_list: Optional[List[Any]] = None,
+        ignore_list: list[Any] | None = None,
         clean_data_in_memory: bool = False,
         tick_duration: int = 1,
         time_unit: str = "seconds",
         scenario: str = "hybrid",
         repetition: int = 1,
-        topology_name: Optional[str] = None,
+        topology_name: str | None = None,
     ) -> None:
         """Initializes a new Simulator instance.
 
@@ -138,7 +139,7 @@ class Simulator(ComponentManager):
             if component_class.__name__ != "Simulator":
                 globals()[component_class.__name__].clear()
 
-        with open(dataset, "r", encoding="UTF-8") as file:
+        with open(dataset, encoding="UTF-8") as file:
             dataset_data = json.load(file)
 
         created_components = []
@@ -164,12 +165,12 @@ class Simulator(ComponentManager):
                     setattr(obj, key, object_relation)
 
                 # Resolving a mapping held in a global dictionary.
-                elif isinstance(value, dict) and all((globals().get(v) for v in value.values())):
+                elif isinstance(value, dict) and all(globals().get(v) for v in value.values()):
                     object_relation = {k: globals().get(v) for k, v in value.items()}
                     setattr(obj, key, object_relation)
 
                 # Resolving a list of object references.
-                elif isinstance(value, list) and all(("id" in c and "class" in c for c in value)):
+                elif isinstance(value, list) and all("id" in c and "class" in c for c in value):
                     components_list = [globals()[comp["class"]].find_by("id", comp["id"]) for comp in value]
                     setattr(obj, key, components_list)
 

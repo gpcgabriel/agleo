@@ -1,7 +1,8 @@
 import subprocess
 import time
+from collections.abc import Callable
+
 import requests
-from typing import List, Callable, Optional
 
 DEFAULT_MODEL = "llama3.1:8b"
 DEFAULT_HOST = "http://localhost:11434"
@@ -51,7 +52,7 @@ def start_ollama() -> bool:
     return False
 
 
-def list_local_models() -> List[str]:
+def list_local_models() -> list[str]:
     """
     Query GET /api/tags to list downloaded model names.
     Returns:
@@ -69,7 +70,7 @@ def list_local_models() -> List[str]:
     return []
 
 
-def pull_model(model_name: str, progress_callback: Optional[Callable[[str], None]] = None) -> bool:
+def pull_model(model_name: str, progress_callback: Callable[[str], None] | None = None) -> bool:
     """
     Execute 'ollama pull <model_name>' via subprocess, streaming stdout.
     Calls progress_callback with each line of output if provided.

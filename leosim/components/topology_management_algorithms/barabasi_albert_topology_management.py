@@ -1,7 +1,8 @@
-from ..network_link import NetworkLink
-from geopy.distance import geodesic
-from ..satellite import Satellite
 import numpy as np
+from geopy.distance import geodesic
+
+from ..network_link import NetworkLink
+from ..satellite import Satellite
 
 
 def barabasi_albert_network(topology, min_num_links: int = 2):

@@ -9,7 +9,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.core.router import Blocked, DispatchToAgent, LocalReply, QUICK_COMMAND_CONTEXT, route
+from app.core.router import QUICK_COMMAND_CONTEXT, Blocked, DispatchToAgent, LocalReply, route
 
 
 class FakeSession:

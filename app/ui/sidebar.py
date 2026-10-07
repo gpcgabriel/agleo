@@ -3,11 +3,11 @@ import os
 
 import streamlit as st
 
-from app.ui.gui.icons import icon_bot, icon_satellite, wrap_icon
-from app.helper_functions.ollama_helper import DEFAULT_MODEL, list_local_models, model_is_available
 from app.agents.allocation import LLMAllocator
 from app.core.config import SimulationConfig
 from app.core.session import create_session
+from app.helper_functions.ollama_helper import DEFAULT_MODEL, list_local_models, model_is_available
+from app.ui.gui.icons import icon_bot, icon_satellite, wrap_icon
 from app.ui.state import clear_pending, set_session
 
 

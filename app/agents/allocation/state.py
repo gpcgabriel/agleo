@@ -14,9 +14,9 @@ second one still leaves every station answering the same network-wide question.
 from math import sqrt
 
 from geopy.distance import geodesic
-from leosim.components import Application, GroundStation, ProcessUnit, Satellite, User
 
 from app.agents.allocation.digest import component_id
+from leosim.components import Application, GroundStation, ProcessUnit, Satellite, User
 
 FUTURE_POSITIONS_SHOWN = 3
 

@@ -1,8 +1,10 @@
 # Importing the simulator components.
+from collections.abc import Callable
+from typing import Any
+
 from ..component_manager import ComponentManager
-from .user import User
-from typing import Callable, Dict, Any, Optional, Tuple
 from ..orbit_models.linear_estimation import linear_estimation
+from .user import User
 
 
 class Satellite(ComponentManager):
@@ -36,7 +38,7 @@ class Satellite(ComponentManager):
         self,
         id: int = 0,
         name: str = "",
-        coordinates: Optional[Tuple[float, float, float]] = None,
+        coordinates: tuple[float, float, float] | None = None,
         wireless_delay: int = 0,
         max_connection_range: int = 1000,
         is_gateway: bool = False,
@@ -88,7 +90,7 @@ class Satellite(ComponentManager):
         self.failure_occurred = False
         self.failure_model_parameters = {}
 
-    def collect_metrics(self) -> Dict[str, Any]:
+    def collect_metrics(self) -> dict[str, Any]:
         """Collects operational metrics from the satellite.
 
         Returns:
@@ -199,7 +201,7 @@ class Satellite(ComponentManager):
             if self.model.topology.within_range(self, user):
                 user.connect_to_access_point(self)
 
-    def export(self) -> Dict[str, Any]:
+    def export(self) -> dict[str, Any]:
         """Generates a dictionary representation of the object for context saving.
 
         Returns:
@@ -238,7 +240,7 @@ class Satellite(ComponentManager):
         return component
 
     @staticmethod
-    def export_satellites() -> Dict:
+    def export_satellites() -> dict:
         satellite_data = {}
         for sat in Satellite._instances:
             step = sat.model.scheduler.steps

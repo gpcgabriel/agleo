@@ -7,7 +7,6 @@ what to do with the proposals is the UI layer's job.
 """
 
 import json
-from random import randint
 
 from app.core.actions import (
     ActionType,
@@ -22,7 +21,6 @@ from app.core.actions import (
     RunSimulationPayload,
 )
 from app.core.plan import SimulationPlan
-
 
 COLLISION_OFFSET = 0.01
 

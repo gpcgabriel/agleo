@@ -1,7 +1,4 @@
-from typing import Tuple
-
-
-def linear_estimation(sat) -> Tuple[float, float, float]:
+def linear_estimation(sat) -> tuple[float, float, float]:
     """
     Estimates the next position of the satellite based on linear inertia.
     Purely mathematical model: receives the state and returns the new coordinate.

@@ -1,6 +1,7 @@
-import streamlit as st
-import os
 import json
+import os
+
+import streamlit as st
 
 from app.core.slash_commands import get_commands_for_js
 
@@ -38,7 +39,7 @@ def apply_theme(is_dark: bool):
     """
     filepath = resolve_theme_file(is_dark)
 
-    with open(filepath, "r", encoding="utf-8") as stylesheet:
+    with open(filepath, encoding="utf-8") as stylesheet:
         css_content = stylesheet.read()
 
     # Injecting the stylesheet with no leading whitespace before the style tag.
@@ -56,7 +57,7 @@ def inject_accessibility_script():
     """
     js_filepath = os.path.join(HTML_DIR, "accessibility.js")
     try:
-        with open(js_filepath, "r", encoding="utf-8") as f:
+        with open(js_filepath, encoding="utf-8") as f:
             js_content = f.read()
 
         commands_json = json.dumps(get_commands_for_js(), ensure_ascii=False)

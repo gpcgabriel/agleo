@@ -1,10 +1,10 @@
-import json
 import argparse
+import json
 
 
 def convert_format(input_filename, output_filename):
     # Load the original log_rnp.json data
-    with open(input_filename, "r", encoding="utf-8") as infile:
+    with open(input_filename, encoding="utf-8") as infile:
         data = json.load(infile)
 
     brazil_data = []

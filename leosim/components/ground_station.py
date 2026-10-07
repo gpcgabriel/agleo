@@ -1,9 +1,10 @@
 # Importing the simulator components.
+from typing import Any
+
 from ..component_manager import ComponentManager
 from .network_link import NetworkLink
 from .satellite import Satellite
 from .user import User
-from typing import List, Tuple, Optional, Dict, Any
 
 
 class GroundStation(ComponentManager):
@@ -13,7 +14,7 @@ class GroundStation(ComponentManager):
     def __init__(
         self,
         id: int = 0,
-        coordinates: Optional[Tuple[float, float, float]] = None,
+        coordinates: tuple[float, float, float] | None = None,
         wireless_delay: int = 0,
         max_connection_range: int = 2000,
     ) -> None:
@@ -28,10 +29,10 @@ class GroundStation(ComponentManager):
         self.wireless_delay = wireless_delay
         self.max_connection_range = max_connection_range
 
-        self.users: List[User] = []
+        self.users: list[User] = []
         self.process_unit = []
 
-    def export(self) -> Dict[str, Any]:
+    def export(self) -> dict[str, Any]:
         component = {
             "id": self.id,
             "coordinates": self.coordinates,
@@ -95,7 +96,7 @@ class GroundStation(ComponentManager):
                 topology._adj[self][satellite] = link
 
     @staticmethod
-    def export_groundstations() -> Dict:
+    def export_groundstations() -> dict:
         gs_data = {}
         for gs in GroundStation._instances:
             gpos = gs.coordinates
