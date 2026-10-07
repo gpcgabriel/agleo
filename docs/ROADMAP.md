@@ -1,9 +1,10 @@
 # AGLEO Roadmap
 
 Where the project stands and what comes next. The long-term goal is an
-**agentic-defined simulation**: ground stations that decide locally, an
-orchestrator above them that ties those decisions to operator intent, and a
-dashboard agent that puts a network manager in the loop.
+**agentic-defined simulation**, built on **two agents**: an **allocator**
+inside every ground station, deciding locally how to place what that station is
+responsible for, and one **orchestrator** above the simulation, which turns the
+operator's intent into runs and the runs into answers.
 
 **Where it stands (30 September 2026).**
 
@@ -12,7 +13,8 @@ dashboard agent that puts a network manager in the loop.
 | Phases 1, 2 | done — layering, and an engine that no longer imports the LLM stack |
 | **Phase 3** | **frozen**: a tick is 47% faster with the allocation outcome unchanged |
 | **Phase 6** | **closed**: `llama3.1:8b` cannot pass arguments to a skill, so function calling is the capability model |
-| Phase 4, 5 | designs settled, not built. The next work |
+| **Phase 4** | a plan of *(config, budget)* runs and reports — **built 1 October 2026**. Scheduled events, references, criteria and the new interface are **planned in eight modules**: the next work |
+| Phase 5 | objectives and N runs, once one run works end to end |
 | Phases 7, 8 | supporting: one process many simulations, and an experiment harness |
 | Phases 9, 10 | explored and **deliberately deferred**; both change simulation results |
 
@@ -91,20 +93,27 @@ They choose one of two paths.
 
 ### What exists today
 
-Only part of the step-by-step path. The operator picks dataset, trace and
-topology in the sidebar, the map renders live, and the dashboard agent takes
-commands behind a confirmation gate. What is missing from that path is the
-agent being an *orchestrator* rather than a proposer of single mutations.
+**The step-by-step path, complete.** The operator picks dataset, trace and
+topology in the sidebar, the map renders live, and the orchestrator takes
+commands behind a confirmation gate.
 
-The automatic path does not exist at all: there is no objective as a
-first-class object, no unattended run, and no stopping criterion the agent can
-evaluate. That is Phase 5.
+**The automatic path, as far as one run.** Since 1 October 2026 the
+orchestrator turns a request into a *plan* — what to build and for how long —
+the operator approves that plan once, and the run then goes to completion with
+no gate between its steps and a report of its metrics at the end. The
+mechanics are in Phase 4.
+
+What the automatic path still lacks is everything above a single run: an
+objective as a first-class object, several runs compared against each other,
+and a stopping criterion the orchestrator can evaluate for itself. That is
+Phase 5.
 
 ### What the demonstration covers
 
-**The ground station agent is the only agent inside the simulation.** The
-orchestrator and the automatic path are not part of the demonstration; the
-demonstration is Phase 3 — the tick made affordable, measured before and after.
+**The allocator is the only agent inside the simulation.** The orchestrator
+sits around the run rather than inside the tick, and neither it nor the
+automatic path is part of the demonstration: the demonstration is Phase 3 —
+the tick made affordable, measured before and after.
 
 
 ---
@@ -182,6 +191,7 @@ strategy through the same path the agent's decision takes.
 | N | A gateway accepts every satellite in range; real gateway earth stations serve 8 (Gen1) to 32 (Gen2) at a time | Phase 10 |
 | O | An LLM tick costs one model call per ground station — 28 with the RNP topology, minutes of wall clock | Phase 3 |
 | P | The slant-range formula is written five times: `Topology.within_range`, `Topology.calculate_distance`, `hybrid_allocation.distance`, `longest_duration_allocation.distance` and `state.find_reachable_satellite_ids`. This is what let issue K survive a fix | open |
+| ~~R~~ | ~~**`User.connection_to_application` never appends to `User.applications`.**~~ — fixed 1 October 2026, one line. The snapshot now carries the applications it always had: 11 to 13 of 20 placed per tick where it used to report none. With a fixed seed the allocation outcome over 8 steps is byte-identical, and the export/initialize round trip does not double them. Was: The applications are created, allocated and torn down correctly — the link the *user* holds is the one that is missing. `app/core/snapshot.py` is the only reader in `app/`, which puts it in the map, in the agent's context summary ("No active applications", always) and in the run report, where provisioning therefore reads 0%. Measured 1 October 2026: 20 applications exist and 11–13 are placed per tick while the snapshot shows none. One line; with a fixed seed the allocation outcome over 8 steps is byte-identical with and without it. | done |
 | ~~Q~~ | ~~The model omits applications from both strategy lists, and `hybrid_allocation` never looks at them~~ — fixed 30 September 2026. `reconcile` matches the reply against the question; omissions and invented ids are counted, logged and carried into the metrics | done |
 
 ### The triage
@@ -415,162 +425,322 @@ station visit and `summarize_by_step` aggregates them.
 
 ---
 
-## Phase 4 — The multi-level orchestrator
+## Phase 4 — The orchestrator
 
 **Goal:** the research contribution, and the second of the three core problems.
+**Scope, settled 1 October 2026: one complete automatic run, end to end** —
+including the interface that chooses the mode before anything is instantiated.
+Several runs and objectives are Phase 5.
 
-Three levels, each with a different scope:
+**There are two agents, not three.** Correcting the reading this phase carried
+until 1 October 2026.
 
-| Level | Sees | Decides |
+| Agent | Sees | Decides |
 | --- | --- | --- |
-| Ground station agent | its own neighbourhood | how to place the applications it is responsible for |
-| Orchestrator | every station's decision and the operator's objectives | policy, conflicts, and what each station should optimize for |
-| Dashboard agent | the operator | turning intent into a run, and results into an answer |
+| **Allocator**, one per ground station | its own neighbourhood | how to place the applications that station is responsible for |
+| **Orchestrator**, one, above the simulation | the operator, and the run as a whole | what to simulate, what happens during it, when it is done, and what the results mean |
 
-### What exists already
+The orchestrator is the agent the operator talks to, and it drives **both**
+paths: step by step, proposing one change at a time behind a gate, and
+automatically, taking the objective and carrying the whole run out itself.
 
-Phase 2 left the pieces in place. `LLMAllocator.allocate(model, parameters)`
-has the same signature as any allocation algorithm, so the engine injects it
-without knowing it talks to a model, and the composition root
-(`app/ui/sidebar.py`) assembles it. A second level slots in the same way: an
-orchestrator is another injected strategy, one that consults the stations
-rather than replacing them.
+### What the orchestrator is not
 
-`LLMAllocator` already keeps `decisions_by_station`, so the history an
-orchestrator needs in order to reconcile is being recorded.
+**It does not prepare the allocator's question.** An earlier design had it
+reduce the infrastructure to one digest per round and hand the same digest to
+every station. **Retracted.** The digest is deterministic code —
+`app/agents/allocation/digest.py`, built in Phase 3 from each station's own
+local state — and it stays there. Putting a model between the engine and the
+station's prompt would make every allocation decision depend on a second
+non-deterministic step, which is exactly the ambiguity Phase 3 ended frozen
+over: when adding anything at all moves the outcome, a changed result cannot be
+attributed to the change.
 
-### Decided design: the orchestrator chews, the station chooses
+One idea from that design survives, because it is about the **allocator's
+answer** and not about who asks: the station's output space should be
+**closed** — one option out of an enumerated set (`best_fit`,
+`longest_duration`, or an explicit **agnostic**) instead of a list of
+application ids. *Agnostic* is not a failure: it says which decisions the local
+level genuinely constrains, which is the thesis's central claim made
+falsifiable. Unscheduled; it belongs to Phase 3 if that reopens.
 
-Settled 26 September 2026. The orchestrator runs **before** the stations, and
-its job is not to command them — it is to **prepare what they need in order to
-decide**.
+### The request this phase has to answer
 
-```
-operator intent
-      |
-      v
-  ORCHESTRATOR          global view; turns the intent into one digest of
-      |                 the infrastructure and a closed question
-      |  the same digest + options, to every station
-      v
-  GROUND STATION x N    local view; each answers with one of the options,
-      |                 or says it is indifferent
-      |  choices
-      v
-  DETERMINISTIC CODE    applies each choice to that station's pending apps
-      |
-      v
-  ORCHESTRATOR          keeps (digest, choices) as the record of the round
-```
+> *"faça uma simulação com 3 usuários e 4 satélites na malha da RNP. No step 5
+> um novo usuário deve surgir perto da GS 28 e ter três aplicações associadas.
+> Rode a simulação até que todas as aplicações desse usuário sejam alocadas e
+> me apresente os resultados"*
 
-Two properties follow, and they are what make the design worth building:
+Four capabilities, none of which existed on 1 October 2026:
 
-1. **The station's input shrinks by construction.** It receives a digest the
-   orchestrator already reduced, not the network JSON for its neighbourhood.
-   Summarization is the architecture rather than an optimization bolted on.
-2. **The station's output space is closed.** One option out of an enumerated
-   set — `best_fit`, `longest_duration`, or an explicit **agnostic**. Cheap to
-   generate, trivial to validate, and a closed set cannot be under-filled,
-   which is the failure mode issue Q and Phase 6 both found.
+1. a **setup** built from the sentence with no simulation loaded, naming its
+   own dataset and trace files;
+2. **events on the timeline** — two mutations at tick 5, the second referring
+   to what the first created;
+3. **symbolic references** — *"perto da GS 28"* names something that exists
+   only after instantiation, and *"desse usuário"* names something the plan
+   itself creates;
+4. a **stopping criterion that is not a step count**, evaluated against the
+   state, scoped to an entity the plan created.
 
-**Agnostic is not a failure mode.** It tells the orchestrator which decisions
-the local level genuinely constrains and which it does not, which is the
-thesis's central claim made falsifiable. It also doubles as conflict
-prevention: a station that does not care is a station that will not fight over
-a process unit.
+### What was built first, 1 October 2026
 
-### The constraints that make or break it
+A plan of **configuration plus a step budget**, approved once at the gate, run
+to completion with no gate between its steps, and reported from the snapshot
+history: `app/core/plan.py`, `app/core/report.py`, the `run_full_simulation`
+action and its handler, `session.start_plan` / `take_finished_plan`, the tool,
+the `run-full-simulation` skill and `/simulate <n>`.
 
-**One digest, not one per station.** The orchestrator emits a single overview
-and sends the same one to every station. Emitting N tailored digests would need
-the whole network state in and a long structured reply out, moving the context
-problem up a level instead of removing it. A side effect worth measuring: the
-28 station prompts then share a byte-identical prefix, so a server reusing a KV
-cache across requests pays for it once.
+It answers *"run 20 steps and tell me how it went"* and nothing more: the
+request above would come out as five steps on the default dataset. It is the
+floor the modules below build on, not the phase.
 
-**The digest must be a summary, not a serialization.** A global view written as
-JSON is larger than the local neighbourhood JSON it replaces, and the cure
-becomes the disease. `app/agents/allocation/digest.py`, built in Phase 3, is
-the shape to reuse: 2 642 characters of JSON became 473.
+Three decisions in it that the rest inherits:
 
-**The orchestrator asks only the stations that are involved**, by the same rule
-Phase 3 established — a station that cannot serve an application has no
-business being asked about it.
+* **One approval covers the whole run, and what is approved is the plan.** The
+  gate shows every setting before the operator agrees, because nothing will ask
+  them again until the run ends.
+* **The report is derived from the snapshot history**, so there is no second
+  instrumentation path to keep in step and the numbers can be recomputed from a
+  saved history alone. What a run *cost in model calls* stays in
+  `app/agents/allocation/metrics.py`: a run with no agent in it still has a
+  report.
+* **Stopping is not cancelling.** A run the operator interrupts is reported
+  over the ticks that did run.
 
-**Ground station agents are built on function calling, not skills.** Phase 6
-measured the alternative: the model that will run them cannot pass arguments to
-a skill.
+---
 
-### Still open
+### Module 1 — The plan becomes a script
 
-1. **How do two stations claiming the same process unit resolve?** Agnostic
-   answers shrink the conflict set but do not empty it. Deterministic
-   arbitration is cheaper and more defensible than asking a model a second
-   time. Undecided.
-2. **What does the orchestrator get compared against?** Three arms:
-   deterministic `best_fit`, per-station LLM *without* orchestrator, and the
-   orchestrator. **The middle one is the comparison that matters** — it
-   isolates the orchestrator's contribution from the contribution of merely
-   using a model.
+`app/core/plan.py`. `SimulationPlan` grows from *(config, steps)* into four
+fields:
+
+| Field | What it holds |
+| --- | --- |
+| `setup` | a complete `SimulationConfig`, **not a diff** — in automatic mode there is no loaded simulation to resolve against |
+| `events` | `ScheduledEvent(step, action_type, arguments, label=None)`, ordered |
+| `stop_when` | one stopping criterion (Module 3) |
+| `budget` | hard cap on ticks, always enforced |
+
+Validated in the constructor, loudly: an `action_type` outside `ActionType.ALL`
+is refused, and so are the three that make no sense inside a run —
+`run_simulation`, `restart_simulation` and `run_full_simulation`, because a
+plan must not schedule another plan. Labels must be unique. Every reference
+must be resolvable *in principle* — a label defined by an **earlier** event, or
+an entity kind the resolver knows.
+
+**Decided: an event at step N is applied after tick N completes**, recording a
+`Step N · change k` snapshot. That is already how the dashboard labels a change
+that does not consume a tick, so the timeline needs no new vocabulary. Events
+at step 0 apply before the first tick.
+
+### Module 2 — Symbolic references
+
+`app/core/references.py`, new. Three forms:
+
+    "GroundStation:28"      an entity the instantiated scenario holds
+    "@new_user"             an entity an earlier event created
+    {"near": "<ref>"}       a position derived from one, at resolution time
+
+A `ReferenceEnvironment` carries the live simulation plus the labels bound so
+far, and an event resolves its arguments against it immediately before being
+applied. Failure names the reference and stops the run; it must not place a
+node at (0, 0) because a lookup missed.
+
+**This forces a change to `ActionResult`.** Handlers create users, nodes and
+applications today and return only messages — nothing says *what* was made, so
+`@new_user` has nothing to bind to. `ActionResult` gains `created`, and the six
+handlers populate it. Small, mechanical, and it touches every handler.
+
+`find_default_node_position` in `app/core/snapshot.py` is the shape to
+generalize: it already answers "somewhere sensible, given the scenario".
+
+### Module 3 — Stopping criteria
+
+`app/core/criteria.py`, new. A **closed set**, each a small class with
+`describe()` for the gate and `is_met(snapshot, environment)` for the runner:
+
+* `AllApplicationsAllocated(of="@label" | "all")`
+* `ProvisioningAtLeast(percent)`
+* `StepsCompleted(n)` — what exists today
+
+Deterministic, zero cost per tick, and trivially validated. The alternative —
+handing the orchestrator the state every N ticks and asking whether the
+objective is met — costs a model call per checkpoint and puts the stopping
+point in the hands of a non-deterministic model, which is the Phase 3 ambiguity
+again one level up. Rejected 1 October 2026.
+
+`budget` is always enforced on top, so a criterion that is never satisfiable
+terminates anyway, and the report says which of the two ended the run.
+
+### Module 4 — The run interpreter
+
+`app/core/run.py`, new. The per-tick decision currently lives in
+`app.py:advance_scheduled_steps`, which means a run cannot happen without
+Streamlit — and Phase 5 needs exactly that.
+
+    for each tick:
+        apply the events due at this step, resolving their references
+        tick
+        record the snapshot
+        evaluate stop_when
+
+A `RunState` owns plan, session, pending events, environment and stop reason.
+The interface keeps the batching, the progress strip and the stop button; what
+happens inside a tick moves down into the domain.
+
+### Module 5 — How the orchestrator writes a plan
+
+**Decided 1 October 2026: one structured document, in one call.** The tool is
+
+    propose_simulation_plan(plan: str)
+
+— the plan as **JSON inside a single string parameter**, not as nested tool
+arguments. That distinction is the whole reason this is safe to choose: Phase 6
+measured this model failing to fill a nested, list-valued *schema*
+(`get_skill_script`'s `args`), and issue Q measured the same family in the
+allocator. Writing JSON as *text* is a different act, and one small models do
+well. The nesting moves out of the tool boundary and into a string that
+deterministic code parses.
+
+`app/core/plan_document.py`, new, owns that boundary:
+
+* **tolerant reading** — `"steps": "5"` as a string, a scalar where a list
+  belongs, optional keys absent and filled from the page's presets;
+* **precise errors** — every rejection names the field and what was expected,
+  and is returned to the model *as the tool's reply*, so it can repair;
+* **a bounded repair loop** — N attempts, then the operator is told what the
+  orchestrator could not express. Nothing half-parsed ever reaches the gate.
+
+*"na malha da RNP"* needs the plan to name **dataset files by name rather than
+path**, so a small catalog of what is in `datasets/` goes in the prompt and the
+document refers to entries of it.
+
+**The number this module is judged by: valid-plan rate per attempt.** It is the
+Phase 6 measurement applied to this phase, and it is the first thing to collect
+when a different model is tried.
+
+### Module 6 — The interface: mode before instantiation
+
+**Decided 1 October 2026: Streamlit multipage** (`st.navigation` / `st.Page`),
+one script per stage.
+
+    1. Mode     step by step, or automatic — nothing is instantiated yet
+    2. Setup    presets for the chosen mode
+    3. Session  the step-by-step dashboard, or the automatic watch view
+
+Multipage over a state machine on one page for one reason that is already paid
+for in scars: a stage is its own script, so the trap that produced every
+duplication bug in September — a slot that passes through one render empty
+keeps what the previous render put there, because Streamlit does not trim on
+the way to a rerun — cannot cross a stage boundary.
+
+What it costs: `app.py` is reorganized around navigation, and where the session
+lives between pages has to be decided explicitly. `app/ui/state.py` stays the
+only bridge to `st.session_state` and gains the stage and mode keys.
+
+**Navigation is driven by state, not by the operator clicking a page name.**
+Landing on the session page with no session is the first bug this would
+otherwise ship.
+
+The automatic watch view is **map, progress, stop, the plan summary and the
+report** — no chat input. The operator is watching a run they already approved.
+
+**Open:** where the objective is typed. The described flow is mode → presets →
+agent, but the example sentence *contains* its presets ("3 usuários e 4
+satélites na malha da RNP"). The workable reading is that the presets are
+defaults the sentence may override, and the plan the gate shows is what
+actually resolved. Worth confirming before the Setup page is drawn.
+
+### Module 7 — A report that answers the question asked
+
+`app/core/report.py` today reports global averages. A run that stopped on
+*"until all applications of that user are allocated"* has to foreground **that
+user's applications** and the tick each was placed on, not the network mean.
+
+`report_on` is derived from the criterion and the labels rather than asked for
+separately — the plan already says what it is about.
+
+### Module 8 — What gets measured
+
+1. **Valid-plan rate per attempt** (Module 5) — the Phase 6 number for this
+   phase, per model.
+2. **Stop reason distribution** — criterion met against budget exhausted. A
+   phase where everything ends on the budget has criteria nobody can satisfy.
+3. **Wall clock, automatic against by-hand** — the same scenario driven through
+   the step-by-step dashboard and through a plan. This is the operator-facing
+   claim, and it is the one Phase 3 made affordable enough to make.
+
+### Order, and what blocks what
+
+Modules 1-4 are the domain and can be built and tested without Streamlit;
+Module 5 needs 1-3 to have something to parse; Module 6 needs 4 to have
+something to drive; 7 needs 3 (it reads the criterion) and 8 needs everything.
+
+The honest risk is **Module 5**. If the valid-plan rate is poor with
+`llama3.1:8b`, the fallback is not a redesign — it is the conversational
+assembly that was the third option on 1 October 2026, and Modules 1-4 are
+unaffected either way. Measure before committing to a repair-loop depth.
 
 ### Cost
 
-The call *count* barely moves: one orchestrator call plus the same per-station
-calls. What changes is the price of each. The station's prompt drops from a
-neighbourhood digest to a question with a handful of options, and its output
-from a list of ids to one token's worth of choice — which is the lever Phase 3
-identified, since the remaining cost is per-call overhead and reply length, not
-prompt size. The orchestrator's own call is the expensive one, and keeping it
-bounded is what open question 1 is about.
+An automatic run costs what the same ticks cost by hand — the orchestrator is
+consulted to build the plan, repaired at most N times, and not consulted again
+until the report. With the deterministic allocator a tick is about 0.26 s; with
+the LLM allocator it is 308 s after Phase 3. The orchestrator changes neither,
+which is why Phase 3 came first.
 
-Measurable only against the Phase 3 baseline, which is why Phase 3 came first.
+### Still open, carried from the first slice
+
+1. **Nothing bounds the length of a plan.** `budget` makes this concrete and
+   Module 1 is where to cap it: the shipped traces hold **840 steps** of
+   measured positions, past which satellites move under the mobility model and
+   an unattended run quietly stops simulating the data it was given.
+2. **How do two stations claiming the same process unit resolve?** Agnostic
+   answers shrink the conflict set but do not empty it. Deterministic
+   arbitration is cheaper and more defensible than asking a model twice.
+   Undecided, and it belongs to the allocator.
 
 ---
 
 ## Phase 5 — Intent-driven simulation
 
-**Goal:** the operator states a scenario and its objectives; the dashboard
-agent configures, runs and reports. The third of the three core problems.
+**Goal:** the operator states an objective; the orchestrator decides how many
+simulations answer it, runs them and reports the comparison. The third of the
+three core problems, and the depth Phase 4 stops short of.
 
-Today the operator drives the simulation one action at a time: initialize in
-the sidebar, ask for steps, confirm each proposal. Every action is a single
-mutation behind a confirmation gate.
+Phase 4 ends with *one* automatic run working end to end. The operator still
+names the scenario, and still reads one set of numbers and decides for
+themselves whether the question was answered.
 
 ### What it needs
 
-1. **An intent as a first-class object.** A `SimulationIntent` holding what to
-   simulate (scenario, constellation size, users, duration) and what to
-   optimize or report. Validated the way `SimulationConfig` is.
-2. **Intent to configuration.** The dashboard agent already proposes typed
-   actions; it needs one that proposes a whole run rather than a single
-   mutation — configuration plus a step budget plus the metrics to collect.
-3. **A run that completes unattended.** `session.run_next_pending_step()`
-   already consumes steps one at a time under a UI loop. An intent-driven run
-   needs the same for a long horizon, with progress and an abort, and without
-   a confirmation gate per step.
-4. **A report at the end.** Collected metrics summarized back into the chat —
-   which is `summarize_snapshot` generalized from one snapshot to a run.
+1. **An objective above the plan.** `SimulationPlan` says what to simulate;
+   what is missing is what the runs are *for* — which metric matters, which
+   direction is better, and what counts as enough across runs rather than
+   within one.
+2. **Several runs under one approval.** A sweep: the same plan at four
+   constellation sizes, or two allocation algorithms side by side. One
+   approval, N runs, one comparison.
+3. **A comparison report.** `app/core/report.py` describes a run; a sweep needs
+   the runs beside each other and the difference between them named.
+4. **A stopping criterion across runs** — stop sweeping when the trend is
+   established, not when the list is exhausted.
 
-### Decided: the operator picks the mode
+### What blocks it
 
-Settled 26 September 2026. The confirmation gate exists so the agent never
-mutates the engine without consent, and an intent would authorize a whole run
-in one approval. Rather than choosing one, the run carries a mode the operator
-sets:
+**Phase 7** (`ComponentManager.model` is a global singleton; two simulations
+cannot coexist in one process). A **sequential** sweep — build, run, tear down,
+build the next — may be possible without it if teardown is clean. That is worth
+**ten lines and an interpreter before assuming either way**, because it decides
+whether Phase 7 is on this path or beside it.
 
-| Mode | The gate | When it fits |
-| --- | --- | --- |
-| **Single plan** | the agent turns the intent into a concrete plan — scenario, step budget, metrics — and the operator approves that plan once; the run then executes with progress and an abort | running an experiment to completion |
-| **Step by step** | unchanged: every mutation is confirmed individually in the dashboard | exploring, teaching, debugging a scenario |
-
-What is approved in single-plan mode is the **plan, not the sentence**. The
-operator consents to something specific and checkable, and a misread intent is
-caught before minutes of simulation are spent rather than after.
-
-Builds on Phase 4: an intent that mentions objectives has to reach something
-that reconciles them across stations.
+Module 6 of Phase 4 also has to grow a sweep view, and a plan still cannot
+change the dataset or the trace file for a *single* run, which is what
+comparing two topologies needs.
 
 ---
+
 ## Phase 6 — Agent capability model: Tools vs Skills — **closed**
 
 **Goal:** make the second agent mode real, so the two ways of giving an agent
@@ -884,11 +1054,13 @@ unaffordable tick inherits the problem. And nothing can be claimed about
 phases 4 and 5 without the instrumentation Phase 3 forces into existence —
 calls per tick, prompt size, wall clock, allocation outcome.
 
-Phase 4 then absorbs what Phase 3 deliberately left undone: the station stops
-being sent the network JSON and stops emitting placements, because the
-orchestrator prepares its input and closes its output. Phase 5 sits on top of
-both — an intent that names objectives has to reach something that turns them
-into what each station is asked.
+Phase 4 no longer absorbs what Phase 3 left undone, and the arrow between
+them is weaker than this diagram suggests. The orchestrator stays outside the
+tick, so closing the station's output space is Phase 3's work if Phase 3
+reopens, not Phase 4's. What Phase 4 does need from Phase 3 is the
+instrumentation: a run report is only worth reading if a tick is affordable
+enough for the run to finish. Phase 5 then sits on top of Phase 4 alone — more
+runs of the thing Phase 4 can already do once.
 
 Phase 6 is small and its answer shapes how the orchestrator's agents are built,
 so it is worth doing before committing to an agent design. Phase 7 is the most

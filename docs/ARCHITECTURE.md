@@ -15,7 +15,7 @@ LEOSim is split into four layers. The structural rule that holds them apart:
 | --- | --- | --- |
 | Simulation engine | `leosim/` | Satellites, ground stations, users, topology, scheduling |
 | Application domain | `app/core/` | Session state, actions, handlers, snapshots, routing |
-| Agent orchestration | `app/agents/` | Prompts, tools, agent runs, tool-call recovery |
+| Agents | `app/agents/` | Prompts, tools, agent runs, tool-call recovery |
 | Interface | `app/ui/` | Streamlit widgets, map, chat, theme |
 
 `app.py` is the composition root: it wires the interface to the domain and
@@ -110,6 +110,16 @@ Handlers return what should be said; they never write to the chat or raise a
 toast themselves. `app/ui/state.apply_result` translates the result into
 interface effects.
 
+### A whole run
+
+`run_full_simulation` is the one action that is not a single mutation. Its
+payload carries a `SimulationPlan`, and the cycle above runs once for the whole
+run: the handler builds the plan's simulation and schedules every step of it,
+the interface loop consumes them in batches with progress and a stop button,
+and when the plan comes back from `session.take_finished_plan()` the composition
+root writes the report into the chat. Step seven of the cycle, and the only one
+the operator is not asked about.
+
 ---
 
 ## Directory map
@@ -125,15 +135,20 @@ interface effects.
   * `infrastructure.py` — primitives for creating nodes and attaching units
   * `catalog.py` — indexed satellite traces
   * `snapshot.py`, `summary.py` — state for the map and for the agent
+  * `plan.py` — `SimulationPlan`: what a whole run was approved as
+  * `report.py` — what a finished run is measured by, and its report
   * `router.py` — command routing, free of interface calls
-* `app/agents/` — one package per agent
-  * `dashboard/` — the agent the operator talks to
+* `app/agents/` — one package per agent. There are two: the **orchestrator**,
+  which the operator talks to and which drives whole runs, and the
+  **allocator**, one per ground station inside the tick
+  * `dashboard/` — the orchestrator
     * `tools.py` — `ProposalBuffer` and the `propose_*` tools
     * `runner.py` — agent assembly and execution
     * `tool_call_recovery.py` — recovery of tool calls emitted as text
     * `prompts.py` — system description and instructions
-  * `allocation/` — the ground station agent, injected into the simulator like
-    any other allocation algorithm
+  * `allocation/` — the allocator, injected into the simulator like any other
+    allocation algorithm. Its question is built by deterministic code, not by
+    the orchestrator: see Phase 4 in [ROADMAP.md](ROADMAP.md)
     * `state.py` — what each station is asked about, and about what
     * `prompt.py`, `decision.py` — the question and the shape of the answer
     * `metrics.py` — what each round cost and what it achieved

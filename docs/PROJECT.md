@@ -138,6 +138,13 @@ Things that have already cost time:
   so a field missing from `export()` silently falls back to the constructor
   default. This cost half the users their connection range for months, and
   `Satellite` still loses its `name` the same way.
+* **Both sides of a user-to-application link have to be written.**
+  `connection_to_application` sets `application.user` *and* appends to
+  `user.applications`; `app/core/snapshot.py` reads only the second, so the
+  map, the agent's context summary and the run report learn about applications
+  through that list and nowhere else. The append was missing until 1 October
+  2026, and for months everything downstream believed the simulation had no
+  applications in it while 11 to 13 of 20 were being placed every tick.
 * **`leosim/components/mobility_models/` is the live one.** A second copy used
   to sit at `leosim/mobility_models/`, never imported and carrying bugs that
   the live copy had already fixed. It is gone; if a similar pair appears,
@@ -153,6 +160,17 @@ Things that have already cost time:
 * **The agent never mutates the engine.** Every change is a typed
   `ProposedAction` behind the confirmation gate. See the action cycle in
   [ARCHITECTURE.md](ARCHITECTURE.md).
+* **A whole run is approved once, and what is approved is the plan.**
+  `run_full_simulation` carries a `SimulationPlan` — configuration plus step
+  budget — and the gate shows every setting before the operator agrees,
+  because nothing will ask them again until the run ends. It *replaces* the
+  simulation on screen; `run_simulation` advances the one that is there. That
+  is the distinction a small model has to get right between `/simulate` and
+  `/step`, and the first thing to check when one is swapped in.
+* **A run the operator stops is still reported.** `take_finished_plan` hands
+  the plan back once, whether the budget emptied or the stop button did, and
+  `app/core/report.py` says how far it got. Throwing the work away because it
+  was incomplete is how an operator learns not to press Stop.
 * **Informational questions must not propose actions.** A command the router
   classifies as a question reaches the agent with **no way to act at all**
   (`DispatchToAgent.allows_changes`), rather than being asked in the prompt not
@@ -174,9 +192,15 @@ Things that have already cost time:
   question. Both set `num_ctx = 8192`. `curl -s localhost:11434/api/ps` reports
   the loaded model's real `context_length`; check it before trusting any
   measurement of a prompt.
-* **Never show a raw tool-call blob in the chat.** When a model emits a tool
-  call as text, `app/agents/dashboard/tool_call_recovery.py` parses it; on
-  failure the operator gets a sentence, not JSON.
+* **Never show a raw tool-call blob in the chat, and never call a success a
+  failure.** When a model emits a tool call as text,
+  `app/agents/dashboard/tool_call_recovery.py` parses it. The blob never
+  reaches the chat either way — but this model routinely calls the tool
+  *properly* and then repeats the call as its whole reply, so
+  `runner.answer_for_a_reply_that_is_a_call` says what is waiting at the gate
+  when something is, and only asks the operator to rephrase when nothing was
+  proposed. Until 1 October 2026 it always said the command had failed, next to
+  the proposal it had just produced.
 * **A skill script is executed directly through its shebang.** It needs `#!`
   *and* the executable bit, or agno returns `Exec format error`; and
   `#!/usr/bin/env python3` resolves to the system interpreter under pyenv, so
