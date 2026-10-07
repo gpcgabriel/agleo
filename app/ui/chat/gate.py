@@ -37,12 +37,12 @@ def render_confirmation_gate(locked=False):
 
     col_yes, col_no = st.columns(2)
 
-    st.markdown('<div class="btn-confirm-marker"></div>', unsafe_allow_html=True)
+    col_yes.markdown('<div class="btn-confirm-marker"></div>', unsafe_allow_html=True)
     if col_yes.button("Confirm Execution", use_container_width=True, key="btn_confirm", disabled=locked):
         confirm_pending()
         st.rerun()
 
-    st.markdown('<div class="btn-cancel-marker"></div>', unsafe_allow_html=True)
+    col_no.markdown('<div class="btn-cancel-marker"></div>', unsafe_allow_html=True)
     if col_no.button("Cancel Proposal", use_container_width=True, key="btn_cancel", disabled=locked):
         push_chat("system", f"Action rejected by user: {pending.description}")
         queue_toast(f"Action cancelled: {pending.description}")

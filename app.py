@@ -12,7 +12,7 @@ from app.core.actions import ActionType
 from app.core.executor import execute_action
 from app.core.report import collect_run_metrics, summarize_run
 from app.ui.chat import render_chat_panel
-from app.ui.css import inject_CSS
+from app.ui.css import inject_css
 from app.ui.gui.styles import apply_theme, inject_accessibility_script
 from app.ui.header import render_header
 from app.ui.map import render_map
@@ -243,7 +243,7 @@ def main_app():
         with dashboard_slot:
             render_simulation(session, is_dark, sim_options["agent_mode"], ollama_ok, locked)
 
-    inject_CSS(is_dark)
+    inject_css(is_dark)
 
     # Injecting the accessibility helper script for axe-core compliance.
     inject_accessibility_script()

@@ -551,7 +551,7 @@ div[key="simulation_map"] {
 }
 
 /* Theme Toggle Button custom styles */
-div[data-testid="element-container"]:has(.theme-toggle-marker) + div[data-testid="element-container"] button {
+div[data-testid="stElementContainer"]:has(.theme-toggle-marker) + div[data-testid="stElementContainer"] button {
     background-color: var(--bg-surface) !important;
     border: 1px solid var(--border-subtle) !important;
     border-radius: 50% !important;
@@ -563,7 +563,7 @@ div[data-testid="element-container"]:has(.theme-toggle-marker) + div[data-testid
     justify-content: center !important;
     box-shadow: var(--shadow-sm) !important;
 }
-div[data-testid="element-container"]:has(.theme-toggle-marker) + div[data-testid="element-container"] button:hover {
+div[data-testid="stElementContainer"]:has(.theme-toggle-marker) + div[data-testid="stElementContainer"] button:hover {
     background-color: var(--bg-elevated) !important;
     border-color: var(--accent-primary) !important;
 }
