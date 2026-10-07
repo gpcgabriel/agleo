@@ -16,6 +16,7 @@ import sys
 from unittest.mock import MagicMock, patch
 
 import requests
+from ollama import ProgressResponse, ResponseError
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -126,18 +127,42 @@ def test_a_reply_shaped_unlike_a_model_list_raises_instead_of_listing_nothing():
 # -- Downloading one --------------------------------------------------------
 
 
-def test_a_download_reports_every_line_it_printed():
-    process = MagicMock()
-    process.poll.side_effect = [None, None, 0]
-    process.stdout.readline.side_effect = ["downloading layer 1\n", "downloading layer 2\n", "", "", ""]
-    # Faking returncode as a property, which a plain attribute cannot do.
-    type(process).returncode = property(lambda self: 0)
+def pulling(*updates):
+    """Returns: MagicMock: A client whose download streams the given updates."""
+    client = MagicMock()
+    client.pull.return_value = iter(updates)
+    return client
+
+
+def test_a_download_reports_every_progress_update():
+    """The size is known for a layer, so its line carries a percentage; a step without one does not."""
+    client = pulling(
+        ProgressResponse(status="pulling manifest"),
+        ProgressResponse(status="pulling 667b0c1932bc", total=200, completed=50),
+        ProgressResponse(status="success"),
+    )
 
     reported = []
-    with patch("subprocess.Popen", return_value=process):
+    with patch("ollama.Client", return_value=client):
         assert pull_model("llama3.1", progress_callback=reported.append) is True
 
-    assert reported == ["downloading layer 1", "downloading layer 2"]
+    assert reported == ["pulling manifest", "pulling 667b0c1932bc 25%", "success"]
+
+
+def test_a_download_ollama_refuses_reports_a_failure():
+    client = MagicMock()
+    client.pull.side_effect = ResponseError("pull model manifest: file does not exist")
+
+    with patch("ollama.Client", return_value=client):
+        assert pull_model("no-such-model") is False
+
+
+def test_a_download_with_the_daemon_down_reports_a_failure():
+    client = MagicMock()
+    client.pull.side_effect = ConnectionError("Failed to connect to Ollama.")
+
+    with patch("ollama.Client", return_value=client):
+        assert pull_model("llama3.1") is False
 
 
 if __name__ == "__main__":

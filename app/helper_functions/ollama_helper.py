@@ -2,6 +2,8 @@ import subprocess
 import time
 from collections.abc import Callable
 
+import httpx
+import ollama
 import requests
 
 DEFAULT_MODEL = "llama3.1:8b"
@@ -33,14 +35,16 @@ def start_ollama() -> bool:
 
     try:
         # Starting Ollama serve in the background, redirecting stdout and stderr
-        # so they do not pollute the logs.
+        # so they do not pollute the logs, and finding `ollama` through PATH as the
+        # operator's shell does: resolving it to an absolute path first would only
+        # trade this S607 for an S603, because starting a daemon takes a subprocess.
         subprocess.Popen(
-            ["ollama", "serve"],
+            ["ollama", "serve"],  # noqa: S607
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             start_new_session=True,  # Ensure it runs independently
         )
-    except Exception:
+    except OSError:
         return False
 
     # Polling for up to 10 seconds (20 retries * 0.5 seconds).
@@ -68,30 +72,34 @@ def list_local_models() -> list[str]:
     return [model["name"] for model in models_list if "name" in model]
 
 
+def describe_pull_progress(update: ollama.ProgressResponse) -> str:
+    """Returns one line saying what a download is doing, with its percentage once the size is known."""
+    status = update.status or ""
+    if update.total and update.completed is not None:
+        return f"{status} {update.completed / update.total:.0%}"
+    return status
+
+
 def pull_model(model_name: str, progress_callback: Callable[[str], None] | None = None) -> bool:
-    """
-    Execute 'ollama pull <model_name>' via subprocess, streaming stdout.
-    Calls progress_callback with each line of output if provided.
+    """Downloads a model through the Ollama API, reporting each step of the download.
+
+    Args:
+        model_name (str): The model to download, with or without its tag.
+        progress_callback (Callable): Receives one line per progress update, when given.
+
     Returns:
-        bool: True if download succeeded, False otherwise.
+        bool: True once the download has finished, False when Ollama refused it or
+        could not be reached.
     """
     try:
-        process = subprocess.Popen(
-            ["ollama", "pull", model_name], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1
-        )
-
-        while True:
-            line = process.stdout.readline()
-            if not line and process.poll() is not None:
-                break
-            if line:
-                clean_line = line.strip()
-                if progress_callback and clean_line:
-                    progress_callback(clean_line)
-
-        return process.returncode == 0
-    except Exception:
+        for update in ollama.Client(host=DEFAULT_HOST).pull(model_name, stream=True):
+            line = describe_pull_progress(update)
+            if progress_callback and line:
+                progress_callback(line)
+    except (ollama.ResponseError, ConnectionError, httpx.HTTPError):
         return False
+
+    return True
 
 
 def model_is_available(model_name: str, local_models=None) -> bool:
