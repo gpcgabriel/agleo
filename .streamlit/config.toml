@@ -17,3 +17,13 @@ base = "dark"
 # cream one, both clear of the 3:1 that non-text contrast asks for. Streamlit's
 # own default, #ff4b4b, was the loudest thing on the cream page.
 primaryColor = "#2b8fb0"
+
+[server]
+# Turning off the watcher that reruns the app when a source file changes. On
+# every run it walks every imported module to decide what to watch, and it
+# does so on the thread that sends the page to the browser: on the first run
+# after the server starts, with the agent's and the map's libraries freshly
+# imported, that walk held the page for the whole of a run of steps, which
+# then jumped from the first step to the last. Restart the server after
+# editing the code; Streamlit did not reload the imported modules anyway.
+fileWatcherType = "none"

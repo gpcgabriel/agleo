@@ -15,8 +15,8 @@ if TYPE_CHECKING:
 def handle(session: SimulationSession, payload: RunFullSimulationPayload) -> ActionResult:
     """Builds the plan's simulation and schedules its whole run.
 
-    The steps are not run here. The interface loop consumes them a batch at a
-    time, which is what draws progress and keeps the stop button answering,
+    The steps are not run here. The interface loop consumes them one per
+    render, which is what draws progress and keeps the stop button answering,
     and it writes the report once it finds the plan finished.
 
     Args:
