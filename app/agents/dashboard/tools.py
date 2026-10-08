@@ -21,10 +21,8 @@ from app.core.actions import (
     NodeSpec,
     ProposedAction,
     RestartSimulationPayload,
-    RunFullSimulationPayload,
     RunSimulationPayload,
 )
-from app.core.plan import SimulationPlan
 
 if TYPE_CHECKING:
     from app.core.config import SimulationConfig
@@ -152,7 +150,6 @@ class ProposalBuffer:
         """Returns: list: This instance's tools, ready to hand to the agent."""
         return [
             self.propose_run_simulation,
-            self.propose_run_full_simulation,
             self.propose_restart_simulation,
             self.propose_add_process_unit,
             self.propose_add_user,
@@ -183,45 +180,6 @@ class ProposalBuffer:
             return f"Error: {error}"
 
         return self.register(ProposedAction(ActionType.RUN_SIMULATION, payload))
-
-    def propose_run_full_simulation(
-        self,
-        steps: int,
-        num_users: int | None = None,
-        num_satellites: int | None = None,
-        scenario: str | None = None,
-        algorithm: str | None = None,
-    ) -> str:
-        """Proposes to carry out a whole new simulation and report its metrics at the end.
-
-        Use this when the operator wants a simulation run for them rather than
-        the one on screen advanced: it builds a fresh simulation from the
-        settings below, runs it to the end without stopping at each step, and
-        answers with the metrics it measured. Any setting left out keeps the
-        value currently configured.
-
-        Args:
-            steps (int): How many steps the run lasts. Required.
-            num_users (int, optional): Number of users.
-            num_satellites (int, optional): Maximum number of satellites.
-            scenario (str, optional): Scenario: "hybrid", "leo" or "terrestrial".
-            algorithm (str, optional): Allocation algorithm.
-        """
-        if self.current_config is None:
-            return "Error: there is no simulation loaded yet, so there is nothing to build a run from."
-
-        try:
-            config = self.current_config.copy_with(
-                num_users=num_users,
-                num_satellites=num_satellites,
-                scenario=scenario,
-                algorithm=algorithm,
-            )
-            payload = RunFullSimulationPayload(SimulationPlan(config, steps))
-        except (ValueError, TypeError) as error:
-            return f"Error: {error}"
-
-        return self.register(ProposedAction(ActionType.RUN_FULL_SIMULATION, payload))
 
     # Taking one argument per setting a restart may change, against ruff's argument count: agno builds the
     # tool's JSON schema from these parameters, so grouping them would change what the model is asked for.

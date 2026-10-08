@@ -12,7 +12,6 @@ exercise far more of the report than ten simulated steps would.
 
 from typing import Any
 
-from app.agents.dashboard.tools import ProposalBuffer
 from app.core.actions import ActionType, ProposedAction, RunFullSimulationPayload, build_payload
 from app.core.config import SimulationConfig
 from app.core.executor import execute_action
@@ -198,34 +197,10 @@ def test_a_session_nobody_planned_has_no_plan_to_report() -> None:
     assert session.take_finished_plan() is None
 
 
-# -- Reaching it through the agent ------------------------------------------
+# -- Building it from plain arguments ---------------------------------------
 
 
-def test_the_tool_keeps_every_setting_the_operator_did_not_name() -> None:
-    buffer = ProposalBuffer(current_config=make_config())
-
-    buffer.propose_run_full_simulation(steps=12, num_users=40)
-    proposal = buffer.get_last_proposal()
-    assert proposal is not None
-    assert isinstance(proposal.payload, RunFullSimulationPayload)
-    plan = proposal.payload.plan
-
-    assert plan.steps == 12
-    assert plan.config.num_users == 40
-    assert plan.config.scenario == "hybrid"
-    assert plan.config.num_satellites == 8
-
-
-def test_the_tool_refuses_a_run_before_a_simulation_has_been_loaded() -> None:
-    """There is no configuration to resolve the missing settings against, and
-    inventing one would run something nobody chose."""
-    reply = ProposalBuffer().propose_run_full_simulation(steps=5)
-
-    assert reply.lower().startswith("error")
-    assert ProposalBuffer().get_proposals() == []
-
-
-def test_a_skill_that_leaves_out_the_step_budget_is_told_which_field_is_missing() -> None:
+def test_a_run_built_without_a_step_budget_is_told_which_field_is_missing() -> None:
     """Omitting a parameter is the failure this project keeps meeting, so the
     refusal has to name the field rather than raise a bare KeyError."""
     try:
@@ -236,7 +211,7 @@ def test_a_skill_that_leaves_out_the_step_budget_is_told_which_field_is_missing(
         raise AssertionError("a run was built with no step budget")
 
 
-def test_a_skill_proposal_resolves_against_the_configuration_the_runner_holds() -> None:
+def test_a_run_built_from_arguments_resolves_against_the_configuration_in_use() -> None:
     payload = build_payload(
         ActionType.RUN_FULL_SIMULATION, {"steps": 7, "scenario": "leo"}, current_config=make_config()
     )

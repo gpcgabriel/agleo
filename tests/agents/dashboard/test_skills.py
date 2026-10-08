@@ -33,7 +33,6 @@ from app.core.config import SimulationConfig
 MODEL_FOR_ASSEMBLY = "llama3.2:3b"
 EXPECTED_SKILLS = {
     "run-simulation": ["--steps", "5"],
-    "run-full-simulation": ["--steps", "20", "--num-users", "40"],
     "add-user": ["--lat", "-23.5", "--lon", "-46.6"],
     "add-nodes": ["--node-types", "Satellite", "--latitudes", "-7.2", "--longitudes", "-35.8"],
     "add-process-unit": ["--target-type", "Satellite", "--target-id", "3", "--cpu", "40", "--memory", "40"],
@@ -43,7 +42,7 @@ EXPECTED_SKILLS = {
 
 # These are resolved against the configuration in use, which the subprocess
 # cannot see, so their scripts print arguments the runner completes.
-DEFERRED_SKILLS = {"restart-simulation", "run-full-simulation"}
+DEFERRED_SKILLS = {"restart-simulation"}
 
 
 def script_of(skill_name: str) -> str:
