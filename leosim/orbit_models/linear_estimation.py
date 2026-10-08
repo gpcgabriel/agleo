@@ -11,27 +11,35 @@ if TYPE_CHECKING:
 POSITIONS_FOR_A_VELOCITY = 2
 
 
-def linear_estimation(sat: Satellite) -> tuple[float, float, float]:
-    """
-    Estimates the next position of the satellite based on linear inertia.
-    Purely mathematical model: receives the state and returns the new coordinate.
-    It has no side effects on the satellite's temporal mesh (coordinates_trace).
+def linear_estimation(sat: Satellite) -> tuple[float, float, float] | None:
+    """Estimates the satellite's next position by repeating its last displacement.
+
+    Purely mathematical: it receives the state and returns the new coordinate,
+    leaving the trace (coordinates_trace) to the satellite. A satellite the
+    capture has not seen yet has no position and keeps none, and one with no
+    earlier position to take a velocity from stands still.
+
+    Args:
+        sat (Satellite): The satellite to move.
+
+    Returns:
+        tuple or None: The estimated (latitude, longitude, altitude), or None while the satellite has no position.
     """
     if sat.coordinates is None:
-        raise ValueError(f"{sat} has no current position to extrapolate the next one from.")
+        return None
     curr_lat, curr_lon, curr_alt = sat.coordinates
 
     last_coord = sat.mobility_model_parameters.get("last_coordinate")
 
     if last_coord is None:
         current_step = sat.model.scheduler.steps
-        last_coord = (
+        earlier = (
             sat.coordinates_trace[current_step - POSITIONS_FOR_A_VELOCITY]
             if current_step >= POSITIONS_FOR_A_VELOCITY
-            else sat.coordinates
+            else None
         )
-        if last_coord is None:
-            raise ValueError(f"{sat} has no position two steps back to estimate its velocity from.")
+        # Standing still when that slot is empty, as it is right after the steps before a first sighting.
+        last_coord = earlier if earlier is not None else sat.coordinates
 
     last_lat, last_lon, _ = last_coord
 

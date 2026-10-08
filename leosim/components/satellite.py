@@ -138,6 +138,8 @@ class Satellite(ComponentManager):
             else:
                 self.coordinates_trace[self.model.scheduler.steps] = new_position
 
+        had_position = self.coordinates is not None
+
         # Updating the coordinates.
         if self.coordinates != self.coordinates_trace[self.model.scheduler.steps]:
             self.coordinates = self.coordinates_trace[self.model.scheduler.steps]
@@ -155,6 +157,12 @@ class Satellite(ComponentManager):
                 process_unit = self.process_unit
                 process_unit.available = False
             return
+
+        # Bringing the satellite into service at its first position: until the capture saw it, it had none.
+        if not had_position:
+            self.active = True
+            if self.process_unit:
+                self.process_unit.available = True
 
         # Running the failure model, when one is set.
         if self.failure_model:
