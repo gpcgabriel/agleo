@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import glob
 import os
+from typing import TYPE_CHECKING, TypedDict
 
 import streamlit as st
 
@@ -10,8 +13,20 @@ from app.helper_functions.ollama_helper import DEFAULT_MODEL, list_local_models,
 from app.ui.gui.icons import icon_bot, icon_satellite, wrap_icon
 from app.ui.state import clear_pending, set_session
 
+if TYPE_CHECKING:
+    from leosim.simulator import AllocationAlgorithm
 
-def build_allocation_algorithm(config):
+
+class SidebarChoices(TypedDict):
+    """What the operator chose in the sidebar: the simulation to build and how the agent may act."""
+
+    config: SimulationConfig
+    agent_actions_enabled: bool
+    # "Tools" or "Skills", or None when the agent is not allowed to act.
+    agent_mode: str | None
+
+
+def build_allocation_algorithm(config: SimulationConfig) -> AllocationAlgorithm | None:
     """Builds the allocation strategy the domain layer cannot import itself.
 
     The LLM-driven allocator lives in the agent package, so it is assembled
@@ -31,7 +46,7 @@ def build_allocation_algorithm(config):
     return LLMAllocator(model_name=model_name).allocate
 
 
-def render_sidebar(ollama_ok: bool, locked: bool = False) -> dict:
+def render_sidebar(ollama_ok: bool, locked: bool = False) -> SidebarChoices:
     """Render the sidebar: dataset pickers, simulation params, agent
     settings and the 'Initialize Simulation' action.
 

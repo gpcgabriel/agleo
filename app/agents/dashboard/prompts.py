@@ -9,7 +9,7 @@ it gets done belongs to each mode's own surface.
 """
 
 
-def dashboard_agent_description():
+def dashboard_agent_description() -> str:
     """Describes the agent's role, sent as a system message.
 
     Returns:
@@ -25,7 +25,7 @@ def dashboard_agent_description():
     )
 
 
-def dashboard_agent_instructions():
+def dashboard_agent_instructions() -> list[str]:
     """Returns the agent's operating procedures.
 
     Returns:

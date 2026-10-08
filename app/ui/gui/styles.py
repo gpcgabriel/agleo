@@ -26,7 +26,7 @@ def resolve_theme_file(is_dark: bool) -> str:
     return os.path.join(HTML_DIR, DARK_THEME_FILE if is_dark else LIGHT_THEME_FILE)
 
 
-def apply_theme(is_dark: bool):
+def apply_theme(is_dark: bool) -> None:
     """Injects the stylesheet for the requested theme.
 
     Args:
@@ -46,7 +46,7 @@ def apply_theme(is_dark: bool):
     st.markdown(f"<style>\n{css_content}\n</style>", unsafe_allow_html=True)
 
 
-def inject_accessibility_script():
+def inject_accessibility_script() -> None:
     """Injects the accessibility attributes, landmarks and the slash menu.
 
     The script is loaded inside an iframe so that its HTML and JS do not leak

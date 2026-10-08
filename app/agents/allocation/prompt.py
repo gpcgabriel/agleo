@@ -1,5 +1,7 @@
 """Prompt construction for the allocation agent."""
 
+from typing import Any
+
 from app.agents.allocation.digest import render_digest
 
 HISTORY_STEPS_SHOWN = 5
@@ -14,7 +16,7 @@ INSTRUCTIONS = [
 ]
 
 
-def build_history_section(decisions):
+def build_history_section(decisions: list[dict[str, Any]]) -> str:
     """Summarizes recent decisions and how they turned out.
 
     Args:
@@ -38,7 +40,7 @@ def build_history_section(decisions):
     return "\n".join(lines) + "\n"
 
 
-def build_allocation_prompt(state, pending_app_ids, decisions):
+def build_allocation_prompt(state: dict[str, Any], pending_app_ids: list[int], decisions: list[dict[str, Any]]) -> str:
     """Builds the prompt for one allocation decision.
 
     The state is rendered as a digest rather than serialized: elapsed time is

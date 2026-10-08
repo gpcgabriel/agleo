@@ -4,6 +4,7 @@
 import argparse
 import os
 import sys
+from typing import Any
 
 # scripts -> <skill> -> skills -> dashboard -> agents -> app -> repository root
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), *[os.pardir] * 6)))
@@ -14,7 +15,7 @@ from app.core.actions import ActionType
 ACTION = ActionType.RUN_FULL_SIMULATION
 
 
-def build_parser():
+def build_parser() -> argparse.ArgumentParser:
     """Returns: argparse.ArgumentParser: The command line this skill accepts."""
     parser = argparse.ArgumentParser(description="Proposes carrying out a whole simulation.")
     parser.add_argument("--steps", type=int, required=True, help="How many steps the run lasts.")
@@ -25,7 +26,7 @@ def build_parser():
     return parser
 
 
-def collect(args):
+def collect(args: argparse.Namespace) -> dict[str, Any]:
     """Returns: dict: The step budget, plus only the settings the operator changed.
 
     Everything omitted keeps what the simulation is configured with, so the
@@ -45,7 +46,7 @@ def collect(args):
     return settings
 
 
-def summarize(arguments):
+def summarize(arguments: dict[str, Any]) -> str:
     """Returns: str: What the gate shows before the runner resolves the rest."""
     changed = {name: value for name, value in arguments.items() if name != "steps"}
     if not changed:

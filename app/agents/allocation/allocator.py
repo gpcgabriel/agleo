@@ -5,21 +5,28 @@ algorithms in `leosim`, so it is injected into the simulator the same way and
 the engine stays free of the LLM stack.
 """
 
+from __future__ import annotations
+
 import logging
 import os
 import time
 from json import dumps, loads
+from typing import TYPE_CHECKING, Any
 
 from agno.agent import Agent
 from agno.models.ollama import Ollama
 
-from app.agents.allocation.decision import AllocationDecision, reconcile
+from app.agents.allocation.decision import AllocationDecision, ReconciledDecision, reconcile
 from app.agents.allocation.metrics import AllocationMetrics
 from app.agents.allocation.prompt import INSTRUCTIONS, build_allocation_prompt
 from app.agents.allocation.state import collect_state
 from app.helper_functions.ollama_helper import DEFAULT_HOST, DEFAULT_MODEL
 from leosim.components.allocation_algorithms import best_fit_allocation
-from leosim.components.allocation_algorithms.hybrid_allocation import hybrid_allocation
+from leosim.components.allocation_algorithms.hybrid_allocation import HybridResults, hybrid_allocation
+
+if TYPE_CHECKING:
+    from leosim import Simulator
+    from leosim.components import GroundStation
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +41,9 @@ class LLMAllocator:
     each station so the agent can see how its previous choices turned out.
     """
 
-    def __init__(self, model_name=DEFAULT_MODEL, host=DEFAULT_HOST, logs_directory=None):
+    def __init__(
+        self, model_name: str = DEFAULT_MODEL, host: str = DEFAULT_HOST, logs_directory: str | None = None
+    ) -> None:
         """Args:
         model_name (str): Model identifier in Ollama.
         host (str): Ollama endpoint.
@@ -44,7 +53,7 @@ class LLMAllocator:
         self.model_name = model_name
         self.host = host
         self.logs_directory = logs_directory
-        self.decisions_by_station = {}
+        self.decisions_by_station: dict[int, list[dict[str, Any]]] = {}
         self.metrics = AllocationMetrics(logs_directory)
 
         self.agent = Agent(
@@ -63,11 +72,11 @@ class LLMAllocator:
             output_schema=AllocationDecision,
         )
 
-    def get_decisions(self, station_id):
+    def get_decisions(self, station_id: int) -> list[dict[str, Any]]:
         """Returns: list: Past decisions recorded for a ground station."""
         return self.decisions_by_station.setdefault(station_id, [])
 
-    def ask_model(self, prompt):
+    def ask_model(self, prompt: str) -> AllocationDecision:
         """Asks the agent for a decision.
 
         The reply is constrained by the output schema, so it arrives already
@@ -82,14 +91,17 @@ class LLMAllocator:
         Raises:
             ValueError: If the reply does not match the schema.
         """
-        response = self.agent.run(prompt)
+        # Ignoring the bare `List` and `Dict` agno's own annotations leave in `Agent.run`'s input type.
+        response = self.agent.run(prompt)  # pyright: ignore[reportUnknownMemberType]
 
         if not isinstance(response.content, AllocationDecision):
             raise ValueError(f"Model reply did not match the schema: {response.content!r}")
 
         return response.content
 
-    def apply_decision(self, model, parameters, best_fit_ids, longest_duration_ids):
+    def apply_decision(
+        self, model: Simulator, parameters: dict[str, Any], best_fit_ids: list[int], longest_duration_ids: list[int]
+    ) -> HybridResults:
         """Places the applications according to a decision.
 
         Returns:
@@ -97,7 +109,9 @@ class LLMAllocator:
         """
         return hybrid_allocation(model, parameters, best_fit_ids, longest_duration_ids, [], [])
 
-    def record(self, model, station, decision, results):
+    def record(
+        self, model: Simulator, station: GroundStation, decision: ReconciledDecision, results: HybridResults
+    ) -> None:
         """Stores one decision and appends it to the log.
 
         Args:
@@ -107,7 +121,7 @@ class LLMAllocator:
                 question.
             results (dict): What `hybrid_allocation` returned.
         """
-        entry = {
+        entry: dict[str, Any] = {
             "step": model.scheduler.steps,
             "ground_station": station.id,
             "best_fit": decision.best_fit,
@@ -119,7 +133,7 @@ class LLMAllocator:
         self.get_decisions(station.id).append(entry)
         self.append_to_log(model, entry)
 
-    def append_to_log(self, model, entry):
+    def append_to_log(self, model: Simulator, entry: dict[str, Any]) -> None:
         """Appends one entry to the decision log, honouring the simulator's path."""
         directory = self.logs_directory or getattr(model, "logs_directory", "logs")
         os.makedirs(directory, exist_ok=True)
@@ -127,7 +141,7 @@ class LLMAllocator:
         with open(os.path.join(directory, LOG_FILENAME), "a", encoding="utf-8") as log_file:
             log_file.write(dumps(entry, default=str) + "\n")
 
-    def allocate(self, model, parameters):
+    def allocate(self, model: Simulator, parameters: dict[str, Any]) -> None:
         """Allocation algorithm entry point.
 
         Args:
@@ -135,8 +149,8 @@ class LLMAllocator:
             parameters (dict): Algorithm parameters, carrying the ground
                 station under "ground_station".
         """
-        station = parameters["ground_station"]
-        scenario = parameters.get("scenario", "hybrid")
+        station: GroundStation = parameters["ground_station"]
+        scenario: str = parameters.get("scenario", "hybrid")
 
         step = model.scheduler.steps
 
@@ -146,6 +160,8 @@ class LLMAllocator:
             self.metrics.add_skip(step, station.id, skip_reason)
             self.metrics.write(getattr(model, "logs_directory", "logs"))
             return
+        if state is None or pending_app_ids is None:
+            raise ValueError(f"collect_state gave GS_{station.id} neither a state nor a reason to skip.")
 
         prompt = build_allocation_prompt(state, pending_app_ids, self.get_decisions(station.id))
         logger.debug(

@@ -7,10 +7,12 @@ of the simulation itself.
 import time
 
 import streamlit as st
+from streamlit.delta_generator import DeltaGenerator
 
 from app.core.actions import ActionType
 from app.core.executor import execute_action
 from app.core.report import collect_run_metrics, summarize_run
+from app.core.session import SimulationSession
 from app.ui.chat import render_chat_panel
 from app.ui.css import inject_css
 from app.ui.gui.styles import apply_theme, inject_accessibility_script
@@ -42,7 +44,7 @@ STEP_BATCH_SECONDS = 1.0
 PROGRESS_SLOT_KEY = "stepping_progress"
 
 
-def controls_are_locked(session):
+def controls_are_locked(session: SimulationSession | None) -> bool:
     """Tells whether the operator's controls have to be held this render.
 
     Args:
@@ -57,7 +59,7 @@ def controls_are_locked(session):
     return session is not None and session.has_pending_steps()
 
 
-def resolve_pending_action(session):
+def resolve_pending_action(session: SimulationSession) -> bool:
     """Runs the proposal the operator confirmed, if there is one.
 
     Args:
@@ -66,10 +68,9 @@ def resolve_pending_action(session):
     Returns:
         bool: True if something ran and the page should be reloaded.
     """
-    if not pending_is_confirmed():
-        return False
-
     action = get_pending()
+    if action is None or not pending_is_confirmed():
+        return False
 
     if action.action_type in (ActionType.RUN_SIMULATION, ActionType.RUN_FULL_SIMULATION):
         spinner_message = f"⚙️ Running Network Simulation: {action.description}..."
@@ -84,7 +85,7 @@ def resolve_pending_action(session):
     return True
 
 
-def render_stepping_progress(session):
+def render_stepping_progress(session: SimulationSession) -> None:
     """Draws the progress of scheduled steps and the stop button."""
     col_status, col_stop = st.columns([8, 4])
 
@@ -100,7 +101,7 @@ def render_stepping_progress(session):
         st.info(f"⚙️ Running Network Simulation... **{session.steps_remaining}** steps remaining.")
 
 
-def advance_scheduled_steps(session, progress_slot):
+def advance_scheduled_steps(session: SimulationSession, progress_slot: DeltaGenerator) -> bool:
     """Runs scheduled steps until this render's budget is spent.
 
     One step per render, followed by a half-second pause, spent two thirds of
@@ -137,7 +138,7 @@ def advance_scheduled_steps(session, progress_slot):
     return finished
 
 
-def report_finished_plan(session):
+def report_finished_plan(session: SimulationSession) -> bool:
     """Writes the report of a plan whose run has just ended.
 
     A plan is approved once and then runs unattended, so the metrics are the
@@ -159,7 +160,9 @@ def report_finished_plan(session):
     return True
 
 
-def render_simulation(session, is_dark, agent_mode, ollama_ok, locked):
+def render_simulation(
+    session: SimulationSession, is_dark: bool, agent_mode: str | None, ollama_ok: bool, locked: bool
+) -> None:
     """Draws the two main columns: the map and the orchestrator.
 
     Args:
@@ -178,7 +181,7 @@ def render_simulation(session, is_dark, agent_mode, ollama_ok, locked):
         render_chat_panel(session, agent_mode, ollama_ok, locked)
 
 
-def main_app():
+def main_app() -> None:
     """Runs the Streamlit app."""
     st.set_page_config(page_title="LEOSim Dashboard", page_icon="🛰️", layout="wide", initial_sidebar_state="expanded")
 

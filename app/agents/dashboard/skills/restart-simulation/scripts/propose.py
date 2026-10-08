@@ -4,6 +4,7 @@
 import argparse
 import os
 import sys
+from typing import Any
 
 # scripts -> <skill> -> skills -> dashboard -> agents -> app -> repository root
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), *[os.pardir] * 6)))
@@ -14,7 +15,7 @@ from app.core.actions import ActionType
 ACTION = ActionType.RESTART_SIMULATION
 
 
-def build_parser():
+def build_parser() -> argparse.ArgumentParser:
     """Returns: argparse.ArgumentParser: The command line this skill accepts."""
     parser = argparse.ArgumentParser(description="Proposes restarting the simulation at step zero.")
     parser.add_argument("--num-users", type=int, help="How many users to create.")
@@ -26,7 +27,7 @@ def build_parser():
     return parser
 
 
-def collect(args):
+def collect(args: argparse.Namespace) -> dict[str, Any]:
     """Returns: dict: Only the settings the operator asked to change.
 
     Everything omitted keeps what the simulation is running with, so the
@@ -43,7 +44,7 @@ def collect(args):
     return {name: value for name, value in asked.items() if value is not None}
 
 
-def summarize(arguments):
+def summarize(arguments: dict[str, Any]) -> str:
     """Returns: str: What the gate shows before the runner resolves the rest."""
     if not arguments:
         return "Reset simulation to Step 0 with the current configuration"

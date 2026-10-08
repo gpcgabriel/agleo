@@ -34,7 +34,7 @@ def ollama_setup() -> bool:
         if st.button(f"Download {DEFAULT_MODEL}", key="download_default_model_button"):
             progress_placeholder = st.empty()
 
-            def progress_cb(line):
+            def progress_cb(line: str) -> None:
                 progress_placeholder.text(f"Ollama: {line}")
 
             with st.spinner("Downloading model... This may take a few minutes."):

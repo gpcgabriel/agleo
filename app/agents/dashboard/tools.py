@@ -6,7 +6,11 @@ change or knows anything about the interface: reading the buffer and deciding
 what to do with the proposals is the UI layer's job.
 """
 
+from __future__ import annotations
+
 import json
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, cast
 
 from app.core.actions import (
     ActionType,
@@ -22,10 +26,13 @@ from app.core.actions import (
 )
 from app.core.plan import SimulationPlan
 
+if TYPE_CHECKING:
+    from app.core.config import SimulationConfig
+
 COLLISION_OFFSET = 0.01
 
 
-def spread_out_collisions(specs, taken_positions):
+def spread_out_collisions(specs: list[NodeSpec], taken_positions: set[tuple[float, float]]) -> list[NodeSpec]:
     """Spreads apart nodes that would land on exactly the same position.
 
     Two nodes with identical coordinates overlap on the map and compete for
@@ -39,7 +46,7 @@ def spread_out_collisions(specs, taken_positions):
     Returns:
         list: The same nodes, with latitudes shifted where they collided.
     """
-    adjusted = []
+    adjusted: list[NodeSpec] = []
 
     for spec in specs:
         lat = spec.lat
@@ -56,7 +63,7 @@ def spread_out_collisions(specs, taken_positions):
     return adjusted
 
 
-def coerce_list(value, field_name):
+def coerce_list(value: object, field_name: str) -> list[Any]:
     """Normalizes an argument that should have been a list.
 
     Local models often send arrays as JSON text (`"[1, 2]"`), or send a scalar
@@ -81,7 +88,8 @@ def coerce_list(value, field_name):
     if not isinstance(value, (list, tuple)):
         value = [value]
 
-    return list(value)
+    # Typing the elements as the model sent them: anything JSON can hold.
+    return list(cast("list[Any] | tuple[Any, ...]", value))
 
 
 class ProposalBuffer:
@@ -91,7 +99,9 @@ class ProposalBuffer:
     proposals of one conversation never leak into another.
     """
 
-    def __init__(self, current_config=None, default_position=None):
+    def __init__(
+        self, current_config: SimulationConfig | None = None, default_position: tuple[float, float] | None = None
+    ) -> None:
         """Args:
         current_config (SimulationConfig): Active simulation configuration,
             used as the base when the operator asks for a restart without
@@ -104,9 +114,11 @@ class ProposalBuffer:
         """
         self.current_config = current_config
         self.default_position = default_position
-        self.proposals = []
+        self.proposals: list[ProposedAction] = []
 
-    def fill_positions(self, node_types, latitudes, longitudes):
+    def fill_positions(
+        self, node_types: list[Any], latitudes: list[Any], longitudes: list[Any]
+    ) -> tuple[list[Any] | None, list[Any] | None, tuple[str, ...]]:
         """Completes the positions the operator did not give.
 
         Args:
@@ -127,17 +139,17 @@ class ProposalBuffer:
         latitude, longitude = self.default_position
         return [latitude] * len(node_types), [longitude] * len(node_types), ("position",)
 
-    def get_proposals(self):
+    def get_proposals(self) -> list[ProposedAction]:
         """Returns: list: A copy of the recorded proposals, in creation order."""
         return list(self.proposals)
 
-    def get_last_proposal(self):
+    def get_last_proposal(self) -> ProposedAction | None:
         """Returns: ProposedAction or None: The most recent proposal."""
         if not self.proposals:
             return None
         return self.proposals[-1]
 
-    def get_tools(self):
+    def get_tools(self) -> list[Callable[..., str]]:
         """Returns: list: This instance's tools, ready to hand to the agent."""
         return [
             self.propose_run_simulation,
@@ -146,10 +158,10 @@ class ProposalBuffer:
             self.propose_add_process_unit,
             self.propose_add_user,
             self.propose_add_app_to_user,
-            self.propose_add_node,
+            self.propose_add_node,  # pyright: ignore[reportUnknownMemberType]
         ]
 
-    def register(self, action):
+    def register(self, action: ProposedAction) -> str:
         """Stores a proposal and builds the reply returned to the model.
 
         Returns:
@@ -299,7 +311,10 @@ class ProposalBuffer:
 
         return self.register(ProposedAction(ActionType.ADD_APP_TO_USER, payload))
 
-    def propose_add_node(self, node_types, latitudes=None, longitudes=None, altitudes=None) -> str:
+    # Leaving these parameters unannotated on purpose: agno builds the tool's JSON schema from the
+    # annotations, and any annotation would state a type to the model (Any becomes "object"), while
+    # `coerce_list` accepts a list, a JSON string of one, or a single value.
+    def propose_add_node(self, node_types, latitudes=None, longitudes=None, altitudes=None) -> str:  # pyright: ignore[reportMissingParameterType, reportUnknownParameterType]
         """Proposes to add one or more new nodes (Satellites or GroundStations).
 
         Only node_types is required. A position or an altitude the operator did
@@ -313,10 +328,10 @@ class ProposalBuffer:
             altitudes: List of altitudes in kilometres, one per node. Optional.
         """
         try:
-            node_types = coerce_list(node_types, "node_types")
-            latitudes = coerce_list(latitudes, "latitudes") if latitudes is not None else []
-            longitudes = coerce_list(longitudes, "longitudes") if longitudes is not None else []
-            altitudes = coerce_list(altitudes, "altitudes") if altitudes is not None else []
+            node_types = coerce_list(node_types, "node_types")  # pyright: ignore[reportUnknownArgumentType]
+            latitudes = coerce_list(latitudes, "latitudes") if latitudes is not None else []  # pyright: ignore[reportUnknownArgumentType]
+            longitudes = coerce_list(longitudes, "longitudes") if longitudes is not None else []  # pyright: ignore[reportUnknownArgumentType]
+            altitudes = coerce_list(altitudes, "altitudes") if altitudes is not None else []  # pyright: ignore[reportUnknownArgumentType]
         except ValueError as error:
             return f"Error: {error}"
 
@@ -332,13 +347,13 @@ class ProposalBuffer:
             )
 
         latitudes, longitudes, defaulted_position = self.fill_positions(node_types, latitudes, longitudes)
-        if latitudes is None:
+        if latitudes is None or longitudes is None:
             return (
                 "Error: no position was given and the scenario has no ground station to place "
                 "the node near. Ask the operator for a latitude and longitude."
             )
 
-        specs = []
+        specs: list[NodeSpec] = []
         for index in range(len(node_types)):
             try:
                 defaulted = list(defaulted_position)
@@ -360,7 +375,7 @@ class ProposalBuffer:
         # Accumulating the nodes into a single proposal when the model splits one
         # request across several calls, so the operator confirms once.
         last = self.get_last_proposal()
-        if last is not None and last.action_type == ActionType.ADD_NODES:
+        if last is not None and isinstance(last.payload, AddNodesPayload):
             taken = {(round(n.lat, 6), round(n.lon, 6)) for n in last.payload.nodes}
             merged = AddNodesPayload(last.payload.nodes + spread_out_collisions(specs, taken))
             self.proposals[-1] = ProposedAction(ActionType.ADD_NODES, merged)

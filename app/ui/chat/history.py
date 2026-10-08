@@ -1,6 +1,7 @@
 """Conversation history between the operator and the agent."""
 
 import streamlit as st
+from streamlit.delta_generator import DeltaGenerator
 
 from app.ui.gui.icons import icon_bot, wrap_icon
 from app.ui.state import CHAT_KEY
@@ -14,7 +15,7 @@ CHAT_HEIGHT = 450
 CHAT_HISTORY_KEY = "chat_history"
 
 
-def render_chat_history():
+def render_chat_history() -> DeltaGenerator:
     """Draws the message history.
 
     Returns:

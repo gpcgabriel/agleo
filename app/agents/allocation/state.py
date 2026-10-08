@@ -11,22 +11,28 @@ topology down to what those applications depend on. Without the first step the
 second one still leaves every station answering the same network-wide question.
 """
 
+from __future__ import annotations
+
 from math import sqrt
+from typing import TYPE_CHECKING, Any
 
 from geopy.distance import geodesic
 
 from app.agents.allocation.digest import component_id
 from leosim.components import Application, GroundStation, ProcessUnit, Satellite, User
 
+if TYPE_CHECKING:
+    from leosim import Simulator
+
 FUTURE_POSITIONS_SHOWN = 3
 
 
-def find_pending_app_ids(all_apps):
+def find_pending_app_ids(all_apps: dict[str, dict[str, Any]]) -> list[int | None]:
     """Returns: list: IDs of the applications still waiting for placement."""
     return [component_id(key) for key, info in all_apps.items() if info.get("pending")]
 
 
-def find_reachable_satellite_ids(station):
+def find_reachable_satellite_ids(station: GroundStation) -> set[int]:
     """Finds the gateway satellites currently within reach of a station.
 
     Args:
@@ -35,7 +41,7 @@ def find_reachable_satellite_ids(station):
     Returns:
         set: IDs of the satellites in range.
     """
-    reachable = set()
+    reachable: set[int] = set()
 
     if not station.coordinates:
         return reachable
@@ -54,7 +60,9 @@ def find_reachable_satellite_ids(station):
     return reachable
 
 
-def find_servable_app_ids(station, pending_app_ids, reachable_satellite_ids):
+def find_servable_app_ids(
+    station: GroundStation, pending_app_ids: list[int | None], reachable_satellite_ids: set[int]
+) -> list[int]:
     """Narrows the pending applications to the ones this station could place.
 
     `find_pending_app_ids` answers for the whole network, so without this every
@@ -72,7 +80,7 @@ def find_servable_app_ids(station, pending_app_ids, reachable_satellite_ids):
         list: The subset of `pending_app_ids` this station could place, ordered.
     """
     pending = set(pending_app_ids)
-    servable = set()
+    servable: set[int] = set()
 
     for user in User.all():
         access_points = user.network_access_points
@@ -93,7 +101,7 @@ def find_servable_app_ids(station, pending_app_ids, reachable_satellite_ids):
     return sorted(servable)
 
 
-def should_skip(station, pending_app_ids, reachable_satellite_ids):
+def should_skip(station: GroundStation, pending_app_ids: list[int], reachable_satellite_ids: set[int]) -> str | None:
     """Tells whether there is nothing for this station to decide.
 
     Args:
@@ -114,7 +122,14 @@ def should_skip(station, pending_app_ids, reachable_satellite_ids):
     return None
 
 
-def build_network_state(model, station, scenario, all_apps, pending_app_ids, reachable_satellite_ids):
+def build_network_state(
+    model: Simulator,
+    station: GroundStation,
+    scenario: str,
+    all_apps: dict[str, dict[str, Any]],
+    pending_app_ids: list[int],
+    reachable_satellite_ids: set[int],
+) -> dict[str, Any]:
     """Builds the trimmed view of the network shown to the agent.
 
     Args:
@@ -138,7 +153,7 @@ def build_network_state(model, station, scenario, all_apps, pending_app_ids, rea
         if any(app_id in pending_set for app_id in info.get("pending_apps", []))
     }
 
-    satellite_ids = set(reachable_satellite_ids)
+    satellite_ids: set[int | None] = set(reachable_satellite_ids)
     for info in relevant_users.values():
         for access_point in info.get("access_points", []):
             if access_point.startswith("Satellite_"):
@@ -151,8 +166,8 @@ def build_network_state(model, station, scenario, all_apps, pending_app_ids, rea
     # Recording where each process unit sits while the satellites still carry
     # the link: a unit in orbit and a unit on the ground are reached by
     # different paths, and the `pu` field is dropped a few lines below.
-    process_unit_ids = set()
-    host_by_unit = {}
+    process_unit_ids: set[int] = set()
+    host_by_unit: dict[str, str] = {}
     for satellite_key, info in satellites.items():
         unit = info.get("pu")
         if unit:
@@ -194,7 +209,9 @@ def build_network_state(model, station, scenario, all_apps, pending_app_ids, rea
     }
 
 
-def collect_state(model, station, scenario):
+def collect_state(
+    model: Simulator, station: GroundStation, scenario: str
+) -> tuple[dict[str, Any] | None, list[int] | None, str | None]:
     """Gathers everything the agent needs, or reports why there is nothing to do.
 
     Args:

@@ -8,6 +8,7 @@ what the decision cost.
 
 import os
 from json import dumps
+from typing import Any
 
 LOG_FILENAME = "allocation_metrics.jsonl"
 
@@ -24,16 +25,16 @@ class AllocationMetrics:
     only meaningful next to the outcome it produced.
     """
 
-    def __init__(self, logs_directory=None):
+    def __init__(self, logs_directory: str | None = None) -> None:
         """Args:
         logs_directory (str): Where to append the records. When None, the
             simulator's own logs directory is used at write time.
         """
         self.logs_directory = logs_directory
-        self.records = []
+        self.records: list[dict[str, Any]] = []
         self.written = 0
 
-    def add_skip(self, step, station_id, reason):
+    def add_skip(self, step: int, station_id: int, reason: str) -> None:
         """Records a station that was not asked at all.
 
         Args:
@@ -59,17 +60,17 @@ class AllocationMetrics:
 
     def add_call(
         self,
-        step,
-        station_id,
-        outcome,
-        applications,
-        prompt_chars,
-        elapsed_seconds,
-        provisioned,
-        failed,
-        omitted=0,
-        invented=0,
-    ):
+        step: int,
+        station_id: int,
+        outcome: str,
+        applications: int,
+        prompt_chars: int,
+        elapsed_seconds: float,
+        provisioned: int,
+        failed: int,
+        omitted: int = 0,
+        invented: int = 0,
+    ) -> None:
         """Records a station that was asked.
 
         Args:
@@ -101,14 +102,14 @@ class AllocationMetrics:
             }
         )
 
-    def summarize_by_step(self):
+    def summarize_by_step(self) -> list[dict[str, Any]]:
         """Aggregates the records into one row per tick.
 
         Returns:
             list: Rows ordered by step, each carrying the calls made, the
             stations skipped, prompt size, wall clock and allocation outcome.
         """
-        by_step = {}
+        by_step: dict[int, dict[str, Any]] = {}
         for record in self.records:
             row = by_step.setdefault(
                 record["step"],
@@ -147,7 +148,7 @@ class AllocationMetrics:
             row["prompt_tokens_estimated"] = row["prompt_chars"] // CHARS_PER_TOKEN
         return rows
 
-    def write(self, directory):
+    def write(self, directory: str) -> None:
         """Appends the records added since the last write.
 
         Called after every station, so it must not rewrite what is already on

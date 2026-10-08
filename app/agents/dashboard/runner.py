@@ -1,9 +1,12 @@
 """Assembly and execution of the dashboard agent."""
 
+from __future__ import annotations
+
 import json
 import logging
 import os
 import sys
+from typing import TYPE_CHECKING
 
 from agno.agent import Agent
 from agno.models.ollama import Ollama
@@ -13,6 +16,9 @@ from app.agents.dashboard.prompts import dashboard_agent_description, dashboard_
 from app.agents.dashboard.tool_call_recovery import looks_like_tool_call, recover
 from app.agents.dashboard.tools import ProposalBuffer
 from app.core.actions import ProposedAction, build_payload
+
+if TYPE_CHECKING:
+    from app.core.config import SimulationConfig
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +54,7 @@ class AgentResult:
     proposals recorded by the tools.
     """
 
-    def __init__(self, text, proposals, usage=None):
+    def __init__(self, text: str, proposals: list[ProposedAction], usage: dict[str, int] | None = None) -> None:
         """Args:
         text (str): The agent's natural-language reply.
         proposals (list): Proposals recorded during the run.
@@ -62,11 +68,11 @@ class AgentResult:
         self.proposals = list(proposals)
         self.usage = usage or {}
 
-    def has_proposals(self):
+    def has_proposals(self) -> bool:
         """Returns: bool: True if the agent proposed at least one action."""
         return len(self.proposals) > 0
 
-    def get_primary_proposal(self):
+    def get_primary_proposal(self) -> ProposedAction | None:
         """The proposal that should go to the confirmation gate.
 
         Returns:
@@ -77,7 +83,7 @@ class AgentResult:
         return self.proposals[-1]
 
 
-def ensure_interpreter_on_path():
+def ensure_interpreter_on_path() -> None:
     """Puts the running interpreter first on PATH for child processes.
 
     A skill script is executed directly through its shebang, which reads
@@ -95,7 +101,9 @@ def ensure_interpreter_on_path():
     os.environ["PATH"] = os.pathsep.join([directory] + [part for part in parts if part != directory])
 
 
-def build_agent(model_name, action_mode, buffer, skills_directory=None):
+def build_agent(
+    model_name: str, action_mode: str | None, buffer: ProposalBuffer, skills_directory: str | None = None
+) -> Agent:
     """Assembles the dashboard agent.
 
     Args:
@@ -145,7 +153,7 @@ def build_agent(model_name, action_mode, buffer, skills_directory=None):
     raise ValueError(f"Invalid action_mode: {action_mode!r}. Expected {MODE_TOOLS!r}, {MODE_SKILLS!r} or None.")
 
 
-def collect_script_proposals(response, buffer):
+def collect_script_proposals(response: object, buffer: ProposalBuffer) -> int:
     """Records the proposals a skill script printed.
 
     A skill script runs as a subprocess, so it cannot reach the buffer the way
@@ -161,7 +169,8 @@ def collect_script_proposals(response, buffer):
     """
     recorded = 0
 
-    for execution in getattr(response, "tools", None) or []:
+    no_executions: list[object] = []
+    for execution in getattr(response, "tools", None) or no_executions:
         if getattr(execution, "tool_name", None) != SKILL_SCRIPT_TOOL:
             continue
 
@@ -189,7 +198,7 @@ def collect_script_proposals(response, buffer):
     return recorded
 
 
-def answer_for_a_reply_that_is_a_call(buffer):
+def answer_for_a_reply_that_is_a_call(buffer: ProposalBuffer) -> str:
     """Writes the reply for a run whose text came back as a tool call.
 
     The blob itself must never reach the chat, but "nothing was proposed" is
@@ -213,7 +222,7 @@ def answer_for_a_reply_that_is_a_call(buffer):
     return f"Proposed: {registered}. Confirm or cancel it in the control panel."
 
 
-def read_usage(response):
+def read_usage(response: object) -> dict[str, int]:
     """Reads the token counts off a run, tolerating a model that omits them.
 
     Args:
@@ -231,14 +240,14 @@ def read_usage(response):
 
 
 def run_agent(
-    prompt,
-    model_name,
-    action_mode,
-    context_state,
-    current_config=None,
-    default_position=None,
-    skills_directory=None,
-):
+    prompt: str,
+    model_name: str,
+    action_mode: str | None,
+    context_state: str,
+    current_config: SimulationConfig | None = None,
+    default_position: tuple[float, float] | None = None,
+    skills_directory: str | None = None,
+) -> AgentResult:
     """Runs the agent for one operator command.
 
     Args:
@@ -257,7 +266,8 @@ def run_agent(
     """
     buffer = ProposalBuffer(current_config=current_config, default_position=default_position)
     agent = build_agent(model_name, action_mode, buffer, skills_directory=skills_directory)
-    response = agent.run(f"Context state: {context_state}\n\nOperator Command: {prompt}")
+    # Ignoring the bare `List` and `Dict` agno's own annotations leave in `Agent.run`'s input type.
+    response = agent.run(f"Context state: {context_state}\n\nOperator Command: {prompt}")  # pyright: ignore[reportUnknownMemberType]
 
     text = response.content or ""
 

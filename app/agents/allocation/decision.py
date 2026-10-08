@@ -13,11 +13,11 @@ class AllocationDecision(BaseModel):
     """
 
     best_fit: list[int] = Field(
-        default_factory=list,
+        default_factory=list[int],
         description="IDs of the applications to place with the best_fit strategy.",
     )
     longest_duration: list[int] = Field(
-        default_factory=list,
+        default_factory=list[int],
         description="IDs of the applications to place with the longest_duration strategy.",
     )
 
@@ -34,7 +34,9 @@ class ReconciledDecision:
     invisible.
     """
 
-    def __init__(self, best_fit, longest_duration, omitted, invented):
+    def __init__(
+        self, best_fit: list[int], longest_duration: list[int], omitted: list[int], invented: list[int]
+    ) -> None:
         """Args:
         best_fit (list): Applications to place with the best_fit strategy.
         longest_duration (list): Applications to place with longest_duration.
@@ -46,18 +48,18 @@ class ReconciledDecision:
         self.omitted = omitted
         self.invented = invented
 
-    def is_complete(self):
+    def is_complete(self) -> bool:
         """Returns: bool: True if the reply answered exactly the question asked."""
         return not self.omitted and not self.invented
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"ReconciledDecision(best_fit={self.best_fit}, longest_duration={self.longest_duration}, "
             f"omitted={self.omitted}, invented={self.invented})"
         )
 
 
-def reconcile(decision, pending_app_ids):
+def reconcile(decision: AllocationDecision, pending_app_ids: list[int]) -> ReconciledDecision:
     """Matches a model's reply against the applications it was asked about.
 
     An application must be placed once, so an id listed under both strategies
@@ -75,10 +77,10 @@ def reconcile(decision, pending_app_ids):
     """
     asked = set(pending_app_ids)
 
-    best_fit = []
-    longest_duration = []
-    invented = []
-    seen = set()
+    best_fit: list[int] = []
+    longest_duration: list[int] = []
+    invented: list[int] = []
+    seen: set[int] = set()
 
     for app_ids, target in ((decision.best_fit, best_fit), (decision.longest_duration, longest_duration)):
         for app_id in app_ids:

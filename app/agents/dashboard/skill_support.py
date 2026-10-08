@@ -7,12 +7,17 @@ finding the repository, validating, printing — lives here so a skill folder is
 a description and a command line, not a program.
 """
 
+from __future__ import annotations
+
+import argparse
 import json
+from collections.abc import Callable
+from typing import Any
 
 from app.core.actions import ACTIONS_NEEDING_CURRENT_CONFIG, build_payload
 
 
-def emit(action_type, arguments, summary=""):
+def emit(action_type: str, arguments: dict[str, Any], summary: str = "") -> int:
     """Prints one proposal as JSON, or the reason it could not be built.
 
     The script runs as a subprocess and cannot reach the proposal buffer, so
@@ -70,7 +75,12 @@ def emit(action_type, arguments, summary=""):
     return 0
 
 
-def run(action_type, parser, collect, summarize=None):
+def run(
+    action_type: str,
+    parser: argparse.ArgumentParser,
+    collect: Callable[[argparse.Namespace], dict[str, Any]],
+    summarize: Callable[[dict[str, Any]], str] | None = None,
+) -> int:
     """Parses the command line and emits the proposal it describes.
 
     Args:

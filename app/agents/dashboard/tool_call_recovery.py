@@ -11,13 +11,42 @@ The evaluator below understands numbers, lists, dictionaries, strings and the
 four arithmetic operations, and refuses anything else.
 """
 
+from __future__ import annotations
+
 import ast
+from collections.abc import Callable
+from types import EllipsisType
+from typing import TYPE_CHECKING, cast
+
+if TYPE_CHECKING:
+    from app.agents.dashboard.tools import ProposalBuffer
 
 NAME_FIELDS = ("name", "tool", "tool_name", "function")
 ARGUMENT_FIELDS = ("parameters", "arguments", "args", "parameter")
 
-_JSON_LITERALS = {"true": True, "false": False, "null": None, "True": True, "False": False, "None": None}
-_ARITHMETIC = {
+# Naming what `_evaluate` builds: the constants a Python literal can hold, nested in dicts and lists.
+type LiteralValue = (
+    dict[LiteralValue, LiteralValue]
+    | list[LiteralValue]
+    | str
+    | bytes
+    | bool
+    | int
+    | float
+    | complex
+    | EllipsisType
+    | None
+)
+
+_JSON_LITERALS: dict[str, bool | None] = {
+    "true": True,
+    "false": False,
+    "null": None,
+    "True": True,
+    "False": False,
+    "None": None,
+}
+_ARITHMETIC: dict[type[ast.operator], Callable[[float, float], float]] = {
     ast.Add: lambda a, b: a + b,
     ast.Sub: lambda a, b: a - b,
     ast.Mult: lambda a, b: a * b,
@@ -25,7 +54,7 @@ _ARITHMETIC = {
 }
 
 
-def _evaluate(node):
+def _evaluate(node: ast.AST | None) -> LiteralValue:
     """Evaluates a syntax node, accepting only data and simple arithmetic.
 
     Private on purpose: this is the security boundary of the module. Calling it
@@ -64,13 +93,13 @@ def _evaluate(node):
     raise ValueError(f"Construct not allowed: {type(node).__name__}.")
 
 
-def find_object_candidates(text):
+def find_object_candidates(text: str) -> list[str]:
     """Extracts the brace-balanced fragments found in the text.
 
     Returns:
         list: Fragments, outermost first.
     """
-    candidates = []
+    candidates: list[str] = []
 
     for start, character in enumerate(text):
         if character != "{":
@@ -89,14 +118,14 @@ def find_object_candidates(text):
     return candidates
 
 
-def first_present(mapping, fields):
+def first_present(mapping: dict[LiteralValue, LiteralValue], fields: tuple[str, ...]) -> LiteralValue:
     for field in fields:
         if field in mapping:
             return mapping[field]
     return None
 
 
-def parse_tool_call(text):
+def parse_tool_call(text: str | None) -> tuple[str, dict[LiteralValue, LiteralValue]] | None:
     """Looks for a tool call written out by the model.
 
     Args:
@@ -127,12 +156,12 @@ def parse_tool_call(text):
     return None
 
 
-def looks_like_tool_call(text):
+def looks_like_tool_call(text: str | None) -> bool:
     """Returns: bool: True if the text is in fact a tool call."""
     return parse_tool_call(text) is not None
 
 
-def recover(buffer, text):
+def recover(buffer: ProposalBuffer, text: str | None) -> str | None:
     """Tries to execute a tool call that arrived written into the text.
 
     Args:
@@ -155,6 +184,7 @@ def recover(buffer, text):
         return None
 
     try:
-        return tool(**arguments)
+        # Passing the arguments as keywords: a key that is not a string raises TypeError, answered below.
+        return tool(**cast("dict[str, LiteralValue]", arguments))
     except TypeError as error:
         return f"Error: could not apply {name}: {error}"

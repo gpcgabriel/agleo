@@ -1,5 +1,9 @@
 """The operator's command field."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import streamlit as st
 
 from app.agents.dashboard.runner import run_agent
@@ -21,7 +25,13 @@ READY_PLACEHOLDER = "Type a command for the agent (e.g., 'Advance simulation by 
 THINKING_PLACEHOLDER = "🤖 Agent is answering..."
 
 
-def resolve_input_state(session, ollama_ok):
+if TYPE_CHECKING:
+    from streamlit.delta_generator import DeltaGenerator
+
+    from app.core.session import SimulationSession
+
+
+def resolve_input_state(session: SimulationSession, ollama_ok: bool) -> tuple[str, bool]:
     """Decides the command field's placeholder text and availability.
 
     Returns:
@@ -43,7 +53,9 @@ def resolve_input_state(session, ollama_ok):
     return READY_PLACEHOLDER, False
 
 
-def render_chat_input(session, agent_mode, ollama_ok, chat_container):
+def render_chat_input(
+    session: SimulationSession, agent_mode: str | None, ollama_ok: bool, chat_container: DeltaGenerator
+) -> None:
     """Draws the command field and handles whatever the operator submits.
 
     Args:
@@ -78,7 +90,9 @@ def render_chat_input(session, agent_mode, ollama_ok, chat_container):
     st.rerun()
 
 
-def answer_decision(decision, prompt, session, agent_mode):
+def answer_decision(
+    decision: LocalReply | Blocked | DispatchToAgent, prompt: str, session: SimulationSession, agent_mode: str | None
+) -> None:
     """Records the reply matching the router's decision in the history.
 
     Nothing is drawn here beyond the spinner: the reply is appended to the
@@ -94,35 +108,34 @@ def answer_decision(decision, prompt, session, agent_mode):
     Raises:
         ValueError: If the decision is of an unknown type.
     """
-    if isinstance(decision, LocalReply):
-        push_chat("assistant", decision.text)
-        return
+    match decision:
+        case LocalReply():
+            push_chat("assistant", decision.text)
 
-    if isinstance(decision, Blocked):
-        push_chat("system", decision.reason)
-        return
+        case Blocked():
+            push_chat("system", decision.reason)
 
-    if isinstance(decision, DispatchToAgent):
-        with st.spinner("🤖 Agent calculating response (Inference)..."):
-            result = run_agent(
-                prompt,
-                st.session_state.get("selected_model", DEFAULT_MODEL),
-                # A command the router classified as a question is answered by
-                # an agent with no way to act, so it cannot propose one anyway.
-                agent_mode if decision.allows_changes else None,
-                decision.context_state,
-                current_config=session.config,
-                default_position=find_default_node_position(session.get_current_snapshot()),
-            )
+        case DispatchToAgent():
+            with st.spinner("🤖 Agent calculating response (Inference)..."):
+                result = run_agent(
+                    prompt,
+                    st.session_state.get("selected_model", DEFAULT_MODEL),
+                    # A command the router classified as a question is answered by
+                    # an agent with no way to act, so it cannot propose one anyway.
+                    agent_mode if decision.allows_changes else None,
+                    decision.context_state,
+                    current_config=session.config,
+                    default_position=find_default_node_position(session.get_current_snapshot()),
+                )
 
-            # Storing before leaving the spinner. Only session state is touched
-            # from here, so a rerun queued while the model was answering cannot
-            # discard the answer.
-            push_chat("assistant", result.text)
+                # Storing before leaving the spinner. Only session state is touched
+                # from here, so a rerun queued while the model was answering cannot
+                # discard the answer.
+                push_chat("assistant", result.text)
 
-            proposal = result.get_primary_proposal()
-            if proposal is not None:
-                set_pending(proposal)
-        return
+                proposal = result.get_primary_proposal()
+                if proposal is not None:
+                    set_pending(proposal)
 
-    raise ValueError(f"Unknown routing decision: {type(decision).__name__}.")
+        case _:
+            raise ValueError(f"Unknown routing decision: {type(decision).__name__}.")

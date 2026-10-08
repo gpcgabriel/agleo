@@ -1,5 +1,9 @@
 """Orchestrator column: confirmation gate, history and command field."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import streamlit as st
 
 from app.ui.chat.gate import render_confirmation_gate
@@ -7,8 +11,13 @@ from app.ui.chat.history import render_chat_history
 from app.ui.chat.input import render_chat_input
 from app.ui.gui.icons import icon_bot, wrap_icon
 
+if TYPE_CHECKING:
+    from app.core.session import SimulationSession
 
-def render_chat_panel(session, agent_mode, ollama_ok, locked=False):
+
+def render_chat_panel(
+    session: SimulationSession, agent_mode: str | None, ollama_ok: bool, locked: bool = False
+) -> None:
     """Draws the orchestrator column.
 
     Args:

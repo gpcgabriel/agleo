@@ -6,7 +6,7 @@ from app.ui.gui.icons import icon_bot, wrap_icon
 from app.ui.state import clear_pending, confirm_pending, get_pending, push_chat, queue_toast
 
 
-def render_confirmation_gate(locked=False):
+def render_confirmation_gate(locked: bool = False) -> None:
     """Draws the pending proposal with its confirm and cancel buttons.
 
     Args:

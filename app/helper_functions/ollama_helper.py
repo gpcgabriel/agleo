@@ -1,6 +1,7 @@
 import subprocess
 import time
 from collections.abc import Callable
+from typing import Any
 
 import httpx
 import ollama
@@ -64,7 +65,9 @@ def list_local_models() -> list[str]:
     """
     try:
         response = requests.get(f"{DEFAULT_HOST}/api/tags", timeout=3)
-        models_list = response.json().get("models", []) if response.status_code == requests.codes.ok else []
+        models_list: list[dict[str, Any]] = (
+            response.json().get("models", []) if response.status_code == requests.codes.ok else []
+        )
     except requests.exceptions.RequestException:
         return []
 
@@ -102,7 +105,7 @@ def pull_model(model_name: str, progress_callback: Callable[[str], None] | None 
     return True
 
 
-def model_is_available(model_name: str, local_models=None) -> bool:
+def model_is_available(model_name: str, local_models: list[str] | None = None) -> bool:
     """Tells whether a model is available locally, tolerating the tag.
 
     A name may or may not carry its tag: "llama3.1" and "llama3.1:8b" refer to

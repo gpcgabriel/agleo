@@ -17,10 +17,12 @@ as preferable. Those are the agent's job, and moving them here would make the
 agent a rubber stamp.
 """
 
+from typing import Any
+
 UNKNOWN = "-"
 
 
-def component_id(key):
+def component_id(key: str) -> int | None:
     """Returns: int or None: The numeric part of a key such as "PU_17"."""
     try:
         return int(key.split("_")[1])
@@ -28,7 +30,7 @@ def component_id(key):
         return None
 
 
-def build_delay_by_satellite(topology):
+def build_delay_by_satellite(topology: dict[str, Any]) -> dict[int | None, float]:
     """Maps each satellite to the delay of its link with this station.
 
     `build_network_state` already filters `gs_sat` down to the asking station,
@@ -43,7 +45,7 @@ def build_delay_by_satellite(topology):
     return {link["sat"]: round(link.get("delay", 0), 1) for link in topology.get("gs_sat", [])}
 
 
-def render_applications(applications, pending_app_ids):
+def render_applications(applications: dict[str, dict[str, Any]], pending_app_ids: list[int]) -> list[str]:
     """Renders the applications this station is being asked to place.
 
     Args:
@@ -54,7 +56,7 @@ def render_applications(applications, pending_app_ids):
         list: One line per application.
     """
     pending = set(pending_app_ids)
-    lines = []
+    lines: list[str] = []
 
     for key, application in applications.items():
         application_id = component_id(key)
@@ -73,7 +75,9 @@ def render_applications(applications, pending_app_ids):
     return lines
 
 
-def render_process_units(process_units, unit_hosts, delay_by_satellite):
+def render_process_units(
+    process_units: dict[str, dict[str, Any]], unit_hosts: dict[str, str], delay_by_satellite: dict[int | None, float]
+) -> list[str]:
     """Renders the process units the station can reach.
 
     Args:
@@ -84,7 +88,7 @@ def render_process_units(process_units, unit_hosts, delay_by_satellite):
     Returns:
         list: One line per available unit.
     """
-    lines = []
+    lines: list[str] = []
 
     for key, unit in process_units.items():
         if not unit.get("available", True):
@@ -110,7 +114,7 @@ def render_process_units(process_units, unit_hosts, delay_by_satellite):
     return lines
 
 
-def render_digest(state, pending_app_ids):
+def render_digest(state: dict[str, Any], pending_app_ids: list[int]) -> str:
     """Renders one station's view of the network as a digest.
 
     Args:

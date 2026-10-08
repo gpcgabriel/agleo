@@ -1,11 +1,18 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import folium
 import streamlit as st
 from streamlit_folium import st_folium
 
 from app.ui.gui.icons import icon_globe, wrap_icon
 
+if TYPE_CHECKING:
+    from app.core.session import SimulationSession
 
-def render_map(session, is_dark: bool, locked: bool = False) -> None:
+
+def render_map(session: SimulationSession, is_dark: bool, locked: bool = False) -> None:
     """Render the map/telemetry column: timeline slider, status metrics,
     the Folium map (links, ground stations, satellites, users) and the
     telemetry detail tabs.
@@ -27,7 +34,7 @@ def render_map(session, is_dark: bool, locked: bool = False) -> None:
             "Simulation Timeline (Scrub)",
             options=list(range(session.get_step_count())),
             value=session.current_step_index,
-            format_func=lambda index: labels[index],
+            format_func=labels.__getitem__,
             disabled=locked,
         )
         if slider_idx != session.current_step_index:
@@ -146,9 +153,10 @@ def render_map(session, is_dark: bool, locked: bool = False) -> None:
     # Rendering the telemetry detail expanders, collapsed by default.
     with st.expander("Telemetry Details", expanded=False):
         t_sat, t_gs, t_user = st.tabs(["Satellites", "Ground Stations", "Users"])
+        # Ignoring the parameters Streamlit's own annotations leave partly untyped on `dataframe`.
         with t_sat:
-            st.dataframe(snapshot["satellites"])
+            st.dataframe(snapshot["satellites"])  # pyright: ignore[reportUnknownMemberType]
         with t_gs:
-            st.dataframe(snapshot["ground_stations"])
+            st.dataframe(snapshot["ground_stations"])  # pyright: ignore[reportUnknownMemberType]
         with t_user:
-            st.dataframe(snapshot["users"])
+            st.dataframe(snapshot["users"])  # pyright: ignore[reportUnknownMemberType]

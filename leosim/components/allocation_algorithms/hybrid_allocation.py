@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from math import sqrt
-from typing import TYPE_CHECKING, Any, TypedDict
+from typing import TYPE_CHECKING, Any, NotRequired, TypedDict
 
 import networkx as nx
 from geopy.distance import geodesic
@@ -23,7 +23,10 @@ class HybridResults(TypedDict):
     provisioned: int
     failed: int
     already: int
-    details: list[dict[str, int | str]]
+    details: list[dict[str, int | str | None]]
+    # Counting what the model's reply left out and made up, which only the LLM allocator records.
+    omitted: NotRequired[int]
+    invented: NotRequired[int]
 
 
 def has_path(topology: Topology, origin: User, target: ProcessUnit) -> bool:

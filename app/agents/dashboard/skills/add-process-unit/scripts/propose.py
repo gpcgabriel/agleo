@@ -4,6 +4,7 @@
 import argparse
 import os
 import sys
+from typing import Any
 
 # scripts -> <skill> -> skills -> dashboard -> agents -> app -> repository root
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), *[os.pardir] * 6)))
@@ -14,7 +15,7 @@ from app.core.actions import ActionType, NodeSpec
 ACTION = ActionType.ADD_PROCESS_UNIT
 
 
-def build_parser():
+def build_parser() -> argparse.ArgumentParser:
     """Returns: argparse.ArgumentParser: The command line this skill accepts."""
     parser = argparse.ArgumentParser(description="Proposes attaching a process unit to a node.")
     parser.add_argument("--target-type", choices=NodeSpec.NODE_TYPES, required=True)
@@ -24,7 +25,7 @@ def build_parser():
     return parser
 
 
-def collect(args):
+def collect(args: argparse.Namespace) -> dict[str, Any]:
     """Returns: dict: The fields the payload needs."""
     return {
         "target_type": args.target_type,
