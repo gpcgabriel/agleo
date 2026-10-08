@@ -125,7 +125,6 @@ def create_link(
     """
     link = NetworkLink()
 
-    link["topology"] = topology
     link["nodes"] = [node, other]
     link["bandwidth"] = bandwidth
     link["delay"] = delay

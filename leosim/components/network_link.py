@@ -93,8 +93,12 @@ class NetworkLink(ComponentManager, dict[str, Any]):
             "bandwidth": self["bandwidth"],
             "type": self["type"],
             "relationships": {
-                "topology": {"class": type(self.topology).__name__, "id": self.topology.id},
-                "flows": [{"class": type(flow).__class__, "id": flow.id} for flow in self["flows"]],
+                "topology": (
+                    {"class": type(self.topology).__name__, "id": self.topology.id}
+                    if self.topology is not None
+                    else None
+                ),
+                "flows": [{"class": type(flow).__name__, "id": flow.id} for flow in self["flows"]],
                 "nodes": [{"class": type(node).__name__, "id": node.id} for node in self.nodes],
             },
         }

@@ -48,7 +48,6 @@ def load_ground_topology_from_gml(filepath: str, default_delay: int = 1) -> Topo
 
         link = NetworkLink()
 
-        link["topology"] = topology
         link["nodes"] = [node_1, node_2]
         link["bandwidth"] = bandwidth
         link["delay"] = default_delay

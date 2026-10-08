@@ -24,7 +24,6 @@ def mesh_network(topology: Topology) -> None:
         for target in targets:
             link = NetworkLink()
 
-            link["topology"] = topology
             link["nodes"] = [satellite, target]
             link["bandwidth"] = NetworkLink.default_bandwidth
             link["delay"] = link.get_delay()

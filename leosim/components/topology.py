@@ -58,7 +58,7 @@ class Topology(ComponentManager, NodeGraph):
         self.__class__._object_count += 1
 
         # Falling back to the class counter when no explicit id is given.
-        if id == 0:
+        if obj_id == 0:
             obj_id = self.__class__._object_count
         self.id = obj_id
 
@@ -68,12 +68,14 @@ class Topology(ComponentManager, NodeGraph):
             super().__init__(incoming_graph_data=existing_graph)
 
     def attach_link(self, link: NetworkLink) -> None:
-        """Adds the edge between a link's two nodes and stores the link itself as the edge's data.
+        """Adds the edge between a link's two nodes, stores the link itself as the edge's data and records
+        this topology on the link.
 
         Args:
             link (NetworkLink): The link, its `nodes` already set.
         """
         node, other = link["nodes"][0], link["nodes"][1]
+        link["topology"] = self
         self.add_edge(node, other)
 
         # Replacing the edge's data dictionary with the link through `_adj`, which networkx's type

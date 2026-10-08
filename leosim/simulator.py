@@ -361,4 +361,4 @@ def clear_components() -> None:
     """
     for component_class in ComponentManager.__subclasses__():
         if component_class is not Simulator:
-            component_class.clear()
+            component_class.clear_registry()

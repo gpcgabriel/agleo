@@ -20,7 +20,7 @@ from leosim.components.application_access_models import FixedDurationAccessModel
 
 def reset_components() -> None:
     for component_class in (Application, GroundStation, Satellite, User, FixedDurationAccessModel):
-        component_class.clear()
+        component_class.clear_registry()
 
 
 def make_user_with_application(access_points: Sequence[GroundStation | Satellite]) -> tuple[User, Application]:

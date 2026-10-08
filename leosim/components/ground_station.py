@@ -92,7 +92,6 @@ class GroundStation(ComponentManager):
                 if self.model.topology.has_edge(self, satellite):
                     continue
                 link = NetworkLink()
-                link["topology"] = topology
                 link["nodes"] = [satellite, self]
                 link["bandwidth"] = NetworkLink.default_bandwidth
                 link["delay"] = link.get_delay()

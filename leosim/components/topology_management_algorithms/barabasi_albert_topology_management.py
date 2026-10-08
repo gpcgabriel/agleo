@@ -42,7 +42,6 @@ def barabasi_albert_network(topology: Topology, min_num_links: int = 2) -> None:
         for target in selected_targets:
             link = NetworkLink(satellite, target)
 
-            link["topology"] = topology
             link["nodes"] = [satellite, target]
             link["bandwidth"] = NetworkLink.default_bandwidth
             link["delay"] = NetworkLink.get_delay()

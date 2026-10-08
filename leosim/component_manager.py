@@ -83,9 +83,10 @@ class ComponentManager:
         return len(cls._instances)
 
     @classmethod
-    def clear(cls) -> None:
+    def clear_registry(cls) -> None:
         # Resetting the instance list and the object counter so a new scenario can
-        # be loaded.
+        # be loaded. Naming it apart from the instance `clear` that `dict` and networkx's
+        # `Graph` give NetworkLink and Topology: networkx calls that one on a graph it fills.
         cls._instances = []
         cls._object_count = 0
 
