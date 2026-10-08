@@ -11,27 +11,38 @@ Writes one JSON line per run to `logs/mode_benchmark.jsonl` and prints a
 summary table.
 """
 
+from __future__ import annotations
+
 import argparse
 import os
 import sys
 import time
+from collections.abc import Callable
 from json import dumps
 from statistics import median
+from typing import TYPE_CHECKING, Any
 
 from app.agents.dashboard.runner import MODE_SKILLS, MODE_TOOLS, SKILLS_DIRECTORY, run_agent
-from app.core.actions import ActionType
+from app.core.actions import ActionPayload, ActionType, AddNodesPayload
 from app.core.config import SimulationConfig
 from app.core.router import QUICK_COMMAND_CONTEXT, build_agent_context
 from app.core.session import create_session
 from app.core.snapshot import find_default_node_position
 from app.helper_functions.ollama_helper import DEFAULT_MODEL, is_ollama_running, model_is_available
 
+if TYPE_CHECKING:
+    from app.agents.dashboard.runner import AgentResult
+    from app.core.snapshot import Snapshot
+
+# Naming a command's check: it reads the proposal's payload and says whether its parameters are right.
+PayloadCheck = Callable[[ActionPayload], bool]
+
 LOG_PATH = os.path.join("logs", "mode_benchmark.jsonl")
 
 # What gets compared: six tool schemas in the system prompt against progressive
 # disclosure, where the model sees a short skill description and opens the rest
 # only when it judges the skill relevant.
-ARMS = {
+ARMS: dict[str, tuple[str, str | None]] = {
     "Tools": (MODE_TOOLS, None),
     "Skills": (MODE_SKILLS, SKILLS_DIRECTORY),
 }
@@ -40,7 +51,7 @@ ARMS = {
 class Command:
     """One operator command and what a correct answer to it looks like."""
 
-    def __init__(self, label, text, expected_action, check=None):
+    def __init__(self, label: str, text: str, expected_action: str | None, check: PayloadCheck | None = None) -> None:
         """Args:
         label (str): Short name for the summary table.
         text (str): What the operator types.
@@ -55,27 +66,27 @@ class Command:
         self.check = check
 
 
-def steps_are(expected):
+def steps_are(expected: int) -> PayloadCheck:
     return lambda payload: getattr(payload, "steps", None) == expected
 
 
-def one_satellite(payload):
-    return getattr(payload, "nodes", None) is not None and [node.node_type for node in payload.nodes] == ["Satellite"]
+def one_satellite(payload: ActionPayload) -> bool:
+    return isinstance(payload, AddNodesPayload) and [node.node_type for node in payload.nodes] == ["Satellite"]
 
 
-def user_is_placed(payload):
+def user_is_placed(payload: ActionPayload) -> bool:
     return getattr(payload, "lat", None) is not None and getattr(payload, "lon", None) is not None
 
 
-def unit_has(cpu, memory):
+def unit_has(cpu: int, memory: int) -> PayloadCheck:
     return lambda payload: getattr(payload, "cpu", None) == cpu and getattr(payload, "memory", None) == memory
 
 
-def app_for_user(user_id):
+def app_for_user(user_id: int) -> PayloadCheck:
     return lambda payload: getattr(payload, "user_id", None) == user_id
 
 
-COMMANDS = [
+COMMANDS: list[Command] = [
     Command("step/slash", "/step 3", ActionType.RUN_SIMULATION, steps_are(3)),
     Command("step/prose", "Advance the simulation by 3 steps", ActionType.RUN_SIMULATION, steps_are(3)),
     Command(
@@ -107,7 +118,7 @@ COMMANDS = [
 ]
 
 
-def resolve_context(command, snapshot, size):
+def resolve_context(command: Command, snapshot: Snapshot, size: str) -> str:
     """Builds the context one run is given.
 
     Args:
@@ -128,7 +139,7 @@ def resolve_context(command, snapshot, size):
     return build_agent_context(command.text, snapshot)
 
 
-def build_context():
+def build_context() -> tuple[Snapshot, SimulationConfig, tuple[float, float] | None]:
     """Builds the session every command is measured against.
 
     Returns:
@@ -148,7 +159,7 @@ def build_context():
     return snapshot, config, find_default_node_position(snapshot)
 
 
-def score(command, result):
+def score(command: Command, result: AgentResult) -> dict[str, bool]:
     """Grades one run against what the command asked for.
 
     Returns:
@@ -172,7 +183,15 @@ def score(command, result):
     return {"proposed": True, "right_action": right_action, "right_parameters": right_parameters}
 
 
-def run_once(command, arm, model_name, snapshot, config, position, context_size="router"):
+def run_once(
+    command: Command,
+    arm: str,
+    model_name: str,
+    snapshot: Snapshot,
+    config: SimulationConfig,
+    position: tuple[float, float] | None,
+    context_size: str = "router",
+) -> dict[str, Any]:
     """Runs one command in one arm and records the result.
 
     Args:
@@ -231,13 +250,13 @@ def run_once(command, arm, model_name, snapshot, config, position, context_size=
     return record
 
 
-def summarize(records):
+def summarize(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Aggregates the records into one row per mode.
 
     Returns:
         list: One row per mode.
     """
-    rows = []
+    rows: list[dict[str, Any]] = []
     for arm in ARMS:
         mine = [record for record in records if record["arm"] == arm]
         if not mine:
@@ -265,7 +284,7 @@ def summarize(records):
     return rows
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(description="Compare the dashboard agent's Tools and Skills modes.")
     parser.add_argument("--model", default=DEFAULT_MODEL, help="Model identifier in Ollama.")
     parser.add_argument("--repetitions", type=int, default=3, help="Runs per command per arm.")
@@ -292,7 +311,7 @@ def main():
     os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
 
     commands = [c for c in COMMANDS if not arguments.only or c.label in arguments.only]
-    records = []
+    records: list[dict[str, Any]] = []
     total = len(commands) * len(arguments.arms) * len(arguments.contexts) * arguments.repetitions
     done = 0
 

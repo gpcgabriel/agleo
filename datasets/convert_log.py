@@ -1,13 +1,14 @@
 import argparse
 import json
+from typing import Any
 
 
-def convert_format(input_filename, output_filename):
+def convert_format(input_filename: str, output_filename: str) -> None:
     # Load the original log_rnp.json data
     with open(input_filename, encoding="utf-8") as infile:
         data = json.load(infile)
 
-    brazil_data = []
+    brazil_data: list[list[dict[str, Any]]] = []
 
     # Process each timestamp entry
     for entry in data:

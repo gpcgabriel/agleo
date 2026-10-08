@@ -1,15 +1,38 @@
+from __future__ import annotations
+
 import math
 import random
 import re
+from typing import TypedDict
 
 import networkx as nx
+
+
+class Location(TypedDict):
+    """A node position read from a GML file."""
+
+    label: str
+    Latitude: float
+    Longitude: float
+
+
+class SyntheticNode(TypedDict):
+    """A node generated near one of the GML positions, with the fields its GML node carries."""
+
+    id: int
+    label: str
+    Latitude: float
+    Longitude: float
+    Country: str
+    Internal: int
+
 
 # =========================================
 # Providing the mathematical helpers.
 # =========================================
 
 
-def haversine(lat1, lon1, lat2, lon2):
+def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     R = 6371  # km
     phi1 = math.radians(lat1)
     phi2 = math.radians(lat2)
@@ -32,8 +55,8 @@ def extract_field(block: str, field: str) -> str | None:
     return match.group(1) if match else None
 
 
-def parse_gml_locations(gml_text):
-    locations = []
+def parse_gml_locations(gml_text: str) -> list[Location]:
+    locations: list[Location] = []
     blocks = re.findall(r"node\s*\[(.*?)\]", gml_text, re.S)
 
     for block in blocks:
@@ -51,7 +74,7 @@ def parse_gml_locations(gml_text):
 # Holding measured link profiles, used as the statistical base.
 # =========================================
 
-REAL_LINK_PROFILES = [
+REAL_LINK_PROFILES: list[dict[str, str | float]] = [
     {"LinkSpeed": "10", "LinkLabel": "10Gbps", "LinkSpeedUnits": "G", "LinkSpeedRaw": 10000000000.0},
     {"LinkSpeed": "3", "LinkLabel": "3Gbps", "LinkSpeedUnits": "G", "LinkSpeedRaw": 3000000000.0},
     {"LinkSpeed": "20", "LinkLabel": "20Mbps", "LinkSpeedUnits": "M", "LinkSpeedRaw": 20000000.0},
@@ -62,7 +85,7 @@ REAL_LINK_PROFILES = [
 ]
 
 
-def sample_link_profile():
+def sample_link_profile() -> dict[str, str | float]:
     return random.choice(REAL_LINK_PROFILES)
 
 
@@ -71,9 +94,11 @@ def sample_link_profile():
 # =========================================
 
 
-def generate_nodes_from_locations(base_locations, N, noise_km=5, seed=42):
+def generate_nodes_from_locations(
+    base_locations: list[Location], N: int, noise_km: float = 5, seed: int = 42
+) -> list[SyntheticNode]:
     random.seed(seed)
-    nodes = []
+    nodes: list[SyntheticNode] = []
 
     for i in range(N):
         base = random.choice(base_locations)
@@ -81,7 +106,7 @@ def generate_nodes_from_locations(base_locations, N, noise_km=5, seed=42):
         noise_lat = random.uniform(-noise_km, noise_km) / 111
         noise_lon = random.uniform(-noise_km, noise_km) / 111
 
-        node = {
+        node: SyntheticNode = {
             "id": i,
             "label": base["label"],
             "Latitude": base["Latitude"] + noise_lat,
@@ -100,8 +125,8 @@ def generate_nodes_from_locations(base_locations, N, noise_km=5, seed=42):
 # =========================================
 
 
-def build_geo_topology(nodes, k_neighbors=3):
-    G = nx.Graph()
+def build_geo_topology(nodes: list[SyntheticNode], k_neighbors: int = 3) -> nx.Graph[int]:
+    G: nx.Graph[int] = nx.Graph()
 
     # ---------- NODES ----------
     for n in nodes:
@@ -118,7 +143,7 @@ def build_geo_topology(nodes, k_neighbors=3):
     # ---------- EDGES ----------
     for i in range(len(nodes)):
         ni = nodes[i]
-        distances = []
+        distances: list[tuple[float, SyntheticNode]] = []
 
         for j in range(len(nodes)):
             if i == j:
@@ -152,7 +177,9 @@ def build_geo_topology(nodes, k_neighbors=3):
 # =========================================
 
 
-def create_topology_from_gml_locations(gml_text, N, k_neighbors=3, noise_km=5):
+def create_topology_from_gml_locations(
+    gml_text: str, N: int, k_neighbors: int = 3, noise_km: float = 5
+) -> nx.Graph[int]:
     base_locations = parse_gml_locations(gml_text)
 
     synthetic_nodes = generate_nodes_from_locations(base_locations=base_locations, N=N, noise_km=noise_km)
@@ -176,7 +203,8 @@ if __name__ == "__main__":
     )
 
     filename = f"topology{N}.gml"
-    nx.write_gml(G, filename)
+    # Ignoring the parameters networkx's stub leaves untyped on `write_gml`.
+    nx.write_gml(G, filename)  # pyright: ignore[reportUnknownMemberType]
 
     print(f"Topologia gerada: {filename}")
     print(f"Nodes: {G.number_of_nodes()} | Edges: {G.number_of_edges()}")
