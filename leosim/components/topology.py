@@ -87,6 +87,27 @@ class Topology(ComponentManager, NodeGraph):
         """Returns: list: The path from one node to another with the least total link delay."""
         return nx.shortest_path(G=self, source=source, target=target, weight="delay")
 
+    def path_from_access_points(self, user: User, target: Node) -> list[Node]:
+        """Finds the route a user's traffic takes to a node.
+
+        Each of the user's access points that reaches the target offers its
+        delay-shortest path; the one with the fewest hops wins, the first such
+        access point breaking ties.
+
+        Args:
+            user (User): Whose access points the route may start from.
+            target (Node): Where the traffic goes.
+
+        Returns:
+            list: The route, starting at an access point, or an empty list when none reaches the target.
+        """
+        paths = [
+            self.delay_shortest_path(access_point, target)
+            for access_point in user.network_access_points
+            if nx.has_path(G=self, source=access_point, target=target)
+        ]
+        return min(paths, key=len, default=[])
+
     def link_between(self, node: Node, other: Node) -> NetworkLink:
         """Returns: NetworkLink: The link stored as the data of the edge between two nodes."""
         return cast(NetworkLink, self[node][other])
@@ -140,23 +161,8 @@ class Topology(ComponentManager, NodeGraph):
                         break
 
             if need_to_reroute:
-                if flow.metadata.get("type", "default") == "request_response":
-                    user = flow.source
-                    connection_paths = []
-
-                    # Checking every user access point to see whether the application is
-                    # reachable.
-                    for access_point in user.network_access_points:
-                        if nx.has_path(G=self, source=access_point, target=flow.target):
-                            new_path = self.model.topology.delay_shortest_path(access_point, flow.target)
-                            connection_paths.append(new_path)
-
-                    path = min(connection_paths, key=len, default=[])
-
-                elif nx.has_path(G=self, source=flow.source, target=flow.target):
-                    path = self.delay_shortest_path(flow.source, flow.target)
-                else:
-                    path = []
+                # Routing from the user's access points: a flow's source is a user, never a node of the graph.
+                path = self.path_from_access_points(flow.source, flow.target)
 
                 if path == []:
                     flow.status = "waiting"

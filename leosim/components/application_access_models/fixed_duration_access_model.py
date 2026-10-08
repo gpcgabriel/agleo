@@ -3,7 +3,6 @@ from __future__ import annotations
 from itertools import cycle
 from typing import TYPE_CHECKING, Any
 
-import networkx as nx
 
 from ...component_manager import ComponentManager
 from ..network_flow import NetworkFlow
@@ -200,15 +199,7 @@ class FixedDurationAccessModel(ComponentManager):
                 return
 
             if self.flow is None:
-                connection_paths = []
-
-                # Checking reachability from the user's access points to the target unit.
-                for access_point in user.network_access_points:
-                    if nx.has_path(G=self.model.topology, source=access_point, target=app.process_unit):
-                        path = self.model.topology.delay_shortest_path(access_point, app.process_unit)
-                        connection_paths.append(path)
-
-                path = min(connection_paths, key=len, default=[])
+                path = self.model.topology.path_from_access_points(user, app.process_unit)
 
                 # Creating a new dynamic network flow.
                 flow = NetworkFlow(
