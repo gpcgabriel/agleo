@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 from agno.agent import Agent
 from agno.models.ollama import Ollama
 from agno.skills import LocalSkills, Skills
+from agno.tools.function import Function
 
 from app.agents.dashboard.prompts import dashboard_agent_description, dashboard_agent_instructions
 from app.agents.dashboard.tool_call_recovery import looks_like_tool_call, recover
@@ -18,6 +19,8 @@ from app.agents.dashboard.tools import ProposalBuffer
 from app.core.actions import ProposedAction, build_payload
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from app.core.config import SimulationConfig
 
 logger = logging.getLogger(__name__)
@@ -101,6 +104,28 @@ def ensure_interpreter_on_path() -> None:
     os.environ["PATH"] = os.pathsep.join([directory] + [part for part in parts if part != directory])
 
 
+def stop_after_proposing(proposal_tool: Callable[..., str]) -> Function:
+    """Wraps a proposal tool so the run ends as soon as the model calls it.
+
+    What the tool returns is already the reply the operator needs: what was
+    proposed and that it waits at the gate. Asking the model again after the
+    call only rewrote that sentence. Measured on 8 October on a ten-step
+    request: qwen3:4b spent two more calls and ~200 s on it, proposing the same
+    run a second time on the way, and llama3.1:8b spent 6 to 86 s.
+
+    Args:
+        proposal_tool (Callable): One of `ProposalBuffer.get_tools()`.
+
+    Returns:
+        Function: The tool, marked to end the run; the model sees the same schema.
+    """
+    # Leaving the schema for agno to derive, as it does for a plain function:
+    # a `Function` built with `from_callable` arrives with its parameters set,
+    # and agno then treats them as hand-written and adds
+    # `"additionalProperties": false` to every tool the model is shown.
+    return Function(name=proposal_tool.__name__, entrypoint=proposal_tool, stop_after_tool_call=True, show_result=True)
+
+
 def build_agent(
     model_name: str, action_mode: str | None, buffer: ProposalBuffer, skills_directory: str | None = None
 ) -> Agent:
@@ -132,7 +157,7 @@ def build_agent(
             model=model,
             description=description,
             instructions=instructions,
-            tools=buffer.get_tools(),
+            tools=[stop_after_proposing(proposal_tool) for proposal_tool in buffer.get_tools()],
         )
 
     if action_mode == MODE_SKILLS:
