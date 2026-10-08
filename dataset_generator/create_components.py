@@ -24,7 +24,7 @@ from leosim.components import (
     User,
     mesh_network,
 )
-from leosim.geometry import ALTITUDE_INDEX
+from leosim.geometry import ALTITUDE_INDEX, Coordinates
 
 REFERENCE_POINT = (-15.669171, -48.013922, 0)
 MAX_RANGE = 1500
@@ -57,7 +57,7 @@ class Sighting(TypedDict):
     satalt: float
 
 
-def create_user(coordinates: tuple, connection_range: int = MAX_RANGE) -> User:
+def create_user(coordinates: Coordinates, connection_range: int = MAX_RANGE) -> User:
     """Returns a new user at the given coordinates, with no mobility model yet."""
     user = User(coordinates=coordinates, max_connection_range=connection_range)
 
@@ -190,7 +190,7 @@ def build_satellites(steps: list[list[Sighting]], max_satellites: int) -> None:
         steps (list): One list of N2YO satellite descriptions per step.
         max_satellites (int): How many satellites to create at most, first seen first taken.
     """
-    satellites = {}
+    satellites: dict[int, Satellite] = {}
 
     for index, step in enumerate(steps):
         for entry in step:

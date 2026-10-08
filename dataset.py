@@ -20,7 +20,7 @@ from leosim.components import (
 )
 
 
-def load_topology(ground_topology: str, leo_topology, max_satellites) -> Topology:
+def load_topology(ground_topology: str, leo_topology: str, max_satellites: int) -> Topology:
     t = load_ground_topology_from_gml(ground_topology)
 
     create_satellite_topology(topology=t, filename=leo_topology, max_steps=180, max_satellites=max_satellites)
@@ -57,7 +57,7 @@ def create_users(num_users: int) -> None:
         )
 
 
-def add_process_unit_to_satellites(topology, num_process_units: int):
+def add_process_unit_to_satellites(topology: Topology, num_process_units: int) -> None:
     targets = sample(Satellite.all(), min(num_process_units, Satellite.count()))
 
     for satellite in targets:
@@ -67,7 +67,7 @@ def add_process_unit_to_satellites(topology, num_process_units: int):
         satellite.process_unit = unit
 
 
-def add_process_unit_to_ground_stations(topology, num_process_units: int):
+def add_process_unit_to_ground_stations(topology: Topology, num_process_units: int) -> None:
     targets = sample(GroundStation.all(), min(num_process_units, GroundStation.count()))
 
     for station in targets:
@@ -77,7 +77,7 @@ def add_process_unit_to_ground_stations(topology, num_process_units: int):
         station.connect_server(unit)
 
 
-def configure_mobility_models():
+def configure_mobility_models() -> None:
     for sat in Satellite.all():
         sat.mobility_model = linear_estimation
         sat.mobility_model_parameters = {"len": len(sat.coordinates_trace)}
