@@ -62,7 +62,7 @@ def make_snapshot(step: int, users: int, connected: int, applications: int, allo
 # -- The plan ---------------------------------------------------------------
 
 
-def test_a_plan_without_a_step_budget_is_refused():
+def test_a_plan_without_a_step_budget_is_refused() -> None:
     try:
         SimulationPlan(make_config(), 0)
     except ValueError as error:
@@ -71,7 +71,7 @@ def test_a_plan_without_a_step_budget_is_refused():
         raise AssertionError("a plan of zero steps was accepted")
 
 
-def test_the_gate_is_shown_the_whole_plan_and_not_just_the_sentence():
+def test_the_gate_is_shown_the_whole_plan_and_not_just_the_sentence() -> None:
     """What the operator approves is a run that will not stop to ask again, so
     every setting that shapes it has to be on screen before they agree."""
     description = SimulationPlan(make_config(num_users=40, scenario="leo"), 25).describe()
@@ -83,13 +83,13 @@ def test_the_gate_is_shown_the_whole_plan_and_not_just_the_sentence():
 # -- Measuring a run --------------------------------------------------------
 
 
-def test_a_scenario_with_nothing_to_place_does_not_report_a_perfect_run():
+def test_a_scenario_with_nothing_to_place_does_not_report_a_perfect_run() -> None:
     """Zero out of zero is not success. It read as 100% provisioned, which is
     the most flattering possible answer to an empty simulation."""
     assert share(0, 0) == 0.0
 
 
-def test_a_measurement_counts_what_was_placed_and_who_was_connected():
+def test_a_measurement_counts_what_was_placed_and_who_was_connected() -> None:
     measured = measure_snapshot(make_snapshot(3, users=4, connected=3, applications=4, allocated=1, links=2))
 
     assert measured["step"] == 3
@@ -101,7 +101,7 @@ def test_a_measurement_counts_what_was_placed_and_who_was_connected():
     assert measured["mean_delay"] == 10.0
 
 
-def test_a_run_is_measured_in_ticks_rather_than_in_snapshots():
+def test_a_run_is_measured_in_ticks_rather_than_in_snapshots() -> None:
     """An infrastructure change records a snapshot without moving the clock.
     Counting snapshots would report more steps than the simulation ran."""
     history = [
@@ -113,7 +113,7 @@ def test_a_run_is_measured_in_ticks_rather_than_in_snapshots():
     assert collect_run_metrics(history)["steps_run"] == 1
 
 
-def test_the_worst_tick_is_reported_with_the_step_it_happened_on():
+def test_the_worst_tick_is_reported_with_the_step_it_happened_on() -> None:
     """An average hides the collapse that a run is usually judged by."""
     history = [
         make_snapshot(0, users=4, connected=4, applications=4, allocated=4),
@@ -128,14 +128,14 @@ def test_the_worst_tick_is_reported_with_the_step_it_happened_on():
     assert metrics["provisioning_final"] == 75.0
 
 
-def test_a_run_that_produced_nothing_says_so_instead_of_dividing_by_zero():
+def test_a_run_that_produced_nothing_says_so_instead_of_dividing_by_zero() -> None:
     metrics = collect_run_metrics([])
 
     assert metrics["series"] == []
     assert "nothing to report" in summarize_run(SimulationPlan(make_config(), 5), metrics)
 
 
-def test_a_report_that_fell_short_of_its_budget_says_it_was_stopped():
+def test_a_report_that_fell_short_of_its_budget_says_it_was_stopped() -> None:
     history = [make_snapshot(step, users=2, connected=2, applications=2, allocated=2) for step in range(3)]
 
     report = summarize_run(SimulationPlan(make_config(), 50), collect_run_metrics(history))
@@ -144,7 +144,7 @@ def test_a_report_that_fell_short_of_its_budget_says_it_was_stopped():
     assert "stopped" in report.lower()
 
 
-def test_a_report_that_spent_its_budget_does_not_claim_it_was_stopped():
+def test_a_report_that_spent_its_budget_does_not_claim_it_was_stopped() -> None:
     history = [make_snapshot(step, users=2, connected=2, applications=2, allocated=1) for step in range(6)]
 
     report = summarize_run(SimulationPlan(make_config(), 5), collect_run_metrics(history))
@@ -156,7 +156,7 @@ def test_a_report_that_spent_its_budget_does_not_claim_it_was_stopped():
 # -- Running one ------------------------------------------------------------
 
 
-def test_confirming_a_plan_builds_a_new_simulation_with_the_whole_run_scheduled():
+def test_confirming_a_plan_builds_a_new_simulation_with_the_whole_run_scheduled() -> None:
     session = create_session(make_config())
     plan = SimulationPlan(make_config(num_users=4), 3)
 
@@ -169,7 +169,7 @@ def test_confirming_a_plan_builds_a_new_simulation_with_the_whole_run_scheduled(
     assert result.new_session.steps_remaining == 3
 
 
-def test_the_plan_is_handed_back_once_the_last_step_has_run():
+def test_the_plan_is_handed_back_once_the_last_step_has_run() -> None:
     session = create_session(make_config(num_users=4, num_satellites=4))
     plan = SimulationPlan(session.config, 2)
     session.start_plan(plan)
@@ -182,7 +182,7 @@ def test_the_plan_is_handed_back_once_the_last_step_has_run():
     assert session.take_finished_plan() is None, "the same run was reported twice"
 
 
-def test_a_run_the_operator_stopped_is_still_reported():
+def test_a_run_the_operator_stopped_is_still_reported() -> None:
     """Stopping is not cancelling: ticks ran, and there are metrics for them."""
     session = create_session(make_config(num_users=4, num_satellites=4))
     plan = SimulationPlan(session.config, 50)
@@ -194,7 +194,7 @@ def test_a_run_the_operator_stopped_is_still_reported():
     assert collect_run_metrics(session.history)["steps_run"] == 1
 
 
-def test_a_session_nobody_planned_has_no_plan_to_report():
+def test_a_session_nobody_planned_has_no_plan_to_report() -> None:
     session = create_session(make_config())
     session.request_steps(1)
     session.run_next_pending_step()
@@ -205,7 +205,7 @@ def test_a_session_nobody_planned_has_no_plan_to_report():
 # -- Reaching it through the agent ------------------------------------------
 
 
-def test_the_tool_keeps_every_setting_the_operator_did_not_name():
+def test_the_tool_keeps_every_setting_the_operator_did_not_name() -> None:
     buffer = ProposalBuffer(current_config=make_config())
 
     buffer.propose_run_full_simulation(steps=12, num_users=40)
@@ -220,7 +220,7 @@ def test_the_tool_keeps_every_setting_the_operator_did_not_name():
     assert plan.config.num_satellites == 8
 
 
-def test_the_tool_refuses_a_run_before_a_simulation_has_been_loaded():
+def test_the_tool_refuses_a_run_before_a_simulation_has_been_loaded() -> None:
     """There is no configuration to resolve the missing settings against, and
     inventing one would run something nobody chose."""
     reply = ProposalBuffer().propose_run_full_simulation(steps=5)
@@ -229,7 +229,7 @@ def test_the_tool_refuses_a_run_before_a_simulation_has_been_loaded():
     assert ProposalBuffer().get_proposals() == []
 
 
-def test_a_skill_that_leaves_out_the_step_budget_is_told_which_field_is_missing():
+def test_a_skill_that_leaves_out_the_step_budget_is_told_which_field_is_missing() -> None:
     """Omitting a parameter is the failure this project keeps meeting, so the
     refusal has to name the field rather than raise a bare KeyError."""
     try:
@@ -240,7 +240,7 @@ def test_a_skill_that_leaves_out_the_step_budget_is_told_which_field_is_missing(
         raise AssertionError("a run was built with no step budget")
 
 
-def test_a_skill_proposal_resolves_against_the_configuration_the_runner_holds():
+def test_a_skill_proposal_resolves_against_the_configuration_the_runner_holds() -> None:
     payload = build_payload(
         ActionType.RUN_FULL_SIMULATION, {"steps": 7, "scenario": "leo"}, current_config=make_config()
     )

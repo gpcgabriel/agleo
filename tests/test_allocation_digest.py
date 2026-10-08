@@ -41,14 +41,14 @@ def make_state() -> dict[str, Any]:
     }
 
 
-def test_every_reachable_unit_appears():
+def test_every_reachable_unit_appears() -> None:
     """Omitting a candidate would be deciding, not translating."""
     lines = render_process_units(make_state()["process_units"], make_state()["unit_hosts"], {4: 1.0})
 
     assert len(lines) == 2
 
 
-def test_units_keep_the_order_the_state_gave_them():
+def test_units_keep_the_order_the_state_gave_them() -> None:
     """Sorting by fitness would hand the agent a ranking it did not ask for."""
     state = make_state()
     lines = render_process_units(state["process_units"], state["unit_hosts"], {4: 1.0})
@@ -57,7 +57,7 @@ def test_units_keep_the_order_the_state_gave_them():
     assert lines[1].split()[0] == "25"
 
 
-def test_an_unavailable_unit_is_left_out():
+def test_an_unavailable_unit_is_left_out() -> None:
     """Availability is a fact about the unit, not a judgement about its fit."""
     state = make_state()
     state["process_units"]["PU_17"]["available"] = False
@@ -68,7 +68,7 @@ def test_an_unavailable_unit_is_left_out():
     assert lines[0].split()[0] == "25"
 
 
-def test_free_capacity_is_reported_instead_of_total_and_used():
+def test_free_capacity_is_reported_instead_of_total_and_used() -> None:
     state = make_state()
     lines = render_process_units(state["process_units"], state["unit_hosts"], {4: 1.0})
 
@@ -76,7 +76,7 @@ def test_free_capacity_is_reported_instead_of_total_and_used():
     assert (cpu_free, mem_free) == ("4", "20")
 
 
-def test_a_unit_in_orbit_reports_its_satellite_and_link_delay():
+def test_a_unit_in_orbit_reports_its_satellite_and_link_delay() -> None:
     state = make_state()
     lines = render_process_units(state["process_units"], state["unit_hosts"], {4: 1.0})
 
@@ -85,7 +85,7 @@ def test_a_unit_in_orbit_reports_its_satellite_and_link_delay():
     assert delay == "1.0"
 
 
-def test_a_unit_on_the_station_reports_no_radio_hop():
+def test_a_unit_on_the_station_reports_no_radio_hop() -> None:
     state = make_state()
     lines = render_process_units(state["process_units"], state["unit_hosts"], {4: 1.0})
 
@@ -94,7 +94,7 @@ def test_a_unit_on_the_station_reports_no_radio_hop():
     assert delay == "0"
 
 
-def test_a_unit_with_no_recorded_host_says_so_instead_of_guessing():
+def test_a_unit_with_no_recorded_host_says_so_instead_of_guessing() -> None:
     state = make_state()
     state["unit_hosts"] = {}
 
@@ -105,33 +105,33 @@ def test_a_unit_with_no_recorded_host_says_so_instead_of_guessing():
     assert delay == "-"
 
 
-def test_delays_are_rounded_so_the_digest_repeats_between_ticks():
+def test_delays_are_rounded_so_the_digest_repeats_between_ticks() -> None:
     """A delay written to 16 decimals never repeats, and a cache over it never hits."""
     delays = build_delay_by_satellite(make_state()["topology"])
 
     assert delays == {4: 1.0, 9: 2.1}
 
 
-def test_only_the_applications_this_station_was_asked_about_appear():
+def test_only_the_applications_this_station_was_asked_about_appear() -> None:
     digest = render_digest(make_state(), pending_app_ids=[1])
 
     assert "\n  1 20 37 6 24" in digest
     assert "\n  2 10 10 3" not in digest
 
 
-def test_an_unplaced_application_says_so_instead_of_reporting_none():
+def test_an_unplaced_application_says_so_instead_of_reporting_none() -> None:
     digest = render_digest(make_state(), pending_app_ids=[2])
 
     assert "\n  2 10 10 3 -" in digest
 
 
-def test_the_digest_names_the_step_and_the_station():
+def test_the_digest_names_the_step_and_the_station() -> None:
     digest = render_digest(make_state(), pending_app_ids=[1])
 
     assert digest.startswith("STEP 7 | station at (-8.1, -34.9) | reach 1500 km | scenario hybrid")
 
 
-def test_the_digest_is_far_shorter_than_the_serialized_state():
+def test_the_digest_is_far_shorter_than_the_serialized_state() -> None:
     """The whole reason it exists: elapsed time is linear in prompt length."""
     state = make_state()
     digest = render_digest(state, pending_app_ids=[1, 2])

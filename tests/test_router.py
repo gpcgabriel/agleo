@@ -33,56 +33,56 @@ class FakeSession:
         return self.snapshot
 
 
-def test_help_is_answered_locally_without_calling_the_agent():
+def test_help_is_answered_locally_without_calling_the_agent() -> None:
     for prompt in ("/help", "/", "  /HELP  "):
         decision = route(prompt, FakeSession(), has_pending_action=False)
         assert isinstance(decision, LocalReply), prompt
         assert "Available Slash Commands" in decision.text
 
 
-def test_an_unknown_slash_command_is_answered_locally():
+def test_an_unknown_slash_command_is_answered_locally() -> None:
     decision = route("/teleport", FakeSession(), has_pending_action=False)
 
     assert isinstance(decision, LocalReply)
     assert "Unknown command" in decision.text
 
 
-def test_commands_are_blocked_while_viewing_history():
+def test_commands_are_blocked_while_viewing_history() -> None:
     decision = route("/step 5", FakeSession(viewing_latest=False), has_pending_action=False)
 
     assert isinstance(decision, Blocked)
     assert "historical step" in decision.reason
 
 
-def test_commands_are_blocked_while_a_proposal_is_pending():
+def test_commands_are_blocked_while_a_proposal_is_pending() -> None:
     decision = route("/step 5", FakeSession(), has_pending_action=True)
 
     assert isinstance(decision, Blocked)
     assert "pending proposed action" in decision.reason
 
 
-def test_a_slash_command_reaches_the_agent_with_the_short_context():
+def test_a_slash_command_reaches_the_agent_with_the_short_context() -> None:
     decision = route("/step 5", FakeSession(), has_pending_action=False)
 
     assert isinstance(decision, DispatchToAgent)
     assert decision.context_state == QUICK_COMMAND_CONTEXT
 
 
-def test_review_reaches_the_agent_with_the_detailed_state():
+def test_review_reaches_the_agent_with_the_detailed_state() -> None:
     decision = route("/review", FakeSession(), has_pending_action=False)
 
     assert isinstance(decision, DispatchToAgent)
     assert "Simulation State Information" in decision.context_state
 
 
-def test_a_natural_language_question_reaches_the_agent_with_the_detailed_state():
+def test_a_natural_language_question_reaches_the_agent_with_the_detailed_state() -> None:
     decision = route("how many users are connected?", FakeSession(), has_pending_action=False)
 
     assert isinstance(decision, DispatchToAgent)
     assert "Simulation State Information" in decision.context_state
 
 
-def test_history_is_checked_before_the_pending_proposal():
+def test_history_is_checked_before_the_pending_proposal() -> None:
     """Someone looking at the past needs to hear that first: being told to
     resolve a proposal they cannot even see would be confusing."""
     decision = route("/step 5", FakeSession(viewing_latest=False), has_pending_action=True)
@@ -91,7 +91,7 @@ def test_history_is_checked_before_the_pending_proposal():
     assert "historical step" in decision.reason
 
 
-def test_a_question_reaches_the_agent_with_no_way_to_act():
+def test_a_question_reaches_the_agent_with_no_way_to_act() -> None:
     """`/review` used to be held back by an instruction naming the tools, which
     is what let one capability model leak into the other. The router says it is
     a question and the agent is built without an action surface at all."""
@@ -101,7 +101,7 @@ def test_a_question_reaches_the_agent_with_no_way_to_act():
     assert decision.allows_changes is False
 
 
-def test_a_change_reaches_the_agent_able_to_propose_one():
+def test_a_change_reaches_the_agent_able_to_propose_one() -> None:
     decision = route("add a satellite at -7.2, -35.8", FakeSession(), has_pending_action=False)
 
     assert isinstance(decision, DispatchToAgent)

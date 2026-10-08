@@ -47,7 +47,7 @@ def run_in_a_fresh_interpreter(statements: str) -> subprocess.CompletedProcess[s
     return subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, check=False)
 
 
-def test_domain_packages_never_import_streamlit():
+def test_domain_packages_never_import_streamlit() -> None:
     offenders = []
 
     for package in DOMAIN_PACKAGES:
@@ -58,7 +58,7 @@ def test_domain_packages_never_import_streamlit():
     assert not offenders, f"streamlit imported outside app/ui: {offenders}"
 
 
-def test_domain_packages_never_import_the_ui_package():
+def test_domain_packages_never_import_the_ui_package() -> None:
     offenders = []
 
     for package in DOMAIN_PACKAGES:
@@ -69,7 +69,7 @@ def test_domain_packages_never_import_the_ui_package():
     assert not offenders, f"app/ui imported by the domain layer: {offenders}"
 
 
-def test_domain_packages_import_without_streamlit_loaded():
+def test_domain_packages_import_without_streamlit_loaded() -> None:
     """Runtime check: importing the domain must not load Streamlit, not even
     indirectly."""
     completed = run_in_a_fresh_interpreter(
@@ -83,7 +83,7 @@ def test_domain_packages_import_without_streamlit_loaded():
     assert "ok" in completed.stdout
 
 
-def test_every_ui_module_lives_under_the_ui_package():
+def test_every_ui_module_lives_under_the_ui_package() -> None:
     """No interface module may sit loose outside `app/ui`."""
     stray = []
 
@@ -97,7 +97,7 @@ def test_every_ui_module_lives_under_the_ui_package():
     assert not stray, f"interface modules outside app/ui: {stray}"
 
 
-def test_the_engine_never_imports_the_llm_stack():
+def test_the_engine_never_imports_the_llm_stack() -> None:
     """`leosim` must run headless, without Ollama or the agent framework."""
     offenders = []
 
@@ -108,7 +108,7 @@ def test_the_engine_never_imports_the_llm_stack():
     assert not offenders, f"the LLM stack is imported by the engine: {offenders}"
 
 
-def test_the_domain_never_imports_the_agent_package():
+def test_the_domain_never_imports_the_agent_package() -> None:
     """Strategies that need the agent package are injected by the composition
     root, so the domain layer never reaches for them itself."""
     offenders = []
@@ -120,7 +120,7 @@ def test_the_domain_never_imports_the_agent_package():
     assert not offenders, f"app/agents imported by app/core: {offenders}"
 
 
-def test_the_domain_imports_without_the_llm_stack_loaded():
+def test_the_domain_imports_without_the_llm_stack_loaded() -> None:
     """Runtime check: building a simulation must not load the agent framework."""
     completed = run_in_a_fresh_interpreter(
         "import app.core.session, app.core.bootstrap, app.core.handlers;"
@@ -132,7 +132,7 @@ def test_the_domain_imports_without_the_llm_stack_loaded():
     assert "ok" in completed.stdout
 
 
-def test_the_domain_modules_are_importable():
+def test_the_domain_modules_are_importable() -> None:
     for name in ("app.core.session", "app.core.router", "app.core.handlers", "app.agents.dashboard.runner"):
         assert importlib.import_module(name) is not None
 

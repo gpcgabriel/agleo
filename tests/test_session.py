@@ -11,12 +11,12 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.core.config import SimulationConfig
-from app.core.session import create_session
+from app.core.session import SimulationSession, create_session
 from app.core.snapshot import Snapshot
 from leosim.components import User
 
 
-def make_session():
+def make_session() -> SimulationSession:
     config = SimulationConfig(
         gml_path="datasets/rnp.gml",
         satellites_path="datasets/satellites_brazil.json",
@@ -32,7 +32,7 @@ def count_connected_users(snapshot: Snapshot) -> int:
     return sum(1 for user in snapshot["users"] if user["connected_aps"])
 
 
-def test_session_starts_at_step_zero_with_one_snapshot():
+def test_session_starts_at_step_zero_with_one_snapshot() -> None:
     session = make_session()
 
     assert session.simulator.scheduler.steps == 0
@@ -41,14 +41,14 @@ def test_session_starts_at_step_zero_with_one_snapshot():
     assert session.is_viewing_latest()
 
 
-def test_initial_snapshot_already_shows_connectivity():
+def test_initial_snapshot_already_shows_connectivity() -> None:
     """Step 0 must reflect real connectivity: users already in range have to
     show as connected before any tick runs."""
     session = make_session()
     assert count_connected_users(session.get_current_snapshot()) > 0
 
 
-def test_infrastructure_change_publishes_a_snapshot_without_advancing_time():
+def test_infrastructure_change_publishes_a_snapshot_without_advancing_time() -> None:
     session = make_session()
     steps_before = session.simulator.scheduler.steps
     snapshots_before = session.get_step_count()
@@ -60,7 +60,7 @@ def test_infrastructure_change_publishes_a_snapshot_without_advancing_time():
     assert session.is_viewing_latest(), "the operator is not seeing the result of the change"
 
 
-def test_repeated_connectivity_refresh_does_not_duplicate_access_points():
+def test_repeated_connectivity_refresh_does_not_duplicate_access_points() -> None:
     session = make_session()
     session.refresh_connectivity()
     session.refresh_connectivity()
@@ -70,7 +70,7 @@ def test_repeated_connectivity_refresh_does_not_duplicate_access_points():
         assert len(identifiers) == len(set(identifiers)), f"User {user.id} has a duplicated access point"
 
 
-def test_advancing_a_step_moves_the_clock_and_the_history():
+def test_advancing_a_step_moves_the_clock_and_the_history() -> None:
     session = make_session()
     session.advance_one_step()
 
@@ -79,7 +79,7 @@ def test_advancing_a_step_moves_the_clock_and_the_history():
     assert session.get_current_snapshot()["step"] == 1
 
 
-def test_scheduled_steps_are_consumed_one_at_a_time():
+def test_scheduled_steps_are_consumed_one_at_a_time() -> None:
     session = make_session()
     session.request_steps(3)
 
@@ -91,7 +91,7 @@ def test_scheduled_steps_are_consumed_one_at_a_time():
     assert session.simulator.scheduler.steps == 3
 
 
-def test_the_counter_never_goes_below_zero():
+def test_the_counter_never_goes_below_zero() -> None:
     """The progress notice reads this value straight out; "-2 steps remaining"
     was reported from a run that could not be reproduced."""
     session = make_session()
@@ -103,7 +103,7 @@ def test_the_counter_never_goes_below_zero():
     assert session.steps_remaining == 0
 
 
-def test_a_second_batch_is_refused_while_one_is_running():
+def test_a_second_batch_is_refused_while_one_is_running() -> None:
     """Accepting it would silently extend the run in flight, and the operator
     would get more steps than either request asked for."""
     session = make_session()
@@ -118,7 +118,7 @@ def test_a_second_batch_is_refused_while_one_is_running():
         raise AssertionError("a second batch was accepted mid-run")
 
 
-def test_a_batch_is_accepted_once_the_previous_one_has_emptied():
+def test_a_batch_is_accepted_once_the_previous_one_has_emptied() -> None:
     session = make_session()
     session.request_steps(1)
     session.run_next_pending_step()
@@ -128,7 +128,7 @@ def test_a_batch_is_accepted_once_the_previous_one_has_emptied():
     assert session.steps_remaining == 2
 
 
-def test_stopping_discards_the_remaining_scheduled_steps():
+def test_stopping_discards_the_remaining_scheduled_steps() -> None:
     session = make_session()
     session.request_steps(5)
     session.run_next_pending_step()
@@ -138,7 +138,7 @@ def test_stopping_discards_the_remaining_scheduled_steps():
     assert session.simulator.scheduler.steps == 1
 
 
-def test_viewing_an_older_step_is_reported_as_not_latest():
+def test_viewing_an_older_step_is_reported_as_not_latest() -> None:
     session = make_session()
     session.advance_one_step()
     session.view_step(0)
@@ -147,7 +147,7 @@ def test_viewing_an_older_step_is_reported_as_not_latest():
     assert session.get_current_snapshot()["step"] == 0
 
 
-def test_viewing_a_step_outside_the_history_is_refused():
+def test_viewing_a_step_outside_the_history_is_refused() -> None:
     session = make_session()
     try:
         session.view_step(99)

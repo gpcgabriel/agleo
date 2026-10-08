@@ -38,7 +38,7 @@ def apply(session: SimulationSession, build_proposal: Callable[[ProposalBuffer],
     return execute_action(session, last_proposal(buffer))
 
 
-def test_added_satellite_continues_the_internal_numbering():
+def test_added_satellite_continues_the_internal_numbering() -> None:
     """A satellite created by the operator must take the next internal id in
     sequence, like the ones loaded from the scenario."""
     session = make_session()
@@ -53,7 +53,7 @@ def test_added_satellite_continues_the_internal_numbering():
     assert new_satellites[0].name == f"Satellite_{expected_id}"
 
 
-def test_infrastructure_changes_never_advance_the_clock():
+def test_infrastructure_changes_never_advance_the_clock() -> None:
     session = make_session()
 
     apply(session, lambda buffer: buffer.propose_add_node(["Satellite"], [-7.23], [-35.88], [550.0]))
@@ -63,7 +63,7 @@ def test_infrastructure_changes_never_advance_the_clock():
     assert session.simulator.scheduler.steps == 0
 
 
-def test_every_infrastructure_change_publishes_its_own_snapshot():
+def test_every_infrastructure_change_publishes_its_own_snapshot() -> None:
     session = make_session()
     snapshots_before = session.get_step_count()
 
@@ -73,7 +73,7 @@ def test_every_infrastructure_change_publishes_its_own_snapshot():
     assert session.is_viewing_latest()
 
 
-def test_timeline_labels_separate_ticks_from_changes():
+def test_timeline_labels_separate_ticks_from_changes() -> None:
     """The timeline must name each snapshot after the tick it belongs to, so
     changes made within step 0 never read as step 1."""
     session = make_session()
@@ -83,7 +83,7 @@ def test_timeline_labels_separate_ticks_from_changes():
     assert session.get_snapshot_labels() == ["Step 0", "Step 0 · change 1", "Step 0 · change 2"]
 
 
-def test_attaching_a_server_to_a_station_without_one_works():
+def test_attaching_a_server_to_a_station_without_one_works() -> None:
     """A station that was serialized without servers must still accept its
     first one."""
     session = make_session()
@@ -96,7 +96,7 @@ def test_attaching_a_server_to_a_station_without_one_works():
     assert len(station.process_unit) == 1
 
 
-def test_adding_an_application_to_an_unknown_user_is_reported():
+def test_adding_an_application_to_an_unknown_user_is_reported() -> None:
     session = make_session()
     result = apply(session, lambda buffer: buffer.propose_add_app_to_user(9999, 10, 10))
 

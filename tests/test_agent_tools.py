@@ -33,7 +33,7 @@ def make_config() -> SimulationConfig:
     )
 
 
-def test_run_simulation_registers_typed_proposal():
+def test_run_simulation_registers_typed_proposal() -> None:
     buffer = ProposalBuffer()
     message = buffer.propose_run_simulation(5)
 
@@ -46,7 +46,7 @@ def test_run_simulation_registers_typed_proposal():
     assert action.payload.steps == 5
 
 
-def test_invalid_input_returns_message_instead_of_raising():
+def test_invalid_input_returns_message_instead_of_raising() -> None:
     buffer = ProposalBuffer()
 
     assert buffer.propose_run_simulation(0).startswith("Error:")
@@ -55,7 +55,7 @@ def test_invalid_input_returns_message_instead_of_raising():
     assert buffer.get_proposals() == []
 
 
-def test_add_node_accepts_json_strings_from_the_model():
+def test_add_node_accepts_json_strings_from_the_model() -> None:
     buffer = ProposalBuffer()
     buffer.propose_add_node('["Satellite"]', "[-21.0]", "[-47.8]", "[550.0]")
 
@@ -66,7 +66,7 @@ def test_add_node_accepts_json_strings_from_the_model():
     assert action.payload.nodes[0].node_type == "Satellite"
 
 
-def test_add_node_rejects_mismatched_parallel_lists():
+def test_add_node_rejects_mismatched_parallel_lists() -> None:
     buffer = ProposalBuffer()
     message = buffer.propose_add_node(["Satellite", "Satellite"], [-21.0], [-47.8], [550.0])
 
@@ -74,7 +74,7 @@ def test_add_node_rejects_mismatched_parallel_lists():
     assert buffer.get_proposals() == []
 
 
-def test_repeated_add_node_calls_merge_into_one_proposal():
+def test_repeated_add_node_calls_merge_into_one_proposal() -> None:
     buffer = ProposalBuffer()
     buffer.propose_add_node(["Satellite"], [-21.0], [-47.8], [550.0])
     buffer.propose_add_node(["Satellite"], [-21.01], [-47.8], [550.0])
@@ -85,7 +85,7 @@ def test_repeated_add_node_calls_merge_into_one_proposal():
     assert len(payload.nodes) == 2
 
 
-def test_restart_keeps_current_values_for_omitted_arguments():
+def test_restart_keeps_current_values_for_omitted_arguments() -> None:
     buffer = ProposalBuffer(current_config=make_config())
     buffer.propose_restart_simulation(num_users=50)
 
@@ -97,12 +97,12 @@ def test_restart_keeps_current_values_for_omitted_arguments():
     assert config.gml_path == "datasets/rnp.gml"
 
 
-def test_restart_without_loaded_simulation_is_refused():
+def test_restart_without_loaded_simulation_is_refused() -> None:
     buffer = ProposalBuffer(current_config=None)
     assert buffer.propose_restart_simulation().startswith("Error:")
 
 
-def test_adding_a_unit_and_adding_nodes_are_distinct_actions():
+def test_adding_a_unit_and_adding_nodes_are_distinct_actions() -> None:
     """Each proposal must carry its own action type. Sharing one type across
     incompatible payload shapes is what let a malformed proposal reach the
     executor."""
@@ -126,7 +126,7 @@ def test_adding_a_unit_and_adding_nodes_are_distinct_actions():
     assert nodes_action.payload.nodes[0].lat == -21.0
 
 
-def test_tool_list_exposes_every_proposal_tool():
+def test_tool_list_exposes_every_proposal_tool() -> None:
     buffer = ProposalBuffer()
     names = [tool.__name__ for tool in buffer.get_tools()]
 

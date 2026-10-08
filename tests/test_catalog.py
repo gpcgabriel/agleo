@@ -12,7 +12,7 @@ TRACES = "datasets/satellites_brazil.json"
 GROUND_STATION_3 = (-7.2306, -35.8811, 0)
 
 
-def test_catalog_indexes_the_whole_file():
+def test_catalog_indexes_the_whole_file() -> None:
     catalog = get_catalog(TRACES)
 
     assert catalog.count_satellites() > 0
@@ -20,7 +20,7 @@ def test_catalog_indexes_the_whole_file():
     assert catalog.step_count > 0
 
 
-def test_closest_satellite_is_found_and_its_trace_starts_at_that_position():
+def test_closest_satellite_is_found_and_its_trace_starts_at_that_position() -> None:
     catalog = get_catalog(TRACES)
     catalog_id, position = catalog.get_closest_satellite(GROUND_STATION_3)
 
@@ -31,7 +31,7 @@ def test_closest_satellite_is_found_and_its_trace_starts_at_that_position():
     assert len(trace) >= 1
 
 
-def test_excluded_satellites_are_never_returned():
+def test_excluded_satellites_are_never_returned() -> None:
     catalog = get_catalog(TRACES)
     first_id, _ = catalog.get_closest_satellite(GROUND_STATION_3)
     assert first_id is not None
@@ -41,19 +41,19 @@ def test_excluded_satellites_are_never_returned():
     assert second_id != first_id
 
 
-def test_excluding_every_satellite_reports_no_candidate():
+def test_excluding_every_satellite_reports_no_candidate() -> None:
     catalog = get_catalog(TRACES)
     every_id = set(catalog.positions_by_id)
 
     assert catalog.get_closest_satellite(GROUND_STATION_3, exclude_ids=every_id) == (None, None)
 
 
-def test_an_unknown_position_yields_a_single_point_trace():
+def test_an_unknown_position_yields_a_single_point_trace() -> None:
     catalog = get_catalog(TRACES)
     assert catalog.get_coordinates_trace(999999999, (0.0, 0.0, 0.0)) == [(0.0, 0.0, 0.0)]
 
 
-def test_lookup_is_fast_enough_for_interactive_use():
+def test_lookup_is_fast_enough_for_interactive_use() -> None:
     """Adding a satellite happens while the operator waits, so the lookup has
     to stay well under a second over the full traces file."""
     catalog = get_catalog(TRACES)
@@ -65,11 +65,11 @@ def test_lookup_is_fast_enough_for_interactive_use():
     assert elapsed < 1.0, f"lookup took {elapsed:.2f}s"
 
 
-def test_the_same_file_is_indexed_only_once():
+def test_the_same_file_is_indexed_only_once() -> None:
     assert get_catalog(TRACES) is get_catalog(TRACES)
 
 
-def test_a_catalog_can_be_built_from_any_path():
+def test_a_catalog_can_be_built_from_any_path() -> None:
     """The trace file chosen in the sidebar must reach the catalog."""
     catalog = SatelliteCatalog(TRACES)
     assert catalog.path == TRACES

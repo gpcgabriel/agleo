@@ -20,7 +20,7 @@ QUICK_COMMAND_CONTEXT = (
 )
 
 
-def make_config():
+def make_config() -> SimulationConfig:
     return SimulationConfig(
         gml_path="datasets/rnp.gml",
         satellites_path="datasets/satellites_brazil.json",
@@ -31,7 +31,7 @@ def make_config():
     )
 
 
-def resolve_model():
+def resolve_model() -> str | None:
     """Resolves the default model to a tag present in the local Ollama.
 
     `DEFAULT_MODEL` is the untagged name ("llama3.1"), while the Ollama API
@@ -49,7 +49,7 @@ def resolve_model():
     return None
 
 
-def test_step_command_proposes_running_the_simulation():
+def test_step_command_proposes_running_the_simulation() -> None:
     model = resolve_model()
     if model is None:
         print("  SKIP  test_step_command_proposes_running_the_simulation (Ollama or model unavailable)")
@@ -64,7 +64,7 @@ def test_step_command_proposes_running_the_simulation():
     assert action.payload.steps == 5
 
 
-def test_restart_command_proposes_restarting_with_current_config():
+def test_restart_command_proposes_restarting_with_current_config() -> None:
     model = resolve_model()
     if model is None:
         print("  SKIP  test_restart_command_proposes_restarting_with_current_config (Ollama or model unavailable)")
@@ -79,7 +79,7 @@ def test_restart_command_proposes_restarting_with_current_config():
     assert action.payload.config.scenario == "hybrid"
 
 
-def test_review_command_answers_without_proposing_anything():
+def test_review_command_answers_without_proposing_anything() -> None:
     """The router decides `/review` is a question and hands the agent no way to
     act, so `action_mode` is None here exactly as it is in the interface. What
     used to hold it back was an instruction naming the tools, and that is what

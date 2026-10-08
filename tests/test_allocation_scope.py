@@ -18,7 +18,7 @@ from leosim.components import Application, GroundStation, Satellite, User
 from leosim.components.application_access_models import FixedDurationAccessModel
 
 
-def reset_components():
+def reset_components() -> None:
     for component_class in (Application, GroundStation, Satellite, User, FixedDurationAccessModel):
         component_class.clear()
 
@@ -35,7 +35,7 @@ def make_user_with_application(access_points: Sequence[GroundStation | Satellite
     return user, application
 
 
-def test_a_station_is_asked_about_users_on_the_satellites_it_reaches():
+def test_a_station_is_asked_about_users_on_the_satellites_it_reaches() -> None:
     reset_components()
     station = GroundStation(coordinates=(0.0, 0.0, 0.0))
     satellite = Satellite(coordinates=(0.0, 0.0, 550.0))
@@ -46,7 +46,7 @@ def test_a_station_is_asked_about_users_on_the_satellites_it_reaches():
     assert servable == [application.id]
 
 
-def test_a_station_is_not_asked_about_users_on_satellites_it_cannot_reach():
+def test_a_station_is_not_asked_about_users_on_satellites_it_cannot_reach() -> None:
     reset_components()
     station = GroundStation(coordinates=(0.0, 0.0, 0.0))
     far_satellite = Satellite(coordinates=(80.0, 80.0, 550.0))
@@ -57,7 +57,7 @@ def test_a_station_is_not_asked_about_users_on_satellites_it_cannot_reach():
     assert servable == []
 
 
-def test_a_station_is_asked_about_users_attached_to_it_directly():
+def test_a_station_is_asked_about_users_attached_to_it_directly() -> None:
     reset_components()
     station = GroundStation(coordinates=(0.0, 0.0, 0.0))
     _, application = make_user_with_application([station])
@@ -67,7 +67,7 @@ def test_a_station_is_asked_about_users_attached_to_it_directly():
     assert servable == [application.id]
 
 
-def test_a_disconnected_user_is_nobody_s_to_serve():
+def test_a_disconnected_user_is_nobody_s_to_serve() -> None:
     reset_components()
     station = GroundStation(coordinates=(0.0, 0.0, 0.0))
     satellite = Satellite(coordinates=(0.0, 0.0, 550.0))
@@ -78,7 +78,7 @@ def test_a_disconnected_user_is_nobody_s_to_serve():
     assert servable == []
 
 
-def test_only_applications_still_pending_are_returned():
+def test_only_applications_still_pending_are_returned() -> None:
     """An application already placed is not pending, so it is not asked about.
 
     The station can reach the user either way; what decides it is whether the
@@ -97,7 +97,7 @@ def test_only_applications_still_pending_are_returned():
     assert not_asked == []
 
 
-def test_a_station_with_no_reach_and_no_server_is_skipped():
+def test_a_station_with_no_reach_and_no_server_is_skipped() -> None:
     """Moved here from tests/test_allocation.py, where the same assertion cost
     a whole simulation session to set up."""
     reset_components()
@@ -107,7 +107,7 @@ def test_a_station_with_no_reach_and_no_server_is_skipped():
     assert should_skip(station, [1], set()) == "no satellites or process units in range"
 
 
-def test_two_stations_reaching_different_users_get_different_questions():
+def test_two_stations_reaching_different_users_get_different_questions() -> None:
     """This is the property the whole design rests on."""
     reset_components()
     north_station = GroundStation(coordinates=(0.0, 0.0, 0.0))
@@ -123,7 +123,7 @@ def test_two_stations_reaching_different_users_get_different_questions():
     assert find_servable_app_ids(south_station, pending, {south_satellite.id}) == [south_application.id]
 
 
-def test_a_station_with_nothing_to_serve_skips():
+def test_a_station_with_nothing_to_serve_skips() -> None:
     reset_components()
     station = GroundStation(coordinates=(0.0, 0.0, 0.0))
     station.process_unit = []

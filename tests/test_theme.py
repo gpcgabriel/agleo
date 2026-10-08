@@ -36,21 +36,21 @@ def variables_of(css: str) -> set[str]:
     return set(re.findall(r"(--[\w-]+)\s*:", css))
 
 
-def test_each_theme_resolves_to_its_own_file():
+def test_each_theme_resolves_to_its_own_file() -> None:
     assert resolve_theme_file(True).endswith(DARK_THEME_FILE)
     assert resolve_theme_file(False).endswith(LIGHT_THEME_FILE)
 
 
-def test_both_stylesheets_exist():
+def test_both_stylesheets_exist() -> None:
     for filename in (DARK_THEME_FILE, LIGHT_THEME_FILE):
         assert os.path.isfile(os.path.join(HTML_DIR, filename)), f"{filename} is missing"
 
 
-def test_the_two_themes_are_not_the_same_file():
+def test_the_two_themes_are_not_the_same_file() -> None:
     assert read_theme(True) != read_theme(False)
 
 
-def test_neither_theme_styles_something_the_other_ignores():
+def test_neither_theme_styles_something_the_other_ignores() -> None:
     """A selector on one side only means one theme is drifting out of parity."""
     dark, light = selectors_of(read_theme(True)), selectors_of(read_theme(False))
 
@@ -58,7 +58,7 @@ def test_neither_theme_styles_something_the_other_ignores():
     assert light - dark == set(), f"only light styles: {sorted(light - dark)}"
 
 
-def test_every_variable_one_theme_defines_the_other_defines_too():
+def test_every_variable_one_theme_defines_the_other_defines_too() -> None:
     """A variable missing on one side renders as an invalid value, not a default."""
     dark, light = variables_of(read_theme(True)), variables_of(read_theme(False))
 
@@ -66,7 +66,7 @@ def test_every_variable_one_theme_defines_the_other_defines_too():
     assert light - dark == set(), f"only light defines: {sorted(light - dark)}"
 
 
-def test_no_variable_is_referenced_without_being_defined():
+def test_no_variable_is_referenced_without_being_defined() -> None:
     for is_dark in (True, False):
         css = read_theme(is_dark)
         defined = variables_of(css)

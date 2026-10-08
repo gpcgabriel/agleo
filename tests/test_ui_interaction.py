@@ -5,7 +5,7 @@ import time
 from playwright.sync_api import sync_playwright
 
 
-def run_ui_test():
+def run_ui_test() -> None:
     # Reading the port from the environment so this follows whatever the app is
     # actually served on; 8502 is what `.claude/launch.json` starts.
     target_url = os.environ.get("LEOSIM_URL", "http://localhost:8502/")

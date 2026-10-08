@@ -96,7 +96,7 @@ def user_rows(provisioned_per_step: list[int]) -> list[Row]:
 # -- What each figure shows ----------------------------------------------------
 
 
-def test_a_user_counts_from_its_second_step():
+def test_a_user_counts_from_its_second_step() -> None:
     """There is nothing to compare a user's first step with, so it is not counted."""
     rows = [
         {"Step": 0, "metrics": [user(1, access(True, True, delay=5.0))]},
@@ -111,7 +111,7 @@ def test_a_user_counts_from_its_second_step():
     assert waiting == [0, 0]
 
 
-def test_a_user_that_asked_and_was_not_served_is_waiting():
+def test_a_user_that_asked_and_was_not_served_is_waiting() -> None:
     rows = [
         {"Step": 0, "metrics": [user(1, access(True, False))]},
         {"Step": 1, "metrics": [user(1, access(True, False))]},
@@ -123,7 +123,7 @@ def test_a_user_that_asked_and_was_not_served_is_waiting():
     assert waiting == [0, 1]
 
 
-def test_an_unreachable_application_adds_no_delay():
+def test_an_unreachable_application_adds_no_delay() -> None:
     """A flow with no path reports an infinite delay; summing it would swamp the figure."""
     rows = [
         {"Step": 0, "metrics": [user(1, access(True, True))]},
@@ -136,20 +136,20 @@ def test_an_unreachable_application_adds_no_delay():
     assert delays == [0, 0]
 
 
-def test_repetitions_are_averaged_over_the_steps_they_share():
+def test_repetitions_are_averaged_over_the_steps_they_share() -> None:
     averaged = average_runs([([0, 1, 2], [2, 4, 6]), ([0, 1], [4, 8])])
 
     assert averaged == ([0, 1], [3.0, 6.0])
 
 
-def test_migrations_count_applications_with_a_recorded_move():
+def test_migrations_count_applications_with_a_recorded_move() -> None:
     steps, migrations = migration_series(application_rows([0, 2, 3]))
 
     assert steps == [0, 1, 2]
     assert migrations == [0, 2, 3]
 
 
-def test_resource_use_is_the_mean_of_the_hosted_applications():
+def test_resource_use_is_the_mean_of_the_hosted_applications() -> None:
     steps, cpu, memory = resource_series(application_rows([0, 2]))
 
     assert steps == [0, 1]
@@ -157,7 +157,7 @@ def test_resource_use_is_the_mean_of_the_hosted_applications():
     assert memory == [0, 20.0]
 
 
-def test_station_delay_follows_only_the_users_on_that_station():
+def test_station_delay_follows_only_the_users_on_that_station() -> None:
     rows = [
         {
             "Step": 0,
@@ -171,7 +171,7 @@ def test_station_delay_follows_only_the_users_on_that_station():
     assert station_delay_series(rows, station_id=1) == ([0], [3.0])
 
 
-def test_station_links_count_the_satellites_linked_to_it():
+def test_station_links_count_the_satellites_linked_to_it() -> None:
     rows = [
         {
             "Step": 0,
@@ -187,7 +187,7 @@ def test_station_links_count_the_satellites_linked_to_it():
     assert station_link_series(rows, station_id=1) == ([0], [2])
 
 
-def test_a_user_is_provisioned_from_its_second_step_in_the_topology_figure():
+def test_a_user_is_provisioned_from_its_second_step_in_the_topology_figure() -> None:
     rows = [
         {"Step": 0, "metrics": [user(1, access(True, True))]},
         {"Step": 1, "metrics": [user(1, access(True, True))]},
@@ -196,7 +196,7 @@ def test_a_user_is_provisioned_from_its_second_step_in_the_topology_figure():
     assert provisioned_series(rows) == ([0, 1], [0, 1])
 
 
-def test_each_topology_is_read_from_its_own_runs():
+def test_each_topology_is_read_from_its_own_runs() -> None:
     """A topology's line comes from that topology's runs alone, so two topologies can differ."""
     with tempfile.TemporaryDirectory() as logs:
         write_run(
@@ -211,7 +211,7 @@ def test_each_topology_is_read_from_its_own_runs():
     assert series == {"geant": ([0, 1], [1.0, 2.0]), "rnp": ([0, 1], [1.0, 4.0])}
 
 
-def test_a_missing_repetition_is_skipped_rather_than_failing_the_figure():
+def test_a_missing_repetition_is_skipped_rather_than_failing_the_figure() -> None:
     with tempfile.TemporaryDirectory() as logs:
         write_run(os.path.join(logs, "best_fit", "hybrid", "rep1"), "Application.jsonl", application_rows([2]))
 
@@ -223,7 +223,7 @@ def test_a_missing_repetition_is_skipped_rather_than_failing_the_figure():
 # -- Writing the figures ---------------------------------------------------------
 
 
-def test_every_figure_is_written():
+def test_every_figure_is_written() -> None:
     with tempfile.TemporaryDirectory() as logs:
         topology = os.path.join(logs, "rnp")
         for rep in (1, 2):
@@ -260,7 +260,7 @@ def test_every_figure_is_written():
     )
 
 
-def test_the_station_figures_follow_the_station_asked_for():
+def test_the_station_figures_follow_the_station_asked_for() -> None:
     links = partial(station_link_series, station_id=2)
     rows = [{"Step": 0, "metrics": [{"Nodes": ["Satellite_1", "GroundStation_2"]}]}]
 

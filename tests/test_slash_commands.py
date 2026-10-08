@@ -21,13 +21,13 @@ from app.core.slash_commands import SLASH_COMMANDS, get_commands_for_js, get_hel
 REQUIRED_KEYS = ("cmd", "desc", "auto_submit", "local")
 
 
-def test_every_command_carries_the_keys_its_consumers_read():
+def test_every_command_carries_the_keys_its_consumers_read() -> None:
     for command in SLASH_COMMANDS:
         for key in REQUIRED_KEYS:
             assert key in command, f"{command.get('cmd', command)} has no {key!r}"
 
 
-def test_help_is_registered_and_answered_without_the_agent():
+def test_help_is_registered_and_answered_without_the_agent() -> None:
     """`/help` is the one command the router answers locally; if the registry
     stops saying so, it goes to the model and costs a round trip."""
     help_command = next((c for c in SLASH_COMMANDS if c["cmd"] == "/help"), None)
@@ -36,7 +36,7 @@ def test_help_is_registered_and_answered_without_the_agent():
     assert help_command["local"] is True
 
 
-def test_the_help_message_mentions_every_command():
+def test_the_help_message_mentions_every_command() -> None:
     """A command absent from the help message exists only for whoever already
     knows it is there."""
     message = get_help_message()
@@ -45,7 +45,7 @@ def test_the_help_message_mentions_every_command():
         assert command["cmd"].strip() in message, f"{command['cmd']} is missing from the help message"
 
 
-def test_the_javascript_menu_offers_the_same_commands_in_its_own_shape():
+def test_the_javascript_menu_offers_the_same_commands_in_its_own_shape() -> None:
     """`accessibility.js` reads `autoSubmit`, not `auto_submit`."""
     for_js = get_commands_for_js()
 
@@ -55,7 +55,7 @@ def test_the_javascript_menu_offers_the_same_commands_in_its_own_shape():
             assert key in command, f"{command.get('cmd', command)} has no {key!r}"
 
 
-def test_the_menu_survives_the_trip_into_javascript():
+def test_the_menu_survives_the_trip_into_javascript() -> None:
     """It is interpolated into the script as JSON, so a value that cannot be
     serialized breaks the slash menu and nothing else, silently."""
     serialized = json.dumps(get_commands_for_js(), ensure_ascii=False)

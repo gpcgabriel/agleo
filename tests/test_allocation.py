@@ -17,12 +17,12 @@ from app.agents.allocation.decision import AllocationDecision, reconcile
 from app.agents.allocation.prompt import build_allocation_prompt, build_history_section
 from app.agents.allocation.state import collect_state, find_pending_app_ids
 from app.core.config import SimulationConfig
-from app.core.session import create_session
+from app.core.session import SimulationSession, create_session
 from app.helper_functions.ollama_helper import is_ollama_running, list_local_models
 from leosim.components import GroundStation
 
 
-def make_session():
+def make_session() -> SimulationSession:
     config = SimulationConfig(
         gml_path="datasets/rnp.gml",
         satellites_path="datasets/satellites_brazil.json",
@@ -34,7 +34,7 @@ def make_session():
     return create_session(config)
 
 
-def resolve_model():
+def resolve_model() -> str | None:
     """Returns: str or None: A local model usable for the integration test."""
     if not is_ollama_running():
         return None
@@ -46,7 +46,7 @@ def resolve_model():
 # -- Decision handling ------------------------------------------------------
 
 
-def test_an_application_is_never_placed_by_two_strategies():
+def test_an_application_is_never_placed_by_two_strategies() -> None:
     decision = AllocationDecision(best_fit=[1, 2], longest_duration=[2, 3])
     answer = reconcile(decision, [1, 2, 3])
 
@@ -55,7 +55,7 @@ def test_an_application_is_never_placed_by_two_strategies():
     assert not set(answer.best_fit) & set(answer.longest_duration)
 
 
-def test_an_empty_decision_is_valid():
+def test_an_empty_decision_is_valid() -> None:
     answer = reconcile(AllocationDecision(), [])
 
     assert answer.best_fit == []
@@ -63,7 +63,7 @@ def test_an_empty_decision_is_valid():
     assert answer.is_complete()
 
 
-def test_an_application_the_reply_left_out_is_reported():
+def test_an_application_the_reply_left_out_is_reported() -> None:
     """Issue Q: an omitted application was not placed, not counted as failed
     and absent from `details`, so 19% of decisions left no trace at all."""
     answer = reconcile(AllocationDecision(best_fit=[1], longest_duration=[2]), [1, 2, 3, 4])
@@ -72,7 +72,7 @@ def test_an_application_the_reply_left_out_is_reported():
     assert not answer.is_complete()
 
 
-def test_an_id_the_station_was_not_asked_about_is_not_placed():
+def test_an_id_the_station_was_not_asked_about_is_not_placed() -> None:
     """`hybrid_allocation` places any id handed to it, so the station would
     act outside the neighbourhood it was given."""
     answer = reconcile(AllocationDecision(best_fit=[1, 99], longest_duration=[2]), [1, 2])
@@ -81,21 +81,21 @@ def test_an_id_the_station_was_not_asked_about_is_not_placed():
     assert answer.invented == [99]
 
 
-def test_an_empty_reply_to_a_real_question_omits_everything():
+def test_an_empty_reply_to_a_real_question_omits_everything() -> None:
     answer = reconcile(AllocationDecision(), [7, 8])
 
     assert answer.omitted == [7, 8]
     assert answer.best_fit == [] and answer.longest_duration == []
 
 
-def test_a_reply_that_covers_the_question_exactly_is_complete():
+def test_a_reply_that_covers_the_question_exactly_is_complete() -> None:
     answer = reconcile(AllocationDecision(best_fit=[2], longest_duration=[1]), [1, 2])
 
     assert answer.is_complete()
     assert answer.omitted == [] and answer.invented == []
 
 
-def test_a_duplicate_is_dropped_without_being_called_omitted():
+def test_a_duplicate_is_dropped_without_being_called_omitted() -> None:
     """The id is covered, just twice; counting it as omitted would overstate
     the failure rate the measurement is there to report."""
     answer = reconcile(AllocationDecision(best_fit=[5], longest_duration=[5]), [5])
@@ -105,7 +105,7 @@ def test_a_duplicate_is_dropped_without_being_called_omitted():
     assert answer.is_complete()
 
 
-def test_omissions_keep_the_order_the_question_had():
+def test_omissions_keep_the_order_the_question_had() -> None:
     answer = reconcile(AllocationDecision(best_fit=[20]), [30, 20, 10])
 
     assert answer.omitted == [30, 10]
@@ -114,13 +114,13 @@ def test_omissions_keep_the_order_the_question_had():
 # -- State selection --------------------------------------------------------
 
 
-def test_only_pending_applications_are_collected():
+def test_only_pending_applications_are_collected() -> None:
     all_apps = {"App_1": {"pending": True}, "App_2": {"pending": False}, "App_3": {"pending": True}}
 
     assert sorted(find_pending_app_ids(all_apps)) == [1, 3]
 
 
-def test_collect_state_reports_a_skip_reason_instead_of_a_partial_state():
+def test_collect_state_reports_a_skip_reason_instead_of_a_partial_state() -> None:
     session = make_session()
     station = GroundStation.all()[0]
 
@@ -143,7 +143,7 @@ def test_collect_state_reports_a_skip_reason_instead_of_a_partial_state():
             assert section in state, f"state is missing '{section}'"
 
 
-def test_every_process_unit_records_where_it_sits():
+def test_every_process_unit_records_where_it_sits() -> None:
     """A unit in orbit and a unit on the ground are reached by different paths.
 
     `build_network_state` drops each satellite's `pu` field after collecting
@@ -167,13 +167,13 @@ def test_every_process_unit_records_where_it_sits():
 # -- Prompt -----------------------------------------------------------------
 
 
-def test_the_prompt_names_the_pending_applications():
+def test_the_prompt_names_the_pending_applications() -> None:
     prompt = build_allocation_prompt({"step": 0}, [7, 9], [])
 
     assert "[7, 9]" in prompt
 
 
-def test_the_prompt_carries_the_digest_rather_than_serialized_state():
+def test_the_prompt_carries_the_digest_rather_than_serialized_state() -> None:
     prompt = build_allocation_prompt({"step": 0}, [7, 9], [])
 
     assert "PLACE THESE APPLICATIONS" in prompt
@@ -181,7 +181,7 @@ def test_the_prompt_carries_the_digest_rather_than_serialized_state():
     assert "{" not in prompt, "the state is being serialized, not rendered"
 
 
-def test_history_is_absent_until_there_is_one():
+def test_history_is_absent_until_there_is_one() -> None:
     assert build_history_section([]) == ""
 
     entry = {"step": 1, "best_fit": [1], "longest_duration": [], "results": {"provisioned": 1, "failed": 0}}
@@ -194,7 +194,7 @@ def test_history_is_absent_until_there_is_one():
 # -- Injection --------------------------------------------------------------
 
 
-def test_the_allocator_is_shaped_like_a_plain_allocation_algorithm():
+def test_the_allocator_is_shaped_like_a_plain_allocation_algorithm() -> None:
     """The engine injects it exactly like best_fit_allocation, which is what
     keeps the LLM stack out of `leosim`."""
     allocator = LLMAllocator(model_name="unused")
@@ -203,7 +203,7 @@ def test_the_allocator_is_shaped_like_a_plain_allocation_algorithm():
     assert parameters == ["model", "parameters"]
 
 
-def test_decisions_are_kept_per_ground_station():
+def test_decisions_are_kept_per_ground_station() -> None:
     allocator = LLMAllocator(model_name="unused")
 
     assert allocator.get_decisions(1) == []
@@ -216,7 +216,7 @@ def test_decisions_are_kept_per_ground_station():
 # -- Integration ------------------------------------------------------------
 
 
-def test_one_station_decides_through_the_model():
+def test_one_station_decides_through_the_model() -> None:
     model_name = resolve_model()
     if model_name is None:
         print("  SKIP  test_one_station_decides_through_the_model (Ollama unavailable)")

@@ -11,7 +11,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.core.config import SimulationConfig
-from app.core.session import create_session
+from app.core.session import SimulationSession, create_session
 from leosim.components import GroundStation, Satellite, User
 
 GML = "datasets/rnp.gml"
@@ -20,7 +20,7 @@ NUM_USERS = 20
 NUM_SATELLITES = 15
 
 
-def make_session():
+def make_session() -> SimulationSession:
     config = SimulationConfig(
         gml_path=GML,
         satellites_path=TRACES,
@@ -32,7 +32,7 @@ def make_session():
     return create_session(config)
 
 
-def test_the_scenario_matches_the_requested_configuration():
+def test_the_scenario_matches_the_requested_configuration() -> None:
     make_session()
 
     assert User.count() == NUM_USERS
@@ -40,7 +40,7 @@ def test_the_scenario_matches_the_requested_configuration():
     assert GroundStation.count() > 0
 
 
-def test_the_first_snapshot_carries_every_section():
+def test_the_first_snapshot_carries_every_section() -> None:
     snapshot = make_session().get_current_snapshot()
 
     for section in ("step", "label", "satellites", "ground_stations", "users", "links"):
@@ -52,7 +52,7 @@ def test_the_first_snapshot_carries_every_section():
     assert len(snapshot["links"]) > 0
 
 
-def test_the_hybrid_scenario_places_process_units_on_both_sides():
+def test_the_hybrid_scenario_places_process_units_on_both_sides() -> None:
     make_session()
 
     satellites_with_units = [s for s in Satellite.all() if s.process_unit]

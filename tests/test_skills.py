@@ -87,13 +87,13 @@ def load_skills() -> list[Skill]:
     return LocalSkills(SKILLS_DIRECTORY).load()
 
 
-def test_the_skills_directory_travels_with_the_package():
+def test_the_skills_directory_travels_with_the_package() -> None:
     """Streamlit is launched from wherever the operator is, not from the repo root."""
     assert os.path.isabs(SKILLS_DIRECTORY)
     assert os.path.isdir(SKILLS_DIRECTORY)
 
 
-def test_each_skill_declares_a_name_and_a_description():
+def test_each_skill_declares_a_name_and_a_description() -> None:
     """`LocalSkills` validates on load, so an invalid skill raises before the
     assertions below are reached."""
     skills = load_skills()
@@ -105,26 +105,26 @@ def test_each_skill_declares_a_name_and_a_description():
         assert skill.instructions.strip(), f"{skill.name} has no instructions"
 
 
-def test_a_description_says_when_to_use_the_skill():
+def test_a_description_says_when_to_use_the_skill() -> None:
     """The description is all the model sees before deciding to open a skill."""
     for skill in load_skills():
         assert "use when" in skill.description.lower(), f"{skill.name} does not say when it applies"
 
 
-def test_tools_mode_builds_with_the_proposal_tools():
+def test_tools_mode_builds_with_the_proposal_tools() -> None:
     agent = build_agent(MODEL_FOR_ASSEMBLY, MODE_TOOLS, ProposalBuffer())
 
     assert isinstance(agent.tools, list)
     assert len(agent.tools) == len(ProposalBuffer().get_tools())
 
 
-def test_skills_mode_builds_instead_of_raising():
+def test_skills_mode_builds_instead_of_raising() -> None:
     agent = build_agent(MODEL_FOR_ASSEMBLY, MODE_SKILLS, ProposalBuffer())
 
     assert agent is not None
 
 
-def test_skills_mode_does_not_get_the_proposal_tools():
+def test_skills_mode_does_not_get_the_proposal_tools() -> None:
     """The two modes are the comparison: tool schemas against progressive disclosure.
 
     Handing this mode the tools as well would leave nothing to compare.
@@ -134,7 +134,7 @@ def test_skills_mode_does_not_get_the_proposal_tools():
     assert not agent.tools
 
 
-def test_a_skill_script_proposal_reaches_the_buffer():
+def test_a_skill_script_proposal_reaches_the_buffer() -> None:
     """A script runs as a subprocess, so its output has to be read back."""
     printed = json.dumps(
         {
@@ -157,7 +157,7 @@ def test_a_skill_script_proposal_reaches_the_buffer():
     assert buffer.get_proposals()[0].action_type == "add_user"
 
 
-def test_a_script_that_failed_proposes_nothing():
+def test_a_script_that_failed_proposes_nothing() -> None:
     printed = json.dumps({"stdout": json.dumps({"error": "steps must be >= 1, got 0."})})
     buffer = ProposalBuffer()
 
@@ -167,7 +167,7 @@ def test_a_script_that_failed_proposes_nothing():
     assert buffer.get_proposals() == []
 
 
-def test_a_proposal_with_invalid_arguments_is_refused_here_too():
+def test_a_proposal_with_invalid_arguments_is_refused_here_too() -> None:
     """The script validates, but the runner must not trust it to have done so."""
     printed = json.dumps(
         {"stdout": json.dumps({"proposal": {"action_type": "run_simulation", "arguments": {"steps": 0}}})}
@@ -179,7 +179,7 @@ def test_a_proposal_with_invalid_arguments_is_refused_here_too():
     assert recorded == 0
 
 
-def test_other_tool_results_are_ignored():
+def test_other_tool_results_are_ignored() -> None:
     buffer = ProposalBuffer()
 
     recorded = collect_script_proposals(FakeResponse([FakeExecution("get_skill_instructions", "{}")]), buffer)
@@ -187,7 +187,7 @@ def test_other_tool_results_are_ignored():
     assert recorded == 0
 
 
-def test_there_is_one_skill_per_action():
+def test_there_is_one_skill_per_action() -> None:
     """Progressive disclosure is the point: a single skill would load everything.
 
     With one skill per action, an operator who only instantiates applications
@@ -196,14 +196,14 @@ def test_there_is_one_skill_per_action():
     assert {skill.name for skill in load_skills()} == set(EXPECTED_SKILLS)
 
 
-def test_there_is_one_skill_per_tool():
+def test_there_is_one_skill_per_tool() -> None:
     """The comparison only measures the capability model if both modes can do
     the same things. Restarting was the one action Tools had and Skills did
     not, which made every run of that command a Tools win by construction."""
     assert len(load_skills()) == len(ProposalBuffer().get_tools())
 
 
-def test_each_skill_proposes_the_action_it_is_named_for():
+def test_each_skill_proposes_the_action_it_is_named_for() -> None:
     for skill_name, arguments in EXPECTED_SKILLS.items():
         printed = run_skill(skill_name, arguments)
 
@@ -217,7 +217,7 @@ def test_each_skill_proposes_the_action_it_is_named_for():
             assert printed["proposal"]["description"], f"{skill_name} left the gate with nothing to show"
 
 
-def test_a_node_gets_an_altitude_without_being_asked_for_one():
+def test_a_node_gets_an_altitude_without_being_asked_for_one() -> None:
     """Altitude follows from the node type; asking the operator for it is noise."""
     proposal = run_skill("add-nodes", EXPECTED_SKILLS["add-nodes"])["proposal"]
 
@@ -225,7 +225,7 @@ def test_a_node_gets_an_altitude_without_being_asked_for_one():
     assert "altitude" in proposal["chosen_automatically"]
 
 
-def test_the_description_never_carries_the_note_the_model_reads():
+def test_the_description_never_carries_the_note_the_model_reads() -> None:
     """The agent once passed "[chosen automatically: altitude]" back as a parameter."""
     proposal = run_skill("add-nodes", EXPECTED_SKILLS["add-nodes"])["proposal"]
 
@@ -233,11 +233,11 @@ def test_the_description_never_carries_the_note_the_model_reads():
     assert "[" not in proposal["description"]
 
 
-def test_a_skill_script_rejects_what_the_payload_rejects():
+def test_a_skill_script_rejects_what_the_payload_rejects() -> None:
     assert run_skill("run-simulation", ["--steps", "0"])["error"].startswith("steps must be >= 1")
 
 
-def test_restarting_proposes_only_the_settings_the_operator_named():
+def test_restarting_proposes_only_the_settings_the_operator_named() -> None:
     """Anything left out has to keep what the simulation is running with, so an
     absent setting must not travel as None and overwrite it."""
     arguments = run_skill("restart-simulation", ["--num-users", "40"])["proposal"]["arguments"]
@@ -245,14 +245,14 @@ def test_restarting_proposes_only_the_settings_the_operator_named():
     assert arguments == {"num_users": 40}
 
 
-def test_a_plain_restart_carries_no_settings_at_all():
+def test_a_plain_restart_carries_no_settings_at_all() -> None:
     proposal = run_skill("restart-simulation", [])["proposal"]
 
     assert proposal["arguments"] == {}
     assert "current configuration" in proposal["description"]
 
 
-def test_a_restart_is_refused_without_the_configuration_in_use():
+def test_a_restart_is_refused_without_the_configuration_in_use() -> None:
     """`RestartSimulationPayload` takes a resolved config; the runner supplies
     it, and building one without it must fail rather than invent defaults."""
     try:
@@ -263,7 +263,7 @@ def test_a_restart_is_refused_without_the_configuration_in_use():
         raise AssertionError("a restart was built with no configuration")
 
 
-def test_a_restart_reaches_the_buffer_once_the_runner_supplies_the_configuration():
+def test_a_restart_reaches_the_buffer_once_the_runner_supplies_the_configuration() -> None:
     config = SimulationConfig(
         gml_path="datasets/rnp.gml",
         satellites_path="datasets/satellites_brazil.json",
@@ -286,7 +286,7 @@ def test_a_restart_reaches_the_buffer_once_the_runner_supplies_the_configuration
     assert payload.config.scenario == "hybrid"
 
 
-def test_every_skill_script_runs_by_itself():
+def test_every_skill_script_runs_by_itself() -> None:
     """agno executes a script directly through its shebang, so a missing `#!`
     or a missing executable bit comes back as `Exec format error` and the skill
     can propose nothing. Four of six had no executable bit and none had a
@@ -299,7 +299,7 @@ def test_every_skill_script_runs_by_itself():
             assert script.readline().startswith("#!"), f"{skill_name}/scripts/propose.py has no shebang"
 
 
-def test_no_skill_carries_more_than_one_action():
+def test_no_skill_carries_more_than_one_action() -> None:
     """Two actions in one skill would be two reasons to load it."""
     for skill_name in EXPECTED_SKILLS:
         with open(script_of(skill_name), encoding="utf-8") as script:
@@ -308,7 +308,7 @@ def test_no_skill_carries_more_than_one_action():
         assert source.count("ACTION = ActionType.") == 1, f"{skill_name} proposes more than one action"
 
 
-def test_the_shared_prompt_names_neither_mode_s_mechanism():
+def test_the_shared_prompt_names_neither_mode_s_mechanism() -> None:
     """Both modes read the same instructions. Naming a tool in them hands one
     mode's mechanism to the other: measured 30 September 2026, the model in
     Skills mode opened no skill and wrote `propose_add_node` out as text."""
@@ -318,7 +318,7 @@ def test_the_shared_prompt_names_neither_mode_s_mechanism():
         assert word not in text.lower(), f"the shared prompt names a mechanism: {word!r}"
 
 
-def test_an_unknown_mode_is_refused_by_name():
+def test_an_unknown_mode_is_refused_by_name() -> None:
     try:
         build_agent(MODEL_FOR_ASSEMBLY, "Telepathy", ProposalBuffer())
     except ValueError as error:
