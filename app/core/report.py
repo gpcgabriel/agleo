@@ -66,12 +66,9 @@ def measure_snapshot(snapshot: Snapshot) -> SnapshotMeasure:
         applications were placed, the totals each is out of, and the size and
         mean delay of the network at that moment.
     """
-    users = snapshot.get("users") or []
+    users = section(snapshot, "users")
     applications = [app for user in users for app in user.get("applications") or []]
-    links = snapshot.get("links") or []
-    delays = [link.get("delay") or 0 for link in links]
-
-    satellites = snapshot.get("satellites") or []
+    links = section(snapshot, "links")
 
     return {
         "step": snapshot.get("step", 0),
@@ -79,11 +76,22 @@ def measure_snapshot(snapshot: Snapshot) -> SnapshotMeasure:
         "users_connected": sum(1 for user in users if user.get("connected_aps")),
         "applications_total": len(applications),
         "applications_allocated": sum(1 for app in applications if app.get("allocated_to") is not None),
-        "ground_stations": len(snapshot.get("ground_stations") or []),
-        "satellites_active": sum(1 for satellite in satellites if satellite.get("active")),
+        "ground_stations": len(section(snapshot, "ground_stations")),
+        "satellites_active": sum(1 for satellite in section(snapshot, "satellites") if satellite.get("active")),
         "links": len(links),
-        "mean_delay": round(sum(delays) / len(delays), 2) if delays else 0.0,
+        "mean_delay": mean_delay(links),
     }
+
+
+def section(snapshot: Snapshot, key: str) -> list[dict[str, Any]]:
+    """Returns: list: One list section of a snapshot, empty when the snapshot lacks it."""
+    return snapshot.get(key) or []
+
+
+def mean_delay(links: list[dict[str, Any]]) -> float:
+    """Returns: float: The links' mean delay, rounded to two decimals, zero when there are no links."""
+    delays = [link.get("delay") or 0 for link in links]
+    return round(sum(delays) / len(delays), 2) if delays else 0.0
 
 
 def collect_run_metrics(history: list[Snapshot] | None) -> dict[str, Any]:

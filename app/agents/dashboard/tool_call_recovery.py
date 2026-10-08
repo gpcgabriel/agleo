@@ -77,19 +77,41 @@ def _evaluate(node: ast.AST | None) -> LiteralValue:
         return _JSON_LITERALS[node.id]
 
     if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.UAdd, ast.USub)):
-        value = _evaluate(node.operand)
-        if not isinstance(value, (int, float)):
-            raise ValueError("Sign applied to a value that is not a number.")
-        return -value if isinstance(node.op, ast.USub) else value
+        return _evaluate_sign(node)
 
     if isinstance(node, ast.BinOp) and type(node.op) in _ARITHMETIC:
-        left = _evaluate(node.left)
-        right = _evaluate(node.right)
-        if not isinstance(left, (int, float)) or not isinstance(right, (int, float)):
-            raise ValueError("Arithmetic between values that are not numbers.")
-        return _ARITHMETIC[type(node.op)](left, right)
+        return _evaluate_arithmetic(node)
 
     raise ValueError(f"Construct not allowed: {type(node).__name__}.")
+
+
+def _evaluate_sign(node: ast.UnaryOp) -> int | float:
+    """Evaluates a plus or minus sign in front of a number.
+
+    Private for the same reason as `_evaluate`, whose boundary it belongs to.
+
+    Raises:
+        ValueError: If the operand is not a number.
+    """
+    value = _evaluate(node.operand)
+    if not isinstance(value, (int, float)):
+        raise ValueError("Sign applied to a value that is not a number.")
+    return -value if isinstance(node.op, ast.USub) else value
+
+
+def _evaluate_arithmetic(node: ast.BinOp) -> int | float:
+    """Evaluates one of the four arithmetic operations between two numbers.
+
+    Private for the same reason as `_evaluate`, whose boundary it belongs to.
+
+    Raises:
+        ValueError: If either operand is not a number.
+    """
+    left = _evaluate(node.left)
+    right = _evaluate(node.right)
+    if not isinstance(left, (int, float)) or not isinstance(right, (int, float)):
+        raise ValueError("Arithmetic between values that are not numbers.")
+    return _ARITHMETIC[type(node.op)](left, right)
 
 
 def find_object_candidates(text: str) -> list[str]:

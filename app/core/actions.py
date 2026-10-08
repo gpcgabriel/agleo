@@ -321,40 +321,54 @@ def build_payload(
     Raises:
         ValueError: If the action is unknown or the arguments are invalid.
     """
-    if action_type == ActionType.RESTART_SIMULATION:
-        if current_config is None:
-            raise ValueError("restart_simulation needs the configuration currently loaded.")
-        return RestartSimulationPayload(current_config.copy_with(**arguments))
+    match action_type:
+        case ActionType.RESTART_SIMULATION:
+            payload = RestartSimulationPayload(require_config(action_type, current_config).copy_with(**arguments))
+        case ActionType.RUN_FULL_SIMULATION:
+            payload = build_full_run_payload(arguments, require_config(action_type, current_config))
+        case ActionType.RUN_SIMULATION:
+            payload = RunSimulationPayload(arguments["steps"])
+        case ActionType.ADD_PROCESS_UNIT:
+            payload = AddProcessUnitPayload(
+                arguments["target_type"], arguments["target_id"], arguments["cpu"], arguments["memory"]
+            )
+        case ActionType.ADD_USER:
+            payload = AddUserPayload(arguments["lat"], arguments["lon"], arguments.get("connection_range", 1500))
+        case ActionType.ADD_APP_TO_USER:
+            payload = AddAppToUserPayload(arguments["user_id"], arguments["cpu"], arguments["memory"])
+        case ActionType.ADD_NODES:
+            payload = AddNodesPayload([NodeSpec(**spec) for spec in arguments["nodes"]])
+        case _:
+            raise ValueError(
+                f"Action {action_type!r} cannot be built from arguments. Expected one of {SCRIPTABLE_ACTIONS}."
+            )
 
-    if action_type == ActionType.RUN_FULL_SIMULATION:
-        if current_config is None:
-            raise ValueError("run_full_simulation needs the configuration currently loaded.")
+    return payload
 
-        settings = dict(arguments)
-        # Naming the missing field rather than letting a KeyError out. A reply
-        # that leaves out an argument is the failure this project keeps
-        # meeting, and it has to say which one.
-        if "steps" not in settings:
-            raise ValueError("run_full_simulation needs a step budget, and none was given.")
 
-        steps = settings.pop("steps")
-        return RunFullSimulationPayload(SimulationPlan(current_config.copy_with(**settings), steps))
+def require_config(action_type: str, current_config: SimulationConfig | None) -> SimulationConfig:
+    """Returns: SimulationConfig: The configuration currently loaded, which the action resolves its settings against.
 
-    if action_type == ActionType.RUN_SIMULATION:
-        return RunSimulationPayload(arguments["steps"])
+    Raises:
+        ValueError: If no configuration is loaded.
+    """
+    if current_config is None:
+        raise ValueError(f"{action_type} needs the configuration currently loaded.")
+    return current_config
 
-    if action_type == ActionType.ADD_PROCESS_UNIT:
-        return AddProcessUnitPayload(
-            arguments["target_type"], arguments["target_id"], arguments["cpu"], arguments["memory"]
-        )
 
-    if action_type == ActionType.ADD_USER:
-        return AddUserPayload(arguments["lat"], arguments["lon"], arguments.get("connection_range", 1500))
+def build_full_run_payload(arguments: dict[str, Any], current_config: SimulationConfig) -> ActionPayload:
+    """Builds the plan of a full run from its step budget and the settings it changes.
 
-    if action_type == ActionType.ADD_APP_TO_USER:
-        return AddAppToUserPayload(arguments["user_id"], arguments["cpu"], arguments["memory"])
+    Raises:
+        ValueError: If the step budget is missing.
+    """
+    settings = dict(arguments)
+    # Naming the missing field rather than letting a KeyError out. A reply
+    # that leaves out an argument is the failure this project keeps
+    # meeting, and it has to say which one.
+    if "steps" not in settings:
+        raise ValueError("run_full_simulation needs a step budget, and none was given.")
 
-    if action_type == ActionType.ADD_NODES:
-        return AddNodesPayload([NodeSpec(**spec) for spec in arguments["nodes"]])
-
-    raise ValueError(f"Action {action_type!r} cannot be built from arguments. Expected one of {SCRIPTABLE_ACTIONS}.")
+    steps = settings.pop("steps")
+    return RunFullSimulationPayload(SimulationPlan(current_config.copy_with(**settings), steps))

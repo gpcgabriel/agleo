@@ -334,16 +334,9 @@ class ProposalBuffer:
         except ValueError as error:
             return f"Error: {error}"
 
-        if not node_types:
-            return "Error: no nodes provided."
-
-        supplied = {len(values) for values in (latitudes, longitudes, altitudes) if values}
-        if supplied - {len(node_types)}:
-            return (
-                "Error: every list you pass must have one entry per node "
-                f"(node_types={len(node_types)}, latitudes={len(latitudes)}, "
-                f"longitudes={len(longitudes)}, altitudes={len(altitudes)})."
-            )
+        refusal = refuse_node_lists(node_types, latitudes, longitudes, altitudes)
+        if refusal:
+            return refusal
 
         latitudes, longitudes, defaulted_position = self.fill_positions(node_types, latitudes, longitudes)
         if latitudes is None or longitudes is None:
@@ -352,27 +345,25 @@ class ProposalBuffer:
                 "the node near. Ask the operator for a latitude and longitude."
             )
 
-        specs = []
-        for index in range(len(node_types)):
-            try:
-                defaulted = list(defaulted_position)
-                if not altitudes:
-                    defaulted.append("altitude")
+        try:
+            specs = build_node_specs(node_types, latitudes, longitudes, altitudes, defaulted_position)
+        except ValueError as error:
+            return str(error)
 
-                specs.append(
-                    NodeSpec(
-                        node_type=node_types[index],
-                        lat=latitudes[index],
-                        lon=longitudes[index],
-                        alt=altitudes[index] if altitudes else None,
-                        defaulted=defaulted,
-                    )
-                )
-            except (ValueError, TypeError) as error:
-                return f"Error on node {index + 1}: {error}"
+        return self.register_nodes(specs)
 
-        # Accumulating the nodes into a single proposal when the model splits one
-        # request across several calls, so the operator confirms once.
+    def register_nodes(self, specs: list[NodeSpec]) -> str:
+        """Registers nodes to add, joining them to the latest proposal when it adds nodes too.
+
+        The model often splits one request across several calls; accumulating the
+        nodes into a single proposal lets the operator confirm once.
+
+        Args:
+            specs (list): The nodes to add, as built.
+
+        Returns:
+            str: Confirmation message for the model.
+        """
         last = self.get_last_proposal()
         if last is not None and isinstance(last.payload, AddNodesPayload):
             taken = {(round(n.lat, 6), round(n.lon, 6)) for n in last.payload.nodes}
@@ -381,3 +372,65 @@ class ProposalBuffer:
             return f"Proposal updated: {self.proposals[-1].description}. Please confirm in the control panel."
 
         return self.register(ProposedAction(ActionType.ADD_NODES, AddNodesPayload(spread_out_collisions(specs, set()))))
+
+
+def refuse_node_lists(
+    node_types: list[Any], latitudes: list[Any], longitudes: list[Any], altitudes: list[Any]
+) -> str | None:
+    """Returns: str or None: The reply refusing node lists that are empty or of uneven lengths, None when they fit."""
+    if not node_types:
+        return "Error: no nodes provided."
+
+    supplied = {len(values) for values in (latitudes, longitudes, altitudes) if values}
+    if supplied - {len(node_types)}:
+        return (
+            "Error: every list you pass must have one entry per node "
+            f"(node_types={len(node_types)}, latitudes={len(latitudes)}, "
+            f"longitudes={len(longitudes)}, altitudes={len(altitudes)})."
+        )
+
+    return None
+
+
+def build_node_specs(
+    node_types: list[Any],
+    latitudes: list[Any],
+    longitudes: list[Any],
+    altitudes: list[Any],
+    defaulted_position: tuple[str, ...],
+) -> list[NodeSpec]:
+    """Builds one NodeSpec per node, noting what was chosen for the operator.
+
+    Args:
+        node_types (list): One entry per node.
+        latitudes (list): One latitude per node.
+        longitudes (list): One longitude per node.
+        altitudes (list): One altitude per node, or empty to take each type's default.
+        defaulted_position (tuple): What was chosen for the operator about the position.
+
+    Returns:
+        list: The nodes, in order.
+
+    Raises:
+        ValueError: Carrying the reply for the model, which names the first node that cannot be built.
+    """
+    specs = []
+    for index in range(len(node_types)):
+        defaulted = list(defaulted_position)
+        if not altitudes:
+            defaulted.append("altitude")
+
+        try:
+            specs.append(
+                NodeSpec(
+                    node_type=node_types[index],
+                    lat=latitudes[index],
+                    lon=longitudes[index],
+                    alt=altitudes[index] if altitudes else None,
+                    defaulted=defaulted,
+                )
+            )
+        except (ValueError, TypeError) as error:
+            raise ValueError(f"Error on node {index + 1}: {error}") from error
+
+    return specs

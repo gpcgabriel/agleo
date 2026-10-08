@@ -177,27 +177,42 @@ def user_access_series(rows: Iterable[Row]) -> Series:
     last_accesses = {}
 
     for data in rows:
-        step_provisioned, step_delay, step_waiting = 0, 0, 0
-        for metric in data["metrics"]:
-            current = metric["Access to Applications"][0]
-            last = last_accesses.get(metric["ID"])
-            last_accesses[metric["ID"]] = current
-            if last is None:
-                continue
-
-            if last["Request Provisioning"] and not current["Is Provisioned"]:
-                step_waiting += 1
-            elif current["Is Provisioned"] or current["Provisioning"]:
-                step_provisioned += 1
-                if current["Delay"] != float("inf"):
-                    step_delay += current["Delay"]
-
+        step_provisioned, step_delay, step_waiting = count_user_accesses(data["metrics"], last_accesses)
         steps.append(data["Step"])
         provisioned.append(step_provisioned)
         delays.append(step_delay)
         waiting.append(step_waiting)
 
     return steps, provisioned, delays, waiting
+
+
+def count_user_accesses(metrics: list[Row], last_accesses: dict[int, Row]) -> tuple[int, float, int]:
+    """Counts one step's served users, their summed delay and the users left waiting.
+
+    Args:
+        metrics (list): The users' metric rows of the step.
+        last_accesses (dict): Each user's first application at the step before, updated here.
+
+    Returns:
+        tuple: (users served, their summed delay, users left waiting).
+    """
+    provisioned, delay, waiting = 0, 0, 0
+
+    for metric in metrics:
+        current = metric["Access to Applications"][0]
+        last = last_accesses.get(metric["ID"])
+        last_accesses[metric["ID"]] = current
+        if last is None:
+            continue
+
+        if last["Request Provisioning"] and not current["Is Provisioned"]:
+            waiting += 1
+        elif current["Is Provisioned"] or current["Provisioning"]:
+            provisioned += 1
+            if current["Delay"] != float("inf"):
+                delay += current["Delay"]
+
+    return provisioned, delay, waiting
 
 
 def provisioned_series(rows: Iterable[Row]) -> Series:

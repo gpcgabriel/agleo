@@ -125,8 +125,7 @@ def build_network_state(
     model: Simulator,
     station: GroundStation,
     scenario: str,
-    all_apps: dict[str, dict[str, Any]],
-    pending_app_ids: list[int],
+    applications: dict[str, dict[str, Any]],
     reachable_satellite_ids: set[int],
 ) -> dict[str, Any]:
     """Builds the trimmed view of the network shown to the agent.
@@ -135,8 +134,7 @@ def build_network_state(
         model (Simulator): The running simulator.
         station (GroundStation): The station making the decision.
         scenario (str): Scenario label.
-        all_apps (dict): Every exported application.
-        pending_app_ids (list): Applications waiting for placement.
+        applications (dict): The exported applications this station is asked to place.
         reachable_satellite_ids (set): Satellites currently in range.
 
     Returns:
@@ -144,19 +142,16 @@ def build_network_state(
         which maps each process unit to the satellite or ground station it
         sits on.
     """
-    pending_set = set(pending_app_ids)
-
-    relevant_users = {
-        user_id: info
-        for user_id, info in User.export_users().items()
-        if any(app_id in pending_set for app_id in info.get("pending_apps", []))
-    }
+    pending_set = {component_id(key) for key in applications}
+    relevant_users = find_relevant_users(pending_set)
 
     satellite_ids: set[int | None] = set(reachable_satellite_ids)
     for info in relevant_users.values():
-        for access_point in info.get("access_points", []):
-            if access_point.startswith("Satellite_"):
-                satellite_ids.add(component_id(access_point))
+        satellite_ids |= {
+            component_id(access_point)
+            for access_point in info.get("access_points", [])
+            if access_point.startswith("Satellite_")
+        }
 
     satellites = {
         key: info for key, info in Satellite.export_satellites().items() if component_id(key) in satellite_ids
@@ -165,35 +160,8 @@ def build_network_state(
     # Recording where each process unit sits while the satellites still carry
     # the link: a unit in orbit and a unit on the ground are reached by
     # different paths, and the `pu` field is dropped a few lines below.
-    process_unit_ids = set()
-    host_by_unit = {}
-    for satellite_key, info in satellites.items():
-        unit = info.get("pu")
-        if unit:
-            process_unit_ids.add(unit["id"])
-            host_by_unit[f"PU_{unit['id']}"] = satellite_key
-    for unit in station.process_unit or []:
-        process_unit_ids.add(unit.id)
-        host_by_unit[f"PU_{unit.id}"] = f"GS_{station.id}"
-
-    # Trimming after collecting the unit ids, which are read from these fields.
-    for info in satellites.values():
-        info.pop("range", None)
-        info.pop("gateway", None)
-        info.pop("pu", None)
-        if "future" in info:
-            info["future"] = info["future"][:FUTURE_POSITIONS_SHOWN]
-
-    process_units = {
-        key: info for key, info in ProcessUnit.export_processunits().items() if component_id(key) in process_unit_ids
-    }
-
-    applications = {key: info for key, info in all_apps.items() if component_id(key) in pending_set}
-
-    topology = model.topology.export_topology()
-    relevant_user_ids = {component_id(key) for key in relevant_users}
-    topology["user_sat"] = [link for link in topology.get("user_sat", []) if link["user"] in relevant_user_ids]
-    topology["gs_sat"] = [link for link in topology.get("gs_sat", []) if link["gs"] == station.id]
+    host_by_unit = find_unit_hosts(satellites, station)
+    trim_satellites(satellites)
 
     return {
         "step": model.scheduler.steps,
@@ -201,11 +169,59 @@ def build_network_state(
         "ground_station": GroundStation.export_groundstations().get(f"GS_{station.id}", {}),
         "satellites": satellites,
         "users": relevant_users,
-        "process_units": process_units,
+        "process_units": {key: info for key, info in ProcessUnit.export_processunits().items() if key in host_by_unit},
         "unit_hosts": host_by_unit,
         "applications": applications,
-        "topology": topology,
+        "topology": trim_topology(model, station, relevant_users),
     }
+
+
+def find_relevant_users(pending_app_ids: set[int | None]) -> dict[str, dict[str, Any]]:
+    """Returns: dict: The exported users with at least one of the pending applications waiting for placement."""
+    return {
+        user_id: info
+        for user_id, info in User.export_users().items()
+        if any(app_id in pending_app_ids for app_id in info.get("pending_apps", []))
+    }
+
+
+def find_unit_hosts(satellites: dict[str, dict[str, Any]], station: GroundStation) -> dict[str, str]:
+    """Maps each process unit in reach to what it sits on: one of the satellites, or the station itself.
+
+    Args:
+        satellites (dict): The exported satellites in reach, their `pu` field still in place.
+        station (GroundStation): The station making the decision.
+
+    Returns:
+        dict: "PU_<id>" to "Sat_<id>" or "GS_<id>", satellites first.
+    """
+    host_by_unit = {}
+    for satellite_key, info in satellites.items():
+        unit = info.get("pu")
+        if unit:
+            host_by_unit[f"PU_{unit['id']}"] = satellite_key
+    for unit in station.process_unit or []:
+        host_by_unit[f"PU_{unit.id}"] = f"GS_{station.id}"
+    return host_by_unit
+
+
+def trim_satellites(satellites: dict[str, dict[str, Any]]) -> None:
+    """Drops the satellite fields the agent does not read, and keeps only the next few future positions."""
+    for info in satellites.values():
+        info.pop("range", None)
+        info.pop("gateway", None)
+        info.pop("pu", None)
+        if "future" in info:
+            info["future"] = info["future"][:FUTURE_POSITIONS_SHOWN]
+
+
+def trim_topology(model: Simulator, station: GroundStation, relevant_users: dict[str, Any]) -> dict[str, Any]:
+    """Returns: dict: The exported topology, its user links cut to the relevant users and station links to this one."""
+    topology = model.topology.export_topology()
+    relevant_user_ids = {component_id(key) for key in relevant_users}
+    topology["user_sat"] = [link for link in topology.get("user_sat", []) if link["user"] in relevant_user_ids]
+    topology["gs_sat"] = [link for link in topology.get("gs_sat", []) if link["gs"] == station.id]
+    return topology
 
 
 def collect_state(
@@ -230,5 +246,7 @@ def collect_state(
     if skip_reason:
         return None, None, skip_reason
 
-    state = build_network_state(model, station, scenario, all_apps, servable_app_ids, reachable)
+    servable = set(servable_app_ids)
+    applications = {key: info for key, info in all_apps.items() if component_id(key) in servable}
+    state = build_network_state(model, station, scenario, applications, reachable)
     return state, servable_app_ids, None

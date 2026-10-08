@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import glob
 import os
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict
 
 import streamlit as st
 
@@ -64,55 +64,12 @@ def render_sidebar(ollama_ok: bool, locked: bool = False) -> SidebarChoices:
     """
     st.sidebar.markdown(f"<h2>{wrap_icon(icon_satellite(22))} LEOSim Controller</h2>", unsafe_allow_html=True)
 
-    gml_options = glob.glob("datasets/*.gml")
-    json_options = [
-        f
-        for f in glob.glob("datasets/*.json")
-        if "dataset" not in os.path.basename(f) and "temp" not in os.path.basename(f)
-    ]
-
-    selected_gml = st.sidebar.selectbox(
-        "Terrestrial Topology (GML)", gml_options, key="selected_gml_key", disabled=locked
-    )
-    selected_json = st.sidebar.selectbox(
-        "Satellite Traces (JSON)", json_options, key="selected_json_key", disabled=locked
-    )
-
-    num_users = st.sidebar.number_input(
-        "Number of Users", min_value=1, max_value=1000, value=20, key="num_users_key", disabled=locked
-    )
-    num_satellites = st.sidebar.number_input(
-        "Maximum Satellites", min_value=1, max_value=100, value=15, key="num_satellites_key", disabled=locked
-    )
-    scenario = st.sidebar.selectbox("Scenario", ["hybrid", "leo", "terrestrial"], key="scenario_key", disabled=locked)
-    algorithm = st.sidebar.selectbox(
-        "Allocation Algorithm", list(SimulationConfig.ALGORITHMS), key="algorithm_key", disabled=locked
-    )
+    settings = render_simulation_settings(locked)
 
     st.sidebar.markdown("---")
     st.sidebar.markdown(f"## {wrap_icon(icon_bot(18))} Agent Settings", unsafe_allow_html=True)
 
-    # Offering the model selector inside Agent Settings.
-    if ollama_ok:
-        local_models = list_local_models()
-        if local_models:
-            current_model = st.session_state.get("selected_model", DEFAULT_MODEL)
-            default_index = 0
-            for idx, name in enumerate(local_models):
-                if model_is_available(current_model, [name]):
-                    default_index = idx
-                    break
-
-            selected_model = st.sidebar.selectbox(
-                "LLM Model", local_models, index=default_index, key="model_selector_key", disabled=locked
-            )
-            st.session_state["selected_model"] = selected_model
-        else:
-            st.sidebar.warning("No local models found.")
-            st.session_state["selected_model"] = DEFAULT_MODEL
-    else:
-        st.sidebar.error("Ollama is not running.")
-        st.session_state["selected_model"] = DEFAULT_MODEL
+    render_model_selector(ollama_ok, locked)
 
     # Letting the operator enable or disable agent actions.
     agent_actions_enabled = st.sidebar.checkbox("Allow Agent to execute actions", value=True, disabled=locked)
@@ -122,32 +79,102 @@ def render_sidebar(ollama_ok: bool, locked: bool = False) -> SidebarChoices:
     else:
         agent_mode = None
 
-    config = SimulationConfig(
-        gml_path=selected_gml,
-        satellites_path=selected_json,
-        num_users=num_users,
-        num_satellites=num_satellites,
-        scenario=scenario,
-        algorithm=algorithm,
-    )
-
-    # Drawing the Initialize Simulation button with its CSS marker.
-    st.sidebar.markdown('<div class="btn-initialize-marker"></div>', unsafe_allow_html=True)
-    if st.sidebar.button("Initialize Simulation", key="btn_initialize", use_container_width=True, disabled=locked):
-        with st.spinner("Initializing simulator..."):
-            set_session(create_session(config, allocation_algorithm=build_allocation_algorithm(config)))
-            clear_pending()
-            st.session_state["chat_messages"] = [
-                {
-                    "role": "assistant",
-                    "content": "Simulation initialized successfully! The network is ready at initial state (Step 0).",
-                }
-            ]
-            st.success("Simulation configured!")
-            st.rerun()
+    config = SimulationConfig(**settings)
+    render_initialize_button(config, locked)
 
     return {
         "config": config,
         "agent_actions_enabled": agent_actions_enabled,
         "agent_mode": agent_mode,
     }
+
+
+def render_simulation_settings(locked: bool) -> dict[str, Any]:
+    """Renders the dataset pickers and the simulation parameters.
+
+    Args:
+        locked (bool): Whether the controls are held.
+
+    Returns:
+        dict: The chosen values, named as `SimulationConfig` takes them.
+    """
+    gml_options = glob.glob("datasets/*.gml")
+    json_options = [
+        f
+        for f in glob.glob("datasets/*.json")
+        if "dataset" not in os.path.basename(f) and "temp" not in os.path.basename(f)
+    ]
+
+    return {
+        "gml_path": st.sidebar.selectbox(
+            "Terrestrial Topology (GML)", gml_options, key="selected_gml_key", disabled=locked
+        ),
+        "satellites_path": st.sidebar.selectbox(
+            "Satellite Traces (JSON)", json_options, key="selected_json_key", disabled=locked
+        ),
+        "num_users": st.sidebar.number_input(
+            "Number of Users", min_value=1, max_value=1000, value=20, key="num_users_key", disabled=locked
+        ),
+        "num_satellites": st.sidebar.number_input(
+            "Maximum Satellites", min_value=1, max_value=100, value=15, key="num_satellites_key", disabled=locked
+        ),
+        "scenario": st.sidebar.selectbox(
+            "Scenario", ["hybrid", "leo", "terrestrial"], key="scenario_key", disabled=locked
+        ),
+        "algorithm": st.sidebar.selectbox(
+            "Allocation Algorithm", list(SimulationConfig.ALGORITHMS), key="algorithm_key", disabled=locked
+        ),
+    }
+
+
+def render_model_selector(ollama_ok: bool, locked: bool) -> None:
+    """Offers the local models to choose from, settling on the default model when there is none to offer.
+
+    Args:
+        ollama_ok (bool): Whether Ollama is currently reachable.
+        locked (bool): Whether the controls are held.
+    """
+    if not ollama_ok:
+        st.sidebar.error("Ollama is not running.")
+        st.session_state["selected_model"] = DEFAULT_MODEL
+        return
+
+    local_models = list_local_models()
+    if not local_models:
+        st.sidebar.warning("No local models found.")
+        st.session_state["selected_model"] = DEFAULT_MODEL
+        return
+
+    current_model = st.session_state.get("selected_model", DEFAULT_MODEL)
+    default_index = next(
+        (index for index, name in enumerate(local_models) if model_is_available(current_model, [name])), 0
+    )
+
+    st.session_state["selected_model"] = st.sidebar.selectbox(
+        "LLM Model", local_models, index=default_index, key="model_selector_key", disabled=locked
+    )
+
+
+def render_initialize_button(config: SimulationConfig, locked: bool) -> None:
+    """Renders the button that builds a fresh simulation from the chosen configuration.
+
+    Args:
+        config (SimulationConfig): The configuration the selectors describe.
+        locked (bool): Whether the controls are held.
+    """
+    # Drawing the Initialize Simulation button with its CSS marker.
+    st.sidebar.markdown('<div class="btn-initialize-marker"></div>', unsafe_allow_html=True)
+    if not st.sidebar.button("Initialize Simulation", key="btn_initialize", use_container_width=True, disabled=locked):
+        return
+
+    with st.spinner("Initializing simulator..."):
+        set_session(create_session(config, allocation_algorithm=build_allocation_algorithm(config)))
+        clear_pending()
+        st.session_state["chat_messages"] = [
+            {
+                "role": "assistant",
+                "content": "Simulation initialized successfully! The network is ready at initial state (Step 0).",
+            }
+        ]
+        st.success("Simulation configured!")
+        st.rerun()

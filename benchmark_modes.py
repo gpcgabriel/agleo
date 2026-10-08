@@ -17,7 +17,7 @@ import argparse
 import os
 import sys
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from json import dumps
 from statistics import median
 from typing import TYPE_CHECKING, Any
@@ -250,41 +250,47 @@ def run_once(
     return record
 
 
+# Naming the commands that ask a question, which a mode should answer without proposing anything.
+QUESTIONS = ("count question", "state question")
+
+
 def summarize(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Aggregates the records into one row per mode.
 
     Returns:
         list: One row per mode.
     """
-    rows = []
-    for arm in ARMS:
-        mine = [record for record in records if record["arm"] == arm]
-        if not mine:
-            continue
-
-        actionable = [r for r in mine if r["command"] not in ("count question", "state question")]
-        informational = [r for r in mine if r["command"] in ("count question", "state question")]
-
-        rows.append(
-            {
-                "arm": arm,
-                "runs": len(mine),
-                "median_seconds": round(median(r["elapsed_seconds"] for r in mine), 1),
-                "median_input_tokens": int(median(r["input_tokens"] for r in mine)),
-                "median_output_tokens": int(median(r["output_tokens"] for r in mine)),
-                "proposed_when_asked": f"{sum(r['proposed'] for r in actionable)}/{len(actionable)}",
-                "right_action": f"{sum(r['right_action'] for r in actionable)}/{len(actionable)}",
-                "right_parameters": f"{sum(r['right_parameters'] for r in actionable)}/{len(actionable)}",
-                "stayed_quiet_when_asked_a_question": (
-                    f"{sum(not r['proposed'] for r in informational)}/{len(informational)}"
-                ),
-                "errors": sum(1 for r in mine if r["error"]),
-            }
-        )
-    return rows
+    return [
+        summarize_arm(arm, mine) for arm in ARMS if (mine := [record for record in records if record["arm"] == arm])
+    ]
 
 
-def main() -> int:
+def summarize_arm(arm: str, records: list[dict[str, Any]]) -> dict[str, Any]:
+    """Returns: dict: How fast and how often one mode proposed the right action, over its records."""
+    actionable = [r for r in records if r["command"] not in QUESTIONS]
+    informational = [r for r in records if r["command"] in QUESTIONS]
+
+    return {
+        "arm": arm,
+        "runs": len(records),
+        "median_seconds": round(median(r["elapsed_seconds"] for r in records), 1),
+        "median_input_tokens": int(median(r["input_tokens"] for r in records)),
+        "median_output_tokens": int(median(r["output_tokens"] for r in records)),
+        "proposed_when_asked": share_of(actionable, "proposed"),
+        "right_action": share_of(actionable, "right_action"),
+        "right_parameters": share_of(actionable, "right_parameters"),
+        "stayed_quiet_when_asked_a_question": f"{sum(not r['proposed'] for r in informational)}/{len(informational)}",
+        "errors": sum(1 for r in records if r["error"]),
+    }
+
+
+def share_of(records: list[dict[str, Any]], field: str) -> str:
+    """Returns: str: How many records have the field set, out of how many, as "n/total"."""
+    return f"{sum(r[field] for r in records)}/{len(records)}"
+
+
+def parse_arguments() -> argparse.Namespace:
+    """Returns: argparse.Namespace: The model, repetitions, arms, commands and contexts to run."""
     parser = argparse.ArgumentParser(description="Compare the dashboard agent's Tools and Skills modes.")
     parser.add_argument("--model", default=DEFAULT_MODEL, help="Model identifier in Ollama.")
     parser.add_argument("--repetitions", type=int, default=3, help="Runs per command per arm.")
@@ -298,7 +304,55 @@ def main() -> int:
         help="Which context to send. 'router' is what the application sends; the other two hold it "
         "fixed across commands so context load can be separated from the command itself.",
     )
-    arguments = parser.parse_args()
+    return parser.parse_args()
+
+
+def runs_in_order(arguments: argparse.Namespace, commands: list[Command]) -> Iterator[tuple[int, Command, str, str]]:
+    """Yields every (repetition, command, context, arm) to run, the arms changing fastest."""
+    for repetition in range(arguments.repetitions):
+        for command in commands:
+            for context_size in arguments.contexts:
+                for arm in arguments.arms:
+                    yield repetition, command, context_size, arm
+
+
+def run_all(arguments: argparse.Namespace) -> list[dict[str, Any]]:
+    """Runs every command in every arm and context, as many times as asked, logging each record as it lands.
+
+    Args:
+        arguments (argparse.Namespace): What `parse_arguments` read.
+
+    Returns:
+        list: The records, in the order they ran.
+    """
+    snapshot, config, position = build_context()
+    os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
+
+    commands = [c for c in COMMANDS if not arguments.only or c.label in arguments.only]
+    runs = list(runs_in_order(arguments, commands))
+    records = []
+
+    with open(LOG_PATH, "a", encoding="utf-8") as log_file:
+        for done, (repetition, command, context_size, arm) in enumerate(runs, start=1):
+            record = run_once(command, arm, arguments.model, snapshot, config, position, context_size)
+            record["repetition"] = repetition
+            record["model"] = arguments.model
+            records.append(record)
+            log_file.write(dumps(record) + "\n")
+            log_file.flush()
+
+            print(
+                f"[{done}/{len(runs)}] {arm:16s} {context_size:6s} {command.label:18s} "
+                f"{record['elapsed_seconds']:6.1f}s  action={record['right_action']} "
+                f"params={record['right_parameters']}" + (f"  ERROR {record['error']}" if record["error"] else ""),
+                flush=True,
+            )
+
+    return records
+
+
+def main() -> int:
+    arguments = parse_arguments()
 
     if not is_ollama_running():
         print("Ollama is not running.")
@@ -307,34 +361,7 @@ def main() -> int:
         print(f"Model {arguments.model!r} is not available locally.")
         return 1
 
-    snapshot, config, position = build_context()
-    os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
-
-    commands = [c for c in COMMANDS if not arguments.only or c.label in arguments.only]
-    records = []
-    total = len(commands) * len(arguments.arms) * len(arguments.contexts) * arguments.repetitions
-    done = 0
-
-    with open(LOG_PATH, "a", encoding="utf-8") as log_file:
-        for repetition in range(arguments.repetitions):
-            for command in commands:
-                for context_size in arguments.contexts:
-                    for arm in arguments.arms:
-                        record = run_once(command, arm, arguments.model, snapshot, config, position, context_size)
-                        record["repetition"] = repetition
-                        record["model"] = arguments.model
-                        records.append(record)
-                        log_file.write(dumps(record) + "\n")
-                        log_file.flush()
-
-                        done += 1
-                        print(
-                            f"[{done}/{total}] {arm:16s} {context_size:6s} {command.label:18s} "
-                            f"{record['elapsed_seconds']:6.1f}s  action={record['right_action']} "
-                            f"params={record['right_parameters']}"
-                            + (f"  ERROR {record['error']}" if record["error"] else ""),
-                            flush=True,
-                        )
+    records = run_all(arguments)
 
     print("\n=== Summary ===")
     for row in summarize(records):
