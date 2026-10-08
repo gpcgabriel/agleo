@@ -57,20 +57,20 @@ class User(ComponentManager):
         self.id = id
 
         # Holding the user's applications.
-        self.applications: list[Application] = []
+        self.applications = []
 
         # Holding the user's coordinates.
-        self.coordinates: Coordinates | None = coordinates
-        self.coordinates_trace: list[Coordinates | None] = []
+        self.coordinates = coordinates
+        self.coordinates_trace = []
 
         # Holding the user's mobility model.
-        self.mobility_model: Callable[[User], None] | None = None
-        self.mobility_model_parameters: dict[str, Any] = {}
+        self.mobility_model = None
+        self.mobility_model_parameters = {}
 
         # Holding the user's application access model.
-        self.applications_access_models: list[AccessModel] = []
+        self.applications_access_models = []
 
-        self.network_access_points: list[GroundStation | Satellite] = []
+        self.network_access_points = []
 
         self.max_connection_range = max_connection_range
 
@@ -149,7 +149,7 @@ class User(ComponentManager):
         """
         topology = ComponentManager.model.topology
 
-        accesses: list[dict[str, Any]] = []
+        accesses = []
 
         for access_model in self.applications_access_models:
             last_access = access_model.history[-1].copy()
@@ -253,10 +253,10 @@ class User(ComponentManager):
 
     @staticmethod
     def export_users() -> dict[str, dict[str, Any]]:
-        users_data: dict[str, dict[str, Any]] = {}
+        users_data = {}
         for user in User.all():
             upos = user.coordinates
-            pending_apps: list[int] = []
+            pending_apps = []
             for am in user.applications_access_models:
                 if am.request_provisioning and not am.application.available:
                     pending_apps.append(am.application.id)

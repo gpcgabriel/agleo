@@ -56,7 +56,7 @@ def render_applications(applications: dict[str, dict[str, Any]], pending_app_ids
         list: One line per application.
     """
     pending = set(pending_app_ids)
-    lines: list[str] = []
+    lines = []
 
     for key, application in applications.items():
         application_id = component_id(key)
@@ -88,7 +88,7 @@ def render_process_units(
     Returns:
         list: One line per available unit.
     """
-    lines: list[str] = []
+    lines = []
 
     for key, unit in process_units.items():
         if not unit.get("available", True):

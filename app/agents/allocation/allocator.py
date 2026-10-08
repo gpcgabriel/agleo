@@ -53,7 +53,7 @@ class LLMAllocator:
         self.model_name = model_name
         self.host = host
         self.logs_directory = logs_directory
-        self.decisions_by_station: dict[int, list[dict[str, Any]]] = {}
+        self.decisions_by_station = {}
         self.metrics = AllocationMetrics(logs_directory)
 
         self.agent = Agent(
@@ -91,8 +91,7 @@ class LLMAllocator:
         Raises:
             ValueError: If the reply does not match the schema.
         """
-        # Ignoring the bare `List` and `Dict` agno's own annotations leave in `Agent.run`'s input type.
-        response = self.agent.run(prompt)  # pyright: ignore[reportUnknownMemberType]
+        response = self.agent.run(prompt)
 
         if not isinstance(response.content, AllocationDecision):
             raise ValueError(f"Model reply did not match the schema: {response.content!r}")
@@ -121,7 +120,7 @@ class LLMAllocator:
                 question.
             results (dict): What `hybrid_allocation` returned.
         """
-        entry: dict[str, Any] = {
+        entry = {
             "step": model.scheduler.steps,
             "ground_station": station.id,
             "best_fit": decision.best_fit,
@@ -149,8 +148,8 @@ class LLMAllocator:
             parameters (dict): Algorithm parameters, carrying the ground
                 station under "ground_station".
         """
-        station: GroundStation = parameters["ground_station"]
-        scenario: str = parameters.get("scenario", "hybrid")
+        station = parameters["ground_station"]
+        scenario = parameters.get("scenario", "hybrid")
 
         step = model.scheduler.steps
 

@@ -12,7 +12,7 @@ def summarize_snapshot(snapshot: Snapshot) -> str:
     """
     Formats the state snapshot into a markdown text summary for the AI agent context.
     """
-    summary: list[str] = []
+    summary = []
     summary.append(f"### Simulation State Information (Current Step: {snapshot['step']})")
 
     # Summarizing the satellites.
@@ -34,7 +34,7 @@ def summarize_snapshot(snapshot: Snapshot) -> str:
     summary.append("\n🏠 Ground Stations:")
     if snapshot["ground_stations"]:
         for gs in snapshot["ground_stations"]:
-            pu_details: list[str] = []
+            pu_details = []
             for pu in gs["process_units"]:
                 pu_details.append(f"Server/ProcessUnit {pu['id']} (CPU: {pu['cpu']}, Mem: {pu['memory']})")
             pu_info = ", ".join(pu_details) if pu_details else "No processing unit (no server)"
@@ -48,14 +48,14 @@ def summarize_snapshot(snapshot: Snapshot) -> str:
     summary.append("\n👥 Users & Application Demands:")
     if snapshot["users"]:
         for u in snapshot["users"]:
-            connected_aps_desc: list[str] = []
+            connected_aps_desc = []
             for ap in u["connected_aps"]:
                 connected_aps_desc.append(f"{ap['class']} {ap['id']}")
             conn_status = (
                 f"Connected to: {', '.join(connected_aps_desc)}" if connected_aps_desc else "Disconnected (no signal)"
             )
 
-            app_details: list[str] = []
+            app_details = []
             for app in u["applications"]:
                 if app["allocated_to"] is not None:
                     alloc = f"ALLOCATED/HOSTED on Server/ProcessUnit ID {app['allocated_to']}"

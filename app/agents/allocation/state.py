@@ -44,7 +44,7 @@ def find_reachable_satellite_ids(station: GroundStation) -> set[int]:
     Returns:
         set: IDs of the satellites in range.
     """
-    reachable: set[int] = set()
+    reachable = set()
 
     if not station.coordinates:
         return reachable
@@ -83,7 +83,7 @@ def find_servable_app_ids(
         list: The subset of `pending_app_ids` this station could place, ordered.
     """
     pending = set(pending_app_ids)
-    servable: set[int] = set()
+    servable = set()
 
     for user in User.all():
         access_points = user.network_access_points
@@ -169,8 +169,8 @@ def build_network_state(
     # Recording where each process unit sits while the satellites still carry
     # the link: a unit in orbit and a unit on the ground are reached by
     # different paths, and the `pu` field is dropped a few lines below.
-    process_unit_ids: set[int] = set()
-    host_by_unit: dict[str, str] = {}
+    process_unit_ids = set()
+    host_by_unit = {}
     for satellite_key, info in satellites.items():
         unit = info.get("pu")
         if unit:

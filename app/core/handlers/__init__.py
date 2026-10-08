@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 # Naming a handler's contract: it takes the session and the payload of its own action type.
 Handler = Callable[["SimulationSession", Any], "ActionResult"]
 
-HANDLERS: dict[str, Handler] = {
+HANDLERS = {
     ActionType.RUN_SIMULATION: run_simulation.handle,
     ActionType.RUN_FULL_SIMULATION: run_full_simulation.handle,
     ActionType.RESTART_SIMULATION: restart_simulation.handle,

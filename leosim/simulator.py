@@ -26,7 +26,7 @@ from .scheduler import Scheduler
 
 # Naming the functions a scenario file may refer to, which are the models a component runs:
 # `save_scenary` writes a model by its `__name__`, and `initialize` reads it back from here.
-SCENARIO_FUNCTIONS: dict[str, Callable[..., Any]] = {
+SCENARIO_FUNCTIONS = {
     function.__name__: function
     for function in (
         coordinates_history,
@@ -145,7 +145,7 @@ class Simulator(ComponentManager):
         self.dump_interval = dump_interval
         self.last_dump = 0
         self.clean_data_in_memory = clean_data_in_memory
-        self.agent_metrics: dict[str, list[dict[str, Any]]] = {}
+        self.agent_metrics = {}
         self.ignore_list = list(ignore_list or [])
 
         # Converting the time unit through timedelta, for a single standard.
@@ -177,7 +177,7 @@ class Simulator(ComponentManager):
         with open(dataset, encoding="UTF-8") as file:
             dataset_data = json.load(file)
 
-        created_components: list[ComponentManager] = []
+        created_components = []
 
         # Instantiating the objects described by the dataset schema.
         for class_name, components in dataset_data.items():
@@ -267,7 +267,7 @@ class Simulator(ComponentManager):
         """
         for component_class in ComponentManager.__subclasses__():
             if component_class not in self.ignore_list + [self.__class__]:
-                metrics: dict[str, Any] = {
+                metrics = {
                     "Step": self.scheduler.steps,
                     "metrics": component_class.collect_class_metrics(),
                 }

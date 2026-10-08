@@ -18,7 +18,7 @@ class FakeSession:
 
     def __init__(self, viewing_latest: bool = True, snapshot: Snapshot | None = None) -> None:
         self.viewing_latest = viewing_latest
-        self.snapshot: Snapshot = snapshot or {
+        self.snapshot = snapshot or {
             "step": 0,
             "satellites": [],
             "ground_stations": [],

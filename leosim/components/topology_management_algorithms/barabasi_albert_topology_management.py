@@ -24,7 +24,7 @@ def barabasi_albert_network(topology: Topology, min_num_links: int = 2) -> None:
             continue
 
         degrees = {node: len(list(topology[node])) for node in potential_targets}
-        probabilities: list[float] = []
+        probabilities = []
 
         for target in potential_targets:
             degree = degrees[target]

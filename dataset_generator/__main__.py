@@ -77,7 +77,7 @@ def main(arguments: list[str]) -> None:
         arguments (list): The command-line arguments, without the program name.
     """
     options = parse_arguments(arguments)
-    steps: list[list[Sighting]] = []
+    steps = []
 
     try:
         for step in stream_steps_from_api(options.steps, options.interval, options.radius):

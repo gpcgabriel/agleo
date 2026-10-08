@@ -22,7 +22,7 @@ DEFAULT_LOGS_DIRECTORY = "logs/dashboard"
 # `dataset.py` draw from.
 RANDOM_SEED = 42
 
-ALLOCATION_ALGORITHMS: dict[str, AllocationAlgorithm] = {
+ALLOCATION_ALGORITHMS = {
     "best_fit_allocation": best_fit_allocation,
     "longest_duration_allocation": longest_duration_allocation,
 }

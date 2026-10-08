@@ -36,7 +36,7 @@ def random_mobility_model(user: User) -> None:
 
     num_steps = num_steps if num_steps > 0 else 1
 
-    points: list[Coordinates] = []
+    points = []
     start_point = Point(user.coordinates[:2])
 
     # Obtaining the bearing.

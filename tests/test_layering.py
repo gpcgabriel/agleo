@@ -23,7 +23,7 @@ UI_PACKAGE = "app/ui"
 
 def imported_modules(path: Path) -> set[str]:
     """Returns: set: Names of the modules the file imports."""
-    names: set[str] = set()
+    names = set()
 
     for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
         if isinstance(node, ast.Import):
@@ -48,7 +48,7 @@ def run_in_a_fresh_interpreter(statements: str) -> subprocess.CompletedProcess[s
 
 
 def test_domain_packages_never_import_streamlit():
-    offenders: list[str] = []
+    offenders = []
 
     for package in DOMAIN_PACKAGES:
         for path in (ROOT / package).rglob("*.py"):
@@ -59,7 +59,7 @@ def test_domain_packages_never_import_streamlit():
 
 
 def test_domain_packages_never_import_the_ui_package():
-    offenders: list[str] = []
+    offenders = []
 
     for package in DOMAIN_PACKAGES:
         for path in (ROOT / package).rglob("*.py"):
@@ -85,7 +85,7 @@ def test_domain_packages_import_without_streamlit_loaded():
 
 def test_every_ui_module_lives_under_the_ui_package():
     """No interface module may sit loose outside `app/ui`."""
-    stray: list[str] = []
+    stray = []
 
     for path in (ROOT / "app").rglob("*.py"):
         relative = path.relative_to(ROOT).as_posix()
@@ -99,7 +99,7 @@ def test_every_ui_module_lives_under_the_ui_package():
 
 def test_the_engine_never_imports_the_llm_stack():
     """`leosim` must run headless, without Ollama or the agent framework."""
-    offenders: list[str] = []
+    offenders = []
 
     for path in (ROOT / "leosim").rglob("*.py"):
         if any(name.split(".")[0] in ("agno", "ollama") for name in imported_modules(path)):
@@ -111,7 +111,7 @@ def test_the_engine_never_imports_the_llm_stack():
 def test_the_domain_never_imports_the_agent_package():
     """Strategies that need the agent package are injected by the composition
     root, so the domain layer never reaches for them itself."""
-    offenders: list[str] = []
+    offenders = []
 
     for path in (ROOT / "app/core").rglob("*.py"):
         if any(name.startswith("app.agents") for name in imported_modules(path)):

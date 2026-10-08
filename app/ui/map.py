@@ -153,10 +153,9 @@ def render_map(session: SimulationSession, is_dark: bool, locked: bool = False) 
     # Rendering the telemetry detail expanders, collapsed by default.
     with st.expander("Telemetry Details", expanded=False):
         t_sat, t_gs, t_user = st.tabs(["Satellites", "Ground Stations", "Users"])
-        # Ignoring the parameters Streamlit's own annotations leave partly untyped on `dataframe`.
         with t_sat:
-            st.dataframe(snapshot["satellites"])  # pyright: ignore[reportUnknownMemberType]
+            st.dataframe(snapshot["satellites"])
         with t_gs:
-            st.dataframe(snapshot["ground_stations"])  # pyright: ignore[reportUnknownMemberType]
+            st.dataframe(snapshot["ground_stations"])
         with t_user:
-            st.dataframe(snapshot["users"])  # pyright: ignore[reportUnknownMemberType]
+            st.dataframe(snapshot["users"])

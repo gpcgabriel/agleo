@@ -169,8 +169,7 @@ def collect_script_proposals(response: object, buffer: ProposalBuffer) -> int:
     """
     recorded = 0
 
-    no_executions: list[object] = []
-    for execution in getattr(response, "tools", None) or no_executions:
+    for execution in getattr(response, "tools", None) or []:
         if getattr(execution, "tool_name", None) != SKILL_SCRIPT_TOOL:
             continue
 
@@ -266,8 +265,7 @@ def run_agent(
     """
     buffer = ProposalBuffer(current_config=current_config, default_position=default_position)
     agent = build_agent(model_name, action_mode, buffer, skills_directory=skills_directory)
-    # Ignoring the bare `List` and `Dict` agno's own annotations leave in `Agent.run`'s input type.
-    response = agent.run(f"Context state: {context_state}\n\nOperator Command: {prompt}")  # pyright: ignore[reportUnknownMemberType]
+    response = agent.run(f"Context state: {context_state}\n\nOperator Command: {prompt}")
 
     text = response.content or ""
 

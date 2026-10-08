@@ -63,7 +63,7 @@ def write_run(directory: str, filename: str, rows: list[Row]) -> None:
 
 def application_rows(hosted_per_step: list[int]) -> list[Row]:
     """Returns: list: Application rows where the given number of applications is hosted at each step."""
-    rows: list[Row] = []
+    rows = []
     for step, hosted in enumerate(hosted_per_step):
         metrics = [
             {

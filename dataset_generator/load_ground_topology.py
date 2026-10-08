@@ -1,21 +1,17 @@
-from typing import cast
-
 import networkx as nx
 
 from leosim.components import GroundStation, NetworkLink, Topology
-from leosim.components.topology import Node
 
 from .create_components import MAX_RANGE
 
 
 def load_ground_topology_from_gml(filepath: str, default_delay: int = 1) -> Topology:
 
-    # Naming what networkx's stub leaves untyped on `read_gml`: a graph whose nodes are the GML labels.
-    graph = cast("nx.Graph[str]", nx.read_gml(filepath))  # pyright: ignore[reportUnknownMemberType]
+    graph = nx.read_gml(filepath)
 
-    new_labels: dict[str, GroundStation] = {}
-    ground_stations: dict[GroundStation, GroundStation] = {}
-    nodes_to_remove: list[str] = []
+    new_labels = {}
+    ground_stations = {}
+    nodes_to_remove = []
 
     for node in graph.nodes():
         if not graph.nodes[node].get("Country"):
@@ -35,7 +31,7 @@ def load_ground_topology_from_gml(filepath: str, default_delay: int = 1) -> Topo
     graph.remove_nodes_from(nodes_to_remove)
 
     # Relabelling every node left to its station: the nodes without one were removed above.
-    stations_graph = cast("nx.Graph[Node]", nx.relabel_nodes(graph, new_labels))
+    stations_graph = nx.relabel_nodes(graph, new_labels)
 
     topology = Topology(existing_graph=stations_graph)
 

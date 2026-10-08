@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from app.core.actions import (
     ActionType,
@@ -46,7 +46,7 @@ def spread_out_collisions(specs: list[NodeSpec], taken_positions: set[tuple[floa
     Returns:
         list: The same nodes, with latitudes shifted where they collided.
     """
-    adjusted: list[NodeSpec] = []
+    adjusted = []
 
     for spec in specs:
         lat = spec.lat
@@ -88,8 +88,7 @@ def coerce_list(value: object, field_name: str) -> list[Any]:
     if not isinstance(value, (list, tuple)):
         value = [value]
 
-    # Typing the elements as the model sent them: anything JSON can hold.
-    return list(cast("list[Any] | tuple[Any, ...]", value))
+    return list(value)
 
 
 class ProposalBuffer:
@@ -114,7 +113,7 @@ class ProposalBuffer:
         """
         self.current_config = current_config
         self.default_position = default_position
-        self.proposals: list[ProposedAction] = []
+        self.proposals = []
 
     def fill_positions(
         self, node_types: list[Any], latitudes: list[Any], longitudes: list[Any]
@@ -158,7 +157,7 @@ class ProposalBuffer:
             self.propose_add_process_unit,
             self.propose_add_user,
             self.propose_add_app_to_user,
-            self.propose_add_node,  # pyright: ignore[reportUnknownMemberType]
+            self.propose_add_node,
         ]
 
     def register(self, action: ProposedAction) -> str:
@@ -314,7 +313,7 @@ class ProposalBuffer:
     # Leaving these parameters unannotated on purpose: agno builds the tool's JSON schema from the
     # annotations, and any annotation would state a type to the model (Any becomes "object"), while
     # `coerce_list` accepts a list, a JSON string of one, or a single value.
-    def propose_add_node(self, node_types, latitudes=None, longitudes=None, altitudes=None) -> str:  # pyright: ignore[reportMissingParameterType, reportUnknownParameterType]
+    def propose_add_node(self, node_types, latitudes=None, longitudes=None, altitudes=None) -> str:
         """Proposes to add one or more new nodes (Satellites or GroundStations).
 
         Only node_types is required. A position or an altitude the operator did
@@ -328,10 +327,10 @@ class ProposalBuffer:
             altitudes: List of altitudes in kilometres, one per node. Optional.
         """
         try:
-            node_types = coerce_list(node_types, "node_types")  # pyright: ignore[reportUnknownArgumentType]
-            latitudes = coerce_list(latitudes, "latitudes") if latitudes is not None else []  # pyright: ignore[reportUnknownArgumentType]
-            longitudes = coerce_list(longitudes, "longitudes") if longitudes is not None else []  # pyright: ignore[reportUnknownArgumentType]
-            altitudes = coerce_list(altitudes, "altitudes") if altitudes is not None else []  # pyright: ignore[reportUnknownArgumentType]
+            node_types = coerce_list(node_types, "node_types")
+            latitudes = coerce_list(latitudes, "latitudes") if latitudes is not None else []
+            longitudes = coerce_list(longitudes, "longitudes") if longitudes is not None else []
+            altitudes = coerce_list(altitudes, "altitudes") if altitudes is not None else []
         except ValueError as error:
             return f"Error: {error}"
 
@@ -353,7 +352,7 @@ class ProposalBuffer:
                 "the node near. Ask the operator for a latitude and longitude."
             )
 
-        specs: list[NodeSpec] = []
+        specs = []
         for index in range(len(node_types)):
             try:
                 defaulted = list(defaulted_position)

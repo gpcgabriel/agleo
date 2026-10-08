@@ -20,7 +20,7 @@ class SlashCommand(TypedDict):
     local: bool
 
 
-SLASH_COMMANDS: list[SlashCommand] = [
+SLASH_COMMANDS = [
     {
         "cmd": "/help",
         "desc": "List all available commands with descriptions",

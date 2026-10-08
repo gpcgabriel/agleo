@@ -9,7 +9,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from proposals import last_proposal, propose_nodes
+from proposals import last_proposal
 
 from app.agents.dashboard.tools import ProposalBuffer
 from app.core.actions import (
@@ -57,7 +57,7 @@ def test_invalid_input_returns_message_instead_of_raising():
 
 def test_add_node_accepts_json_strings_from_the_model():
     buffer = ProposalBuffer()
-    propose_nodes(buffer, '["Satellite"]', "[-21.0]", "[-47.8]", "[550.0]")
+    buffer.propose_add_node('["Satellite"]', "[-21.0]", "[-47.8]", "[550.0]")
 
     action = last_proposal(buffer)
     assert action.action_type == ActionType.ADD_NODES
@@ -68,7 +68,7 @@ def test_add_node_accepts_json_strings_from_the_model():
 
 def test_add_node_rejects_mismatched_parallel_lists():
     buffer = ProposalBuffer()
-    message = propose_nodes(buffer, ["Satellite", "Satellite"], [-21.0], [-47.8], [550.0])
+    message = buffer.propose_add_node(["Satellite", "Satellite"], [-21.0], [-47.8], [550.0])
 
     assert message.startswith("Error:")
     assert buffer.get_proposals() == []
@@ -76,8 +76,8 @@ def test_add_node_rejects_mismatched_parallel_lists():
 
 def test_repeated_add_node_calls_merge_into_one_proposal():
     buffer = ProposalBuffer()
-    propose_nodes(buffer, ["Satellite"], [-21.0], [-47.8], [550.0])
-    propose_nodes(buffer, ["Satellite"], [-21.01], [-47.8], [550.0])
+    buffer.propose_add_node(["Satellite"], [-21.0], [-47.8], [550.0])
+    buffer.propose_add_node(["Satellite"], [-21.01], [-47.8], [550.0])
 
     assert len(buffer.get_proposals()) == 1
     payload = last_proposal(buffer).payload
@@ -110,7 +110,7 @@ def test_adding_a_unit_and_adding_nodes_are_distinct_actions():
     unit_buffer.propose_add_process_unit("GroundStation", 28, 50, 50)
 
     nodes_buffer = ProposalBuffer()
-    propose_nodes(nodes_buffer, ["Satellite"], [-21.0], [-47.8], [550.0])
+    nodes_buffer.propose_add_node(["Satellite"], [-21.0], [-47.8], [550.0])
 
     unit_action = last_proposal(unit_buffer)
     nodes_action = last_proposal(nodes_buffer)

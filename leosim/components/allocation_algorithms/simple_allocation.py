@@ -10,7 +10,6 @@ from ..user import User
 
 if TYPE_CHECKING:
     from ...simulator import Simulator
-    from ..application_access_models import AccessModel
     from ..topology import Topology
 
 
@@ -30,7 +29,7 @@ def simple_allocation(model: Simulator, parameters: dict[str, Any]) -> None:
             and (other.storage - other.storage_demand) < (current_unit.storage - current_unit.storage_demand)
         )
 
-    applications_to_be_allocated: list[AccessModel] = []
+    applications_to_be_allocated = []
 
     # Selecting the applications that need provisioning.
     for user in User.all():
@@ -56,7 +55,7 @@ def simple_allocation(model: Simulator, parameters: dict[str, Any]) -> None:
 
     # Iterating over the provisioning demands.
     for access_model in applications_to_be_allocated:
-        process_units: list[ProcessUnit] = []
+        process_units = []
 
         # Looking for process units directly connected to network access points.
         for access_point in access_model.user.network_access_points:

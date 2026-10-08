@@ -46,9 +46,7 @@ class Topology(ComponentManager, NodeGraph):
     # Leaving the topology out of the scenario file: `Simulator.initialize` rebuilds it from the links.
     saved_in_scenario = False
 
-    # Ignoring the constructor mismatch pyright reports: networkx's stubs give Graph a catch-all `__new__`
-    # for backend dispatch, which no subclass's `__init__` signature matches.
-    def __init__(self, obj_id: int = 0, existing_graph: nx.Graph[Node] | None = None) -> None:  # pyright: ignore[reportInconsistentConstructor]
+    def __init__(self, obj_id: int = 0, existing_graph: nx.Graph[Node] | None = None) -> None:
         """Initializes a Topology instance.
 
         Args:
@@ -80,13 +78,12 @@ class Topology(ComponentManager, NodeGraph):
 
         # Replacing the edge's data dictionary with the link through `_adj`, which networkx's type
         # stubs leave out: every edge lookup then returns the link object, not a copy of its fields.
-        self._adj[node][other] = link  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType]
-        self._adj[other][node] = link  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType]
+        self._adj[node][other] = link  # pyright: ignore[reportAttributeAccessIssue]
+        self._adj[other][node] = link  # pyright: ignore[reportAttributeAccessIssue]
 
     def delay_shortest_path(self, source: Node, target: Node) -> list[Node]:
         """Returns: list: The path from one node to another with the least total link delay."""
-        # Ignoring the untyped backend keyword arguments networkx's stub declares on `shortest_path`.
-        return nx.shortest_path(G=self, source=source, target=target, weight="delay")  # pyright: ignore[reportUnknownMemberType]
+        return nx.shortest_path(G=self, source=source, target=target, weight="delay")
 
     def link_between(self, node: Node, other: Node) -> NetworkLink:
         """Returns: NetworkLink: The link stored as the data of the edge between two nodes."""
@@ -143,7 +140,7 @@ class Topology(ComponentManager, NodeGraph):
             if need_to_reroute:
                 if flow.metadata.get("type", "default") == "request_response":
                     user = flow.source
-                    connection_paths: list[list[Node]] = []
+                    connection_paths = []
 
                     # Checking every user access point to see whether the application is
                     # reachable.
@@ -152,8 +149,7 @@ class Topology(ComponentManager, NodeGraph):
                             new_path = self.model.topology.delay_shortest_path(access_point, flow.target)
                             connection_paths.append(new_path)
 
-                    no_path: list[Node] = []
-                    path = min(connection_paths, key=len, default=no_path)
+                    path = min(connection_paths, key=len, default=[])
 
                 elif nx.has_path(G=self, source=flow.source, target=flow.target):
                     path = self.delay_shortest_path(flow.source, flow.target)
@@ -187,7 +183,7 @@ class Topology(ComponentManager, NodeGraph):
     def remove_invalid_connections(self) -> None:
         """Reevaluates link existence and removes edges exceeding range limits."""
         for satellite in Satellite.all():
-            link_to_removed: list[tuple[Node, Node]] = []
+            link_to_removed = []
 
             for neighbor in self[satellite]:
                 link = self.link_between(satellite, neighbor)
@@ -213,8 +209,7 @@ class Topology(ComponentManager, NodeGraph):
         Returns:
             float: Total delay including the initial wireless delay.
         """
-        # Ignoring the parameters networkx's stub leaves untyped on `path_weight`.
-        path_delay: float = nx.classes.function.path_weight(G=self, path=path, weight="delay")  # pyright: ignore[reportUnknownMemberType]
+        path_delay = nx.classes.function.path_weight(G=self, path=path, weight="delay")
         # Reading the wireless hop from the path's first node, which is always the user's access point.
         path_delay += cast(GroundStation | Satellite, path[0]).wireless_delay
         return path_delay
@@ -231,8 +226,7 @@ class Topology(ComponentManager, NodeGraph):
         if flow.status == "waiting":
             path_delay = float("inf")
         else:
-            # Ignoring the parameters networkx's stub leaves untyped on `path_weight`.
-            path_delay = nx.classes.function.path_weight(G=self, path=flow.path, weight="delay")  # pyright: ignore[reportUnknownMemberType]
+            path_delay = nx.classes.function.path_weight(G=self, path=flow.path, weight="delay")
 
             if isinstance(flow.source, User):
                 # Reading the wireless hop from the path's first node, the user's access point.
@@ -285,7 +279,7 @@ class Topology(ComponentManager, NodeGraph):
         return math.sqrt(ground_distance**2 + air_distance**2)
 
     def export_topology(self) -> dict[str, Any]:
-        user_sat_links: list[dict[str, Any]] = []
+        user_sat_links = []
         for user in User.all():
             for sat in Satellite.all():
                 if self.has_edge(user, sat):
@@ -301,7 +295,7 @@ class Topology(ComponentManager, NodeGraph):
                         }
                     )
 
-        gs_sat_edges: list[dict[str, Any]] = []
+        gs_sat_edges = []
         for gs in GroundStation.all():
             for sat in Satellite.all():
                 if self.has_edge(gs, sat):

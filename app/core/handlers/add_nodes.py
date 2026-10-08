@@ -28,7 +28,7 @@ def handle(session: SimulationSession, payload: AddNodesPayload) -> ActionResult
     Returns:
         ActionResult: Confirmation, or a notice if a node could not be created.
     """
-    created: list[str] = []
+    created = []
 
     for spec in payload.nodes:
         coordinates = (spec.lat, spec.lon, spec.alt)

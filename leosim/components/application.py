@@ -78,8 +78,8 @@ class Application(ComponentManager):
         self.architectural_demands = architectural_demands if architectural_demands is not None else {}
 
         self.user: User | None = None
-        self.process_unit: ProcessUnit | None = None
-        self.migrations: list[dict[str, Any]] = []
+        self.process_unit = None
+        self.migrations = []
         self.available = False
         self._available = False
         self.being_provisioned = False
@@ -125,7 +125,7 @@ class Application(ComponentManager):
             migr = self.migrations[-1]
             # TODO: Implement a formal dependency management system.
             # Standing in for the state machine until that system exists.
-            dependencies_on_process_unit: list[str] = []
+            dependencies_on_process_unit = []
 
             # Treating data transfer as instantaneous, which is what the model does today.
             if migr["status"] == "waiting" and (
@@ -165,7 +165,7 @@ class Application(ComponentManager):
                 if self.process_unit:
                     self.process_unit.applications.remove(self)
 
-                target: ProcessUnit = migr["target"]
+                target = migr["target"]
                 self.process_unit = target
                 target.applications.append(self)
 
@@ -258,7 +258,7 @@ class Application(ComponentManager):
 
     @staticmethod
     def export_applications() -> dict[str, dict[str, Any]]:
-        apps: dict[str, dict[str, Any]] = {}
+        apps = {}
         for app in Application.all():
             remaining = 0
             pending = False

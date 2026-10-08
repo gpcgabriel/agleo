@@ -10,7 +10,6 @@ from ..user import User
 if TYPE_CHECKING:
     from ...simulator import Simulator
     from ..application import Application
-    from ..application_access_models import AccessModel
     from ..process_unit import ProcessUnit
     from ..topology import Topology
 
@@ -33,7 +32,7 @@ def best_fit_allocation(model: Simulator, parameters: dict[str, Any]) -> None:
             ),
         )
 
-    applications_to_be_allocated: list[AccessModel] = []
+    applications_to_be_allocated = []
 
     # Selecting the applications that require provisioning.
     for user in User.all():
@@ -57,7 +56,7 @@ def best_fit_allocation(model: Simulator, parameters: dict[str, Any]) -> None:
 
     # Iterating over the provisioning demands.
     for access_model in applications_to_be_allocated:
-        process_units: list[ProcessUnit] = []
+        process_units = []
         # Searching for process units directly connected to network access points.
         for access_point in access_model.user.network_access_points:
             if isinstance(access_point, Satellite) and access_point.process_unit is not None:

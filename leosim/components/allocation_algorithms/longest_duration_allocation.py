@@ -61,7 +61,7 @@ def longest_duration_allocation(model: Simulator, parameters: dict[str, Any]) ->
     if step_atual_str not in model.provisioning_history:
         model.provisioning_history[step_atual_str] = 0
 
-    applications_to_be_allocated: list[AccessModel] = []
+    applications_to_be_allocated = []
 
     # Identifying the applications that need provisioning.
     for user in User.all():
@@ -89,8 +89,8 @@ def longest_duration_allocation(model: Simulator, parameters: dict[str, Any]) ->
 
     # Allocating.
     for access_model in applications_to_be_allocated:
-        best_target: ProcessUnit | None = None
-        max_duration: float = -1
+        best_target = None
+        max_duration = -1
 
         # Trying the ground stations.
         if parameters["ground_station"].process_unit and (

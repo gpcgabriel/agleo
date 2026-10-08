@@ -13,7 +13,7 @@ import json
 import os
 import subprocess
 import sys
-from typing import Any, cast
+from typing import Any
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -114,10 +114,8 @@ def test_a_description_says_when_to_use_the_skill():
 def test_tools_mode_builds_with_the_proposal_tools():
     agent = build_agent(MODEL_FOR_ASSEMBLY, MODE_TOOLS, ProposalBuffer())
 
-    # Ignoring the bare `Dict` agno's own annotation leaves in `Agent.tools`.
-    tools: object = agent.tools  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
-    assert isinstance(tools, list)
-    assert len(cast(list[object], tools)) == len(ProposalBuffer().get_tools())
+    assert isinstance(agent.tools, list)
+    assert len(agent.tools) == len(ProposalBuffer().get_tools())
 
 
 def test_skills_mode_builds_instead_of_raising():
@@ -133,8 +131,7 @@ def test_skills_mode_does_not_get_the_proposal_tools():
     """
     agent = build_agent(MODEL_FOR_ASSEMBLY, MODE_SKILLS, ProposalBuffer())
 
-    # Ignoring the bare `Dict` agno's own annotation leaves in `Agent.tools`.
-    assert not agent.tools  # pyright: ignore[reportUnknownMemberType]
+    assert not agent.tools
 
 
 def test_a_skill_script_proposal_reaches_the_buffer():

@@ -58,7 +58,7 @@ def get_exposure_time(user: User, satellite: Satellite) -> int:
 
 
 def get_eligible_pus(app: Application, user: User, model: Simulator, parameters: dict[str, Any]) -> list[ProcessUnit]:
-    process_units: list[ProcessUnit] = []
+    process_units = []
     for access_point in user.network_access_points:
         if isinstance(access_point, Satellite) and access_point.process_unit is not None:
             pu = access_point.process_unit
@@ -97,8 +97,8 @@ def allocate_single_app(
         return "already_provisioned"
 
     elif strategy == "longest_duration":
-        best_target: ProcessUnit | None = None
-        max_duration: float = -1
+        best_target = None
+        max_duration = -1
         scenario = parameters.get("scenario", "hybrid")
 
         if parameters["ground_station"].process_unit and (scenario == "terrestrial" or scenario == "hybrid"):

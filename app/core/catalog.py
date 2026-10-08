@@ -28,7 +28,7 @@ CATALOG_ID_ATTRIBUTE = "catalog_id"
 
 def get_taken_catalog_ids() -> set[int]:
     """Returns: set: Catalog ids already used by satellites in the simulation."""
-    taken: set[int] = set()
+    taken = set()
 
     for satellite in Satellite.all():
         catalog_id = getattr(satellite, CATALOG_ID_ATTRIBUTE, None)
@@ -60,14 +60,14 @@ class SatelliteCatalog:
         with open(path, encoding="UTF-8") as file:
             steps = load(file)
 
-        latitudes: list[float] = []
-        longitudes: list[float] = []
-        altitudes: list[float] = []
-        catalog_ids: list[int] = []
+        latitudes = []
+        longitudes = []
+        altitudes = []
+        catalog_ids = []
 
         # Indexing each satellite's path in step order; this is what answers
         # trace lookups.
-        self.positions_by_id: dict[int, list[Coordinates]] = {}
+        self.positions_by_id = {}
 
         for step in steps:
             for satellite in step:
@@ -198,7 +198,7 @@ class SatelliteCatalog:
 
 # Caching one index per process: the traces file does not change while the app
 # runs, and indexing it takes a few seconds.
-_LOADED_CATALOGS: dict[str, SatelliteCatalog] = {}
+_LOADED_CATALOGS = {}
 
 
 def get_catalog(path: str) -> SatelliteCatalog:

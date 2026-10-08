@@ -24,7 +24,7 @@ def serialize_state(sim: Simulator) -> Snapshot:
     """
     Serializes the simulator's current state into a JSON-compatible dictionary.
     """
-    state: Snapshot = {"step": sim.scheduler.steps, "satellites": [], "ground_stations": [], "users": [], "links": []}
+    state = {"step": sim.scheduler.steps, "satellites": [], "ground_stations": [], "users": [], "links": []}
 
     # Exporting the satellites.
     for sat in Satellite.all():
@@ -132,10 +132,8 @@ def find_default_node_position(snapshot: Snapshot | None) -> tuple[float, float]
         tuple or None: (latitude, longitude), or None when the scenario has no
         ground station to average.
     """
-    stations: list[dict[str, Any]] = (snapshot or {}).get("ground_stations") or []
-    placed: list[dict[str, Any]] = [
-        station for station in stations if station.get("lat") is not None and station.get("lon") is not None
-    ]
+    stations = (snapshot or {}).get("ground_stations") or []
+    placed = [station for station in stations if station.get("lat") is not None and station.get("lon") is not None]
     if not placed:
         return None
 

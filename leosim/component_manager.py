@@ -43,14 +43,14 @@ class ComponentManager:
 
     def collect_metrics(self) -> dict[str, Any]:
         # Defining the object metrics collection.
-        metrics: dict[str, Any] = {}
+        metrics = {}
 
         return metrics
 
     @classmethod
     def collect_class_metrics(cls) -> list[dict[str, Any]]:
         # Collecting the metrics of every instance of the class.
-        metrics: list[dict[str, Any]] = []
+        metrics = []
 
         for obj in cls.all():
             obj_metrics = obj.collect_metrics()
@@ -102,11 +102,11 @@ class ComponentManager:
         cls, ignore_list: list[type[ComponentManager]] | None = None, filename: str = "dataset.json"
     ) -> dict[str, list[dict[str, Any]]]:
         # Exporting the context of the components of interest.
-        scenary: dict[str, list[dict[str, Any]]] = {}
+        scenary = {}
 
         for component_class in cls.__subclasses__():
             if component_class.saved_in_scenario and component_class not in (ignore_list or []):
-                components: list[dict[str, Any]] = []
+                components = []
 
                 for component in component_class.all():
                     component_context = component.export()

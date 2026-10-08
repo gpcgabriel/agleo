@@ -31,7 +31,7 @@ class AllocationMetrics:
             simulator's own logs directory is used at write time.
         """
         self.logs_directory = logs_directory
-        self.records: list[dict[str, Any]] = []
+        self.records = []
         self.written = 0
 
     def add_skip(self, step: int, station_id: int, reason: str) -> None:
@@ -109,7 +109,7 @@ class AllocationMetrics:
             list: Rows ordered by step, each carrying the calls made, the
             stations skipped, prompt size, wall clock and allocation outcome.
         """
-        by_step: dict[int, dict[str, Any]] = {}
+        by_step = {}
         for record in self.records:
             row = by_step.setdefault(
                 record["step"],

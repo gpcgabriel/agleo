@@ -106,7 +106,7 @@ class RunLogs:
         A repetition whose file holds no rows is left out, and an algorithm with no
         repetition left is absent from the result.
         """
-        averages: dict[str, Series] = {}
+        averages = {}
         for algorithm in self.algorithm_names:
             runs = [run for run in (extract(read_jsonl(path)) for path in self.files(algorithm, filename)) if run[0]]
             if runs:
@@ -119,12 +119,12 @@ class RunLogs:
         Every algorithm and repetition of a topology is pooled into one line, so the
         figure compares the topologies rather than the algorithms.
         """
-        series_by_topology: dict[str, Column] = {}
+        series_by_topology = {}
         for topology in get_topologies(self.current_path):
             topology_logs = RunLogs(
                 os.path.join(self.current_path, topology), self.algorithm_names, self.scenario, self.num_repetitions
             )
-            values_by_step: dict[float, list[float]] = {}
+            values_by_step = {}
             for algorithm in self.algorithm_names:
                 for path in topology_logs.files(algorithm, filename):
                     steps, values = extract(read_jsonl(path))
@@ -149,17 +149,16 @@ def plot(series_by_label: dict[str, Column], xlabel: str, ylabel: str, output_pa
     figure = Figure(figsize=(12, 7))
     axes = figure.subplots()
 
-    # Ignoring the `**kwargs` matplotlib leaves unannotated on these Axes and Figure methods.
     for index, (label, (steps, values)) in enumerate(series_by_label.items()):
-        axes.plot(steps, values, label=label, marker=MARKERS[index % len(MARKERS)])  # pyright: ignore[reportUnknownMemberType]
+        axes.plot(steps, values, label=label, marker=MARKERS[index % len(MARKERS)])
 
-    axes.set_xlabel(xlabel, fontsize=18)  # pyright: ignore[reportUnknownMemberType]
-    axes.set_ylabel(ylabel, fontsize=18)  # pyright: ignore[reportUnknownMemberType]
-    axes.tick_params(labelsize=18)  # pyright: ignore[reportUnknownMemberType]
-    axes.grid(True)  # pyright: ignore[reportUnknownMemberType]
-    axes.legend(fontsize=15)  # pyright: ignore[reportUnknownMemberType]
+    axes.set_xlabel(xlabel, fontsize=18)
+    axes.set_ylabel(ylabel, fontsize=18)
+    axes.tick_params(labelsize=18)
+    axes.grid(True)
+    axes.legend(fontsize=15)
 
-    figure.savefig(output_path)  # pyright: ignore[reportUnknownMemberType]
+    figure.savefig(output_path)
 
 
 # -- Reading the series out of the metric rows ---------------------------------
@@ -171,11 +170,11 @@ def user_access_series(rows: Iterable[Row]) -> Series:
     Each user's first application is compared with its own previous step, so a user is
     counted from its second appearance on.
     """
-    steps: list[float] = []
-    provisioned: list[float] = []
-    delays: list[float] = []
-    waiting: list[float] = []
-    last_accesses: dict[int, dict[str, Any]] = {}
+    steps = []
+    provisioned = []
+    delays = []
+    waiting = []
+    last_accesses = {}
 
     for data in rows:
         step_provisioned, step_delay, step_waiting = 0, 0, 0
@@ -203,9 +202,9 @@ def user_access_series(rows: Iterable[Row]) -> Series:
 
 def provisioned_series(rows: Iterable[Row]) -> Series:
     """Returns, per step, the users whose application is provisioned, from each user's second appearance on."""
-    steps: list[float] = []
-    provisioned: list[float] = []
-    seen: set[int] = set()
+    steps = []
+    provisioned = []
+    seen = set()
 
     for data in rows:
         step_provisioned = 0
@@ -223,8 +222,8 @@ def provisioned_series(rows: Iterable[Row]) -> Series:
 
 def migration_series(rows: Iterable[Row]) -> Series:
     """Returns, per step, the applications whose last migration names an origin and a target."""
-    steps: list[float] = []
-    migrations: list[float] = []
+    steps = []
+    migrations = []
 
     for data in rows:
         steps.append(data["Step"])
@@ -243,9 +242,9 @@ def migration_series(rows: Iterable[Row]) -> Series:
 
 def resource_series(rows: Iterable[Row]) -> Series:
     """Returns, per step, the mean CPU and memory demand of the applications hosted and available."""
-    cpu_by_step: dict[float, float] = {}
-    memory_by_step: dict[float, float] = {}
-    applications_by_step: dict[float, int] = {}
+    cpu_by_step = {}
+    memory_by_step = {}
+    applications_by_step = {}
 
     for data in rows:
         step = data["Step"]
@@ -269,8 +268,8 @@ def resource_series(rows: Iterable[Row]) -> Series:
 def station_delay_series(rows: Iterable[Row], station_id: int) -> Series:
     """Returns, per step, the summed delay of the provisioned applications of the users on one station."""
     station = f"GroundStation_{station_id}"
-    steps: list[float] = []
-    delays: list[float] = []
+    steps = []
+    delays = []
 
     for data in rows:
         step_delay = 0
@@ -292,8 +291,8 @@ def station_delay_series(rows: Iterable[Row], station_id: int) -> Series:
 def station_link_series(rows: Iterable[Row], station_id: int) -> Series:
     """Returns, per step, how many satellites hold a link with one station."""
     station = f"GroundStation_{station_id}"
-    steps: list[float] = []
-    satellites: list[float] = []
+    steps = []
+    satellites = []
 
     for data in rows:
         steps.append(data["Step"])

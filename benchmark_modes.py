@@ -42,7 +42,7 @@ LOG_PATH = os.path.join("logs", "mode_benchmark.jsonl")
 # What gets compared: six tool schemas in the system prompt against progressive
 # disclosure, where the model sees a short skill description and opens the rest
 # only when it judges the skill relevant.
-ARMS: dict[str, tuple[str, str | None]] = {
+ARMS = {
     "Tools": (MODE_TOOLS, None),
     "Skills": (MODE_SKILLS, SKILLS_DIRECTORY),
 }
@@ -86,7 +86,7 @@ def app_for_user(user_id: int) -> PayloadCheck:
     return lambda payload: getattr(payload, "user_id", None) == user_id
 
 
-COMMANDS: list[Command] = [
+COMMANDS = [
     Command("step/slash", "/step 3", ActionType.RUN_SIMULATION, steps_are(3)),
     Command("step/prose", "Advance the simulation by 3 steps", ActionType.RUN_SIMULATION, steps_are(3)),
     Command(
@@ -256,7 +256,7 @@ def summarize(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     Returns:
         list: One row per mode.
     """
-    rows: list[dict[str, Any]] = []
+    rows = []
     for arm in ARMS:
         mine = [record for record in records if record["arm"] == arm]
         if not mine:
@@ -311,7 +311,7 @@ def main() -> int:
     os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
 
     commands = [c for c in COMMANDS if not arguments.only or c.label in arguments.only]
-    records: list[dict[str, Any]] = []
+    records = []
     total = len(commands) * len(arguments.arms) * len(arguments.contexts) * arguments.repetitions
     done = 0
 

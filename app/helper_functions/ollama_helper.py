@@ -1,7 +1,6 @@
 import subprocess
 import time
 from collections.abc import Callable
-from typing import Any
 
 import httpx
 import ollama
@@ -65,9 +64,7 @@ def list_local_models() -> list[str]:
     """
     try:
         response = requests.get(f"{DEFAULT_HOST}/api/tags", timeout=3)
-        models_list: list[dict[str, Any]] = (
-            response.json().get("models", []) if response.status_code == requests.codes.ok else []
-        )
+        models_list = response.json().get("models", []) if response.status_code == requests.codes.ok else []
     except requests.exceptions.RequestException:
         return []
 

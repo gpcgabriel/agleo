@@ -14,7 +14,6 @@ four arithmetic operations, and refuses anything else.
 from __future__ import annotations
 
 import ast
-from collections.abc import Callable
 from types import EllipsisType
 from typing import TYPE_CHECKING, cast
 
@@ -38,7 +37,7 @@ type LiteralValue = (
     | None
 )
 
-_JSON_LITERALS: dict[str, bool | None] = {
+_JSON_LITERALS = {
     "true": True,
     "false": False,
     "null": None,
@@ -46,7 +45,7 @@ _JSON_LITERALS: dict[str, bool | None] = {
     "False": False,
     "None": None,
 }
-_ARITHMETIC: dict[type[ast.operator], Callable[[float, float], float]] = {
+_ARITHMETIC = {
     ast.Add: lambda a, b: a + b,
     ast.Sub: lambda a, b: a - b,
     ast.Mult: lambda a, b: a * b,
@@ -99,7 +98,7 @@ def find_object_candidates(text: str) -> list[str]:
     Returns:
         list: Fragments, outermost first.
     """
-    candidates: list[str] = []
+    candidates = []
 
     for start, character in enumerate(text):
         if character != "{":

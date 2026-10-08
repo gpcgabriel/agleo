@@ -142,7 +142,7 @@ def test_a_download_reports_every_progress_update():
         ProgressResponse(status="success"),
     )
 
-    reported: list[str] = []
+    reported = []
     with patch("ollama.Client", return_value=client):
         assert pull_model("llama3.1", progress_callback=reported.append) is True
 

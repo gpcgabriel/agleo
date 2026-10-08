@@ -71,16 +71,16 @@ class NetworkFlow(ComponentManager):
             self.target = target
 
         self.start = start
-        self.end: int | None = None
+        self.end = None
         self.data_to_transfer = data_to_transfer
-        self.metadata: dict[str, User | str] = metadata if metadata is not None else {}
+        self.metadata = metadata if metadata is not None else {}
 
         self.path = path
-        self.bandwidth: dict[int, int] = {}
+        self.bandwidth = {}
 
         # Tracking the attributes that make change management easier.
         self.last_path = path.copy()
-        self.last_bandwidth: dict[int, int] = {}
+        self.last_bandwidth = {}
 
         for i in range(len(path) - 1):
             link = self.model.topology.link_between(path[i], path[i + 1])

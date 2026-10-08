@@ -73,28 +73,28 @@ class Satellite(ComponentManager):
         self.active = True
         self.wireless_delay = wireless_delay
         self.is_gateway = is_gateway
-        self.users: list[User] = []
+        self.users = []
         self.max_connection_range = max_connection_range
-        self.power: float = 0
-        self.min_power: float = 0
+        self.power = 0
+        self.min_power = 0
 
         # Holding the satellite coordinates.
-        self.coordinates: Coordinates | None = coordinates
-        self.coordinates_trace: list[Coordinates | None] = []
+        self.coordinates = coordinates
+        self.coordinates_trace = []
 
         # Holding the models the satellite runs.
         self.mobility_model = mobility_model
-        self.mobility_model_parameters: dict[str, Any] = {}
+        self.mobility_model_parameters = {}
 
-        self.power_generation_model: Callable[[Satellite], None] | None = None
-        self.power_generation_model_parameters: dict[str, Any] = {}
+        self.power_generation_model = None
+        self.power_generation_model_parameters = {}
 
-        self.power_consumption_model: Callable[[Satellite], None] | None = None
-        self.power_consumption_model_parameters: dict[str, Any] = {}
+        self.power_consumption_model = None
+        self.power_consumption_model_parameters = {}
 
-        self.failure_model: Callable[[Satellite], bool] | None = None
+        self.failure_model = None
         self.failure_occurred = False
-        self.failure_model_parameters: dict[str, Any] = {}
+        self.failure_model_parameters = {}
 
     def collect_metrics(self) -> dict[str, Any]:
         """Collects operational metrics from the satellite.
@@ -247,14 +247,14 @@ class Satellite(ComponentManager):
 
     @staticmethod
     def export_satellites() -> dict[str, dict[str, Any]]:
-        satellite_data: dict[str, dict[str, Any]] = {}
+        satellite_data = {}
         for sat in Satellite.all():
             step = sat.model.scheduler.steps
             future = [
                 (round(c[0], 1), round(c[1], 1)) if c else None for c in sat.coordinates_trace[step + 1 : step + 16]
             ]
             pu = sat.process_unit
-            pu_info: dict[str, Any] | None = None
+            pu_info = None
             if pu:
                 pu_info = {
                     "id": pu.id,

@@ -96,8 +96,7 @@ def test_a_unit_on_the_station_reports_no_radio_hop():
 
 def test_a_unit_with_no_recorded_host_says_so_instead_of_guessing():
     state = make_state()
-    no_hosts: dict[str, str] = {}
-    state["unit_hosts"] = no_hosts
+    state["unit_hosts"] = {}
 
     lines = render_process_units(state["process_units"], state["unit_hosts"], {4: 1.0})
 

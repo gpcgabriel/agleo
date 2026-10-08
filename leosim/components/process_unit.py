@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 from ..component_manager import ComponentManager
@@ -67,13 +66,13 @@ class ProcessUnit(ComponentManager):
         self.id = id
 
         self.model_name = model_name
-        self.coordinates: Coordinates | None = coordinates
+        self.coordinates = coordinates
 
         # Holding the total computational capacity.
         self.cpu = cpu
         self.memory = memory
         self.storage = storage
-        self.power: float = 0
+        self.power = 0
 
         # Tracking the current demands.
         self.cpu_demand = 0
@@ -81,20 +80,20 @@ class ProcessUnit(ComponentManager):
         self.storage_demand = 0
 
         # Describing the architectural specifications.
-        self.architecture: dict[str, Any] = architecture if architecture is not None else {}
+        self.architecture = architecture if architecture is not None else {}
 
         # Allowing integration with the relevant models.
-        self.power_generation_model: Callable[[ProcessUnit], None] | None = None
-        self.power_generation_model_parameters: dict[str, Any] = {}
+        self.power_generation_model = None
+        self.power_generation_model_parameters = {}
 
-        self.power_consumption_model: Callable[[ProcessUnit], None] | None = None
-        self.power_consumption_model_parameters: dict[str, Any] = {}
+        self.power_consumption_model = None
+        self.power_consumption_model_parameters = {}
 
-        self.failure_model: Callable[[ProcessUnit], bool] | None = None
-        self.failure_model_parameters: dict[str, Any] = {}
+        self.failure_model = None
+        self.failure_model_parameters = {}
 
         # Listing the applications currently allocated in the unit.
-        self.applications: list[Application] = []
+        self.applications = []
 
         # Recording whether the unit is available.
         self.available = True
@@ -182,7 +181,7 @@ class ProcessUnit(ComponentManager):
 
     @staticmethod
     def export_processunits() -> dict[str, dict[str, Any]]:
-        pu_data: dict[str, dict[str, Any]] = {}
+        pu_data = {}
         for pu in ProcessUnit.all():
             pu_data[f"PU_{pu.id}"] = {
                 "cpu_total": pu.cpu,

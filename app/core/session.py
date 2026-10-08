@@ -54,12 +54,12 @@ class SimulationSession:
         self.allocation_algorithm = allocation_algorithm
         self.catalog = get_catalog(config.satellites_path)
 
-        self.history: list[Snapshot] = []
+        self.history = []
         self.current_step_index = 0
         self.steps_remaining = 0
         # The plan this run was approved as, when it was approved as one. A
         # session the operator drives by hand never has it.
-        self.active_plan: SimulationPlan | None = None
+        self.active_plan = None
 
         # Connecting the access points before the first draw: a freshly loaded
         # scenario has not gone through a tick yet, so step 0 would otherwise

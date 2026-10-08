@@ -190,7 +190,7 @@ def build_satellites(steps: list[list[Sighting]], max_satellites: int) -> None:
         steps (list): One list of N2YO satellite descriptions per step.
         max_satellites (int): How many satellites to create at most, first seen first taken.
     """
-    satellites: dict[int, Satellite] = {}
+    satellites = {}
 
     for index, step in enumerate(steps):
         for entry in step:

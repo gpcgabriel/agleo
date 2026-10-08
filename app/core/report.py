@@ -66,13 +66,12 @@ def measure_snapshot(snapshot: Snapshot) -> SnapshotMeasure:
         applications were placed, the totals each is out of, and the size and
         mean delay of the network at that moment.
     """
-    users: list[dict[str, Any]] = snapshot.get("users") or []
-    no_applications: list[dict[str, Any]] = []
-    applications = [app for user in users for app in user.get("applications") or no_applications]
-    links: list[dict[str, Any]] = snapshot.get("links") or []
-    delays: list[float] = [link.get("delay") or 0 for link in links]
+    users = snapshot.get("users") or []
+    applications = [app for user in users for app in user.get("applications") or []]
+    links = snapshot.get("links") or []
+    delays = [link.get("delay") or 0 for link in links]
 
-    satellites: list[dict[str, Any]] = snapshot.get("satellites") or []
+    satellites = snapshot.get("satellites") or []
 
     return {
         "step": snapshot.get("step", 0),

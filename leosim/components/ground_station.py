@@ -101,7 +101,7 @@ class GroundStation(ComponentManager):
 
     @staticmethod
     def export_groundstations() -> dict[str, dict[str, Any]]:
-        gs_data: dict[str, dict[str, Any]] = {}
+        gs_data = {}
         for gs in GroundStation.all():
             gpos = gs.coordinates
             gs_data[f"GS_{gs.id}"] = {

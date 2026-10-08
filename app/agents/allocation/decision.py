@@ -77,10 +77,10 @@ def reconcile(decision: AllocationDecision, pending_app_ids: list[int]) -> Recon
     """
     asked = set(pending_app_ids)
 
-    best_fit: list[int] = []
-    longest_duration: list[int] = []
-    invented: list[int] = []
-    seen: set[int] = set()
+    best_fit = []
+    longest_duration = []
+    invented = []
+    seen = set()
 
     for app_ids, target in ((decision.best_fit, best_fit), (decision.longest_duration, longest_duration)):
         for app_id in app_ids:

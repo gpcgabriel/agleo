@@ -11,7 +11,6 @@ from ..user import User
 
 if TYPE_CHECKING:
     from ...simulator import Simulator
-    from ..application_access_models import AccessModel
     from ..topology import Topology
 
 
@@ -24,7 +23,7 @@ def has_path(topology: Topology, origin: User, target: ProcessUnit) -> bool:
 
 
 def random_allocation(model: Simulator, parameters: dict[str, Any]) -> None:
-    applications_to_be_allocated: list[AccessModel] = []
+    applications_to_be_allocated = []
 
     for user in User.all():
         for access_model in user.applications_access_models:
@@ -46,7 +45,7 @@ def random_allocation(model: Simulator, parameters: dict[str, Any]) -> None:
                 access_model.application.deprovision()
 
     for access_model in applications_to_be_allocated:
-        process_units: list[ProcessUnit] = []
+        process_units = []
 
         for access_point in access_model.user.network_access_points:
             if isinstance(access_point, Satellite) and access_point.process_unit is not None:
