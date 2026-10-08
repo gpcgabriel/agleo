@@ -1,7 +1,21 @@
 """Tests for recovering tool calls emitted as plain text."""
 
-from app.agents.dashboard.runner import UNUSABLE_TOOL_CALL_MESSAGE, answer_for_a_reply_that_is_a_call
-from app.agents.dashboard.tool_call_recovery import looks_like_tool_call, parse_tool_call, recover
+from unittest.mock import patch
+
+from agno.agent import Agent
+
+from app.agents.dashboard.runner import (
+    MODE_TOOLS,
+    UNUSABLE_TOOL_CALL_MESSAGE,
+    answer_for_a_reply_that_is_a_call,
+    run_agent,
+)
+from app.agents.dashboard.tool_call_recovery import (
+    looks_like_tool_call,
+    parse_bare_arguments,
+    parse_tool_call,
+    recover,
+)
 from app.agents.dashboard.tools import ProposalBuffer
 from app.core.actions import ActionType, AddNodesPayload, RunSimulationPayload
 from tests.proposals import last_proposal
@@ -11,6 +25,9 @@ OBSERVED_BLOB = (
     '{"name": "propose_add_node", "parameters": {"node_types": ["Satellite"], '
     '"latitudes": [-7.2306 - 0.01], "longitudes": [-35.8811], "altitudes": [500]}}'
 )
+
+# Holding the reply qwen3:4b gave to "add one satelite near ground station 11": the arguments, without the tool.
+OBSERVED_ARGUMENTS = '{ "node_types": [ "Satellite" ], "latitudes": [ -3.1019 ], "longitudes": [ -60.0250 ] }'
 
 
 def test_recovers_the_call_observed_in_the_dashboard() -> None:
@@ -91,3 +108,67 @@ def test_wrong_arguments_do_not_raise() -> None:
     assert result is not None
     assert result.startswith("Error:")
     assert buffer.get_proposals() == []
+
+
+def test_arguments_written_without_the_tool_name_reach_the_one_tool_that_takes_them() -> None:
+    buffer = ProposalBuffer()
+
+    assert recover(buffer, OBSERVED_ARGUMENTS) is not None
+
+    action = last_proposal(buffer)
+    assert action.action_type == ActionType.ADD_NODES
+    assert isinstance(action.payload, AddNodesPayload)
+    assert (action.payload.nodes[0].lat, action.payload.nodes[0].lon) == (-3.1019, -60.025)
+
+
+def test_arguments_two_tools_could_take_are_not_guessed_at() -> None:
+    def advance(steps: int) -> str:
+        return f"advance {steps}"
+
+    def restart(steps: int, scenario: str | None = None) -> str:
+        return f"restart {steps} {scenario}"
+
+    assert parse_bare_arguments('{"steps": 3}', [advance, restart]) is None
+    assert parse_bare_arguments('{"steps": 3, "scenario": "leo"}', [advance, restart]) == (
+        "restart",
+        {"steps": 3, "scenario": "leo"},
+    )
+
+
+def test_an_object_no_tool_takes_is_left_alone() -> None:
+    buffer = ProposalBuffer()
+
+    assert recover(buffer, 'The link carries {"colour": "red"} on the map.') is None
+    assert buffer.get_proposals() == []
+
+
+class ReplyOnly:
+    """What `Agent.run` returns for a reply that called no tool."""
+
+    def __init__(self, content: str) -> None:
+        self.content = content
+        self.metrics = None
+
+
+def reply_to(action_mode: str | None, content: str) -> tuple[str, int]:
+    """Returns: tuple: The reply `run_agent` gives and how many proposals it made, the model answering `content`."""
+    with patch.object(Agent, "run", return_value=ReplyOnly(content)):
+        result = run_agent("unused", "unused", action_mode, "unused")
+    return result.text, len(result.proposals)
+
+
+def test_an_agent_given_actions_turns_bare_arguments_into_a_proposal() -> None:
+    text, proposals = reply_to(MODE_TOOLS, OBSERVED_ARGUMENTS)
+
+    assert proposals == 1
+    assert "Proposal registered" in text
+
+
+def test_an_agent_given_no_way_to_act_never_proposes_from_its_reply() -> None:
+    """A question is answered with no tools; a JSON object quoted in the answer stays text."""
+    analysis = 'Advancing would help: {"steps": 5} is what I would ask for.'
+
+    text, proposals = reply_to(None, analysis)
+
+    assert proposals == 0
+    assert text == analysis

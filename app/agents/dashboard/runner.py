@@ -306,8 +306,10 @@ def run_agent(
     # calls the model wrote as text into proposals, which made a mode that
     # never opened a skill look like it worked. The comparison is closed, so it
     # is back on — Tools reaches the gate on its own, and this only catches the
-    # replies where it does not.
-    if not buffer.get_proposals():
+    # replies where it does not. An agent built with no way to act gets no
+    # recovery either: a question answered with a JSON object in it, such as a
+    # `/review` quoting `{"steps": 5}`, must not reach the gate as a proposal.
+    if action_mode is not None and not buffer.get_proposals():
         recovered = recover(buffer, text)
         if recovered is not None:
             text = recovered

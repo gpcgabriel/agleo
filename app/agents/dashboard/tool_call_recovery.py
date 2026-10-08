@@ -14,10 +14,13 @@ four arithmetic operations, and refuses anything else.
 from __future__ import annotations
 
 import ast
+import inspect
 from types import EllipsisType
 from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from app.agents.dashboard.tools import ProposalBuffer
 
 NAME_FIELDS = ("name", "tool", "tool_name", "function")
@@ -146,6 +149,22 @@ def first_present(mapping: dict[LiteralValue, LiteralValue], fields: tuple[str, 
     return None
 
 
+def evaluated_objects(text: str) -> list[dict[LiteralValue, LiteralValue]]:
+    """Returns: list: The dictionaries the text's brace-balanced fragments evaluate to, outermost first."""
+    objects = []
+
+    for candidate in find_object_candidates(text):
+        try:
+            parsed = _evaluate(ast.parse(candidate, mode="eval").body)
+        except (SyntaxError, ValueError, TypeError, ZeroDivisionError):
+            continue
+
+        if isinstance(parsed, dict):
+            objects.append(parsed)
+
+    return objects
+
+
 def parse_tool_call(text: str | None) -> tuple[str, dict[LiteralValue, LiteralValue]] | None:
     """Looks for a tool call written out by the model.
 
@@ -159,20 +178,59 @@ def parse_tool_call(text: str | None) -> tuple[str, dict[LiteralValue, LiteralVa
     if not text or "{" not in text:
         return None
 
-    for candidate in find_object_candidates(text):
-        try:
-            parsed = _evaluate(ast.parse(candidate, mode="eval").body)
-        except (SyntaxError, ValueError, TypeError, ZeroDivisionError):
-            continue
-
-        if not isinstance(parsed, dict):
-            continue
-
+    for parsed in evaluated_objects(text):
         name = first_present(parsed, NAME_FIELDS)
         arguments = first_present(parsed, ARGUMENT_FIELDS)
 
         if isinstance(name, str) and isinstance(arguments, dict):
             return name, arguments
+
+    return None
+
+
+def tools_taking(arguments: dict[LiteralValue, LiteralValue], tools: list[Callable[..., str]]) -> list[str]:
+    """Returns: list: The names of the tools that take every one of these arguments and need no other."""
+    names = []
+
+    for tool in tools:
+        parameters = inspect.signature(tool).parameters.values()
+        accepted = {parameter.name for parameter in parameters}
+        required = {parameter.name for parameter in parameters if parameter.default is inspect.Parameter.empty}
+        if set(arguments) <= accepted and required <= set(arguments):
+            names.append(tool.__name__)
+
+    return names
+
+
+def parse_bare_arguments(
+    text: str | None, tools: list[Callable[..., str]]
+) -> tuple[str, dict[LiteralValue, LiteralValue]] | None:
+    """Looks for the arguments of a tool call the model wrote out without the tool's name.
+
+    Observed on 8 October 2026 with qwen3:4b, as the whole reply to "add one
+    satellite near ground station 11": `{"node_types": ["Satellite"],
+    "latitudes": [-3.1019], "longitudes": [-60.0250]}`. An object is taken as a
+    call only when exactly one tool takes those arguments; one that two tools
+    could take is left alone rather than guessed at.
+
+    Args:
+        text (str): Content returned by the agent.
+        tools (list): The tools the agent was given.
+
+    Returns:
+        tuple or None: (tool name, argument dictionary), or None if no object
+        in the text belongs to exactly one tool.
+    """
+    if not text or "{" not in text:
+        return None
+
+    for parsed in evaluated_objects(text):
+        if not parsed or not all(isinstance(key, str) for key in parsed):
+            continue
+
+        names = tools_taking(parsed, tools)
+        if len(names) == 1:
+            return names[0], parsed
 
     return None
 
@@ -193,7 +251,7 @@ def recover(buffer: ProposalBuffer, text: str | None) -> str | None:
         str or None: The executed tool's reply, or None if nothing was
         recoverable.
     """
-    call = parse_tool_call(text)
+    call = parse_tool_call(text) or parse_bare_arguments(text, buffer.get_tools())
     if call is None:
         return None
 
