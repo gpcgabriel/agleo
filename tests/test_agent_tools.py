@@ -9,12 +9,20 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from proposals import last_proposal, propose_nodes
+
 from app.agents.dashboard.tools import ProposalBuffer
-from app.core.actions import ActionType
+from app.core.actions import (
+    ActionType,
+    AddNodesPayload,
+    AddProcessUnitPayload,
+    RestartSimulationPayload,
+    RunSimulationPayload,
+)
 from app.core.config import SimulationConfig
 
 
-def make_config():
+def make_config() -> SimulationConfig:
     return SimulationConfig(
         gml_path="datasets/rnp.gml",
         satellites_path="datasets/satellites_brazil.json",
@@ -32,8 +40,9 @@ def test_run_simulation_registers_typed_proposal():
     assert "Proposal registered" in message
     assert len(buffer.get_proposals()) == 1
 
-    action = buffer.get_last_proposal()
+    action = last_proposal(buffer)
     assert action.action_type == ActionType.RUN_SIMULATION
+    assert isinstance(action.payload, RunSimulationPayload)
     assert action.payload.steps == 5
 
 
@@ -48,17 +57,18 @@ def test_invalid_input_returns_message_instead_of_raising():
 
 def test_add_node_accepts_json_strings_from_the_model():
     buffer = ProposalBuffer()
-    buffer.propose_add_node('["Satellite"]', "[-21.0]", "[-47.8]", "[550.0]")
+    propose_nodes(buffer, '["Satellite"]', "[-21.0]", "[-47.8]", "[550.0]")
 
-    action = buffer.get_last_proposal()
+    action = last_proposal(buffer)
     assert action.action_type == ActionType.ADD_NODES
+    assert isinstance(action.payload, AddNodesPayload)
     assert len(action.payload.nodes) == 1
     assert action.payload.nodes[0].node_type == "Satellite"
 
 
 def test_add_node_rejects_mismatched_parallel_lists():
     buffer = ProposalBuffer()
-    message = buffer.propose_add_node(["Satellite", "Satellite"], [-21.0], [-47.8], [550.0])
+    message = propose_nodes(buffer, ["Satellite", "Satellite"], [-21.0], [-47.8], [550.0])
 
     assert message.startswith("Error:")
     assert buffer.get_proposals() == []
@@ -66,18 +76,22 @@ def test_add_node_rejects_mismatched_parallel_lists():
 
 def test_repeated_add_node_calls_merge_into_one_proposal():
     buffer = ProposalBuffer()
-    buffer.propose_add_node(["Satellite"], [-21.0], [-47.8], [550.0])
-    buffer.propose_add_node(["Satellite"], [-21.01], [-47.8], [550.0])
+    propose_nodes(buffer, ["Satellite"], [-21.0], [-47.8], [550.0])
+    propose_nodes(buffer, ["Satellite"], [-21.01], [-47.8], [550.0])
 
     assert len(buffer.get_proposals()) == 1
-    assert len(buffer.get_last_proposal().payload.nodes) == 2
+    payload = last_proposal(buffer).payload
+    assert isinstance(payload, AddNodesPayload)
+    assert len(payload.nodes) == 2
 
 
 def test_restart_keeps_current_values_for_omitted_arguments():
     buffer = ProposalBuffer(current_config=make_config())
     buffer.propose_restart_simulation(num_users=50)
 
-    config = buffer.get_last_proposal().payload.config
+    payload = last_proposal(buffer).payload
+    assert isinstance(payload, RestartSimulationPayload)
+    config = payload.config
     assert config.num_users == 50
     assert config.scenario == "hybrid"
     assert config.gml_path == "datasets/rnp.gml"
@@ -96,15 +110,17 @@ def test_adding_a_unit_and_adding_nodes_are_distinct_actions():
     unit_buffer.propose_add_process_unit("GroundStation", 28, 50, 50)
 
     nodes_buffer = ProposalBuffer()
-    nodes_buffer.propose_add_node(["Satellite"], [-21.0], [-47.8], [550.0])
+    propose_nodes(nodes_buffer, ["Satellite"], [-21.0], [-47.8], [550.0])
 
-    unit_action = unit_buffer.get_last_proposal()
-    nodes_action = nodes_buffer.get_last_proposal()
+    unit_action = last_proposal(unit_buffer)
+    nodes_action = last_proposal(nodes_buffer)
 
     assert unit_action.action_type == ActionType.ADD_PROCESS_UNIT
     assert nodes_action.action_type == ActionType.ADD_NODES
     assert unit_action.action_type != nodes_action.action_type
 
+    assert isinstance(unit_action.payload, AddProcessUnitPayload)
+    assert isinstance(nodes_action.payload, AddNodesPayload)
     assert unit_action.payload.target_type == "GroundStation"
     assert unit_action.payload.target_id == 28
     assert nodes_action.payload.nodes[0].lat == -21.0

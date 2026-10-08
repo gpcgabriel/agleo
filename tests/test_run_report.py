@@ -12,6 +12,7 @@ exercise far more of the report than ten simulated steps would.
 
 import os
 import sys
+from typing import Any
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -22,9 +23,10 @@ from app.core.executor import execute_action
 from app.core.plan import SimulationPlan
 from app.core.report import collect_run_metrics, measure_snapshot, share, summarize_run
 from app.core.session import create_session
+from app.core.snapshot import Snapshot
 
 
-def make_config(**changes):
+def make_config(**changes: Any) -> SimulationConfig:
     config = SimulationConfig(
         gml_path="datasets/rnp.gml",
         satellites_path="datasets/satellites_brazil.json",
@@ -36,7 +38,7 @@ def make_config(**changes):
     return config.copy_with(**changes) if changes else config
 
 
-def make_snapshot(step, users, connected, applications, allocated, links=0):
+def make_snapshot(step: int, users: int, connected: int, applications: int, allocated: int, links: int = 0) -> Snapshot:
     """Builds a snapshot holding exactly the counts a measurement reads."""
     return {
         "step": step,
@@ -161,6 +163,7 @@ def test_confirming_a_plan_builds_a_new_simulation_with_the_whole_run_scheduled(
     result = execute_action(session, ProposedAction(ActionType.RUN_FULL_SIMULATION, RunFullSimulationPayload(plan)))
 
     assert result.replaces_session()
+    assert result.new_session is not None
     assert result.new_session is not session
     assert result.new_session.config.num_users == 4
     assert result.new_session.steps_remaining == 3
@@ -206,7 +209,10 @@ def test_the_tool_keeps_every_setting_the_operator_did_not_name():
     buffer = ProposalBuffer(current_config=make_config())
 
     buffer.propose_run_full_simulation(steps=12, num_users=40)
-    plan = buffer.get_last_proposal().payload.plan
+    proposal = buffer.get_last_proposal()
+    assert proposal is not None
+    assert isinstance(proposal.payload, RunFullSimulationPayload)
+    plan = proposal.payload.plan
 
     assert plan.steps == 12
     assert plan.config.num_users == 40
@@ -239,6 +245,7 @@ def test_a_skill_proposal_resolves_against_the_configuration_the_runner_holds():
         ActionType.RUN_FULL_SIMULATION, {"steps": 7, "scenario": "leo"}, current_config=make_config()
     )
 
+    assert isinstance(payload, RunFullSimulationPayload)
     assert payload.plan.steps == 7
     assert payload.plan.config.scenario == "leo"
     assert payload.plan.config.num_users == 10

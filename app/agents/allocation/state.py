@@ -27,9 +27,12 @@ if TYPE_CHECKING:
 FUTURE_POSITIONS_SHOWN = 3
 
 
-def find_pending_app_ids(all_apps: dict[str, dict[str, Any]]) -> list[int | None]:
+def find_pending_app_ids(all_apps: dict[str, dict[str, Any]]) -> list[int]:
     """Returns: list: IDs of the applications still waiting for placement."""
-    return [component_id(key) for key, info in all_apps.items() if info.get("pending")]
+    # Reading the id from keys such as "App_3", which `Application.export_applications` always writes.
+    return [
+        app_id for key, info in all_apps.items() if info.get("pending") and (app_id := component_id(key)) is not None
+    ]
 
 
 def find_reachable_satellite_ids(station: GroundStation) -> set[int]:
@@ -61,7 +64,7 @@ def find_reachable_satellite_ids(station: GroundStation) -> set[int]:
 
 
 def find_servable_app_ids(
-    station: GroundStation, pending_app_ids: list[int | None], reachable_satellite_ids: set[int]
+    station: GroundStation, pending_app_ids: list[int], reachable_satellite_ids: set[int]
 ) -> list[int]:
     """Narrows the pending applications to the ones this station could place.
 

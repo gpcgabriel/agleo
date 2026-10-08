@@ -15,12 +15,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.ui.gui.styles import DARK_THEME_FILE, HTML_DIR, LIGHT_THEME_FILE, resolve_theme_file
 
 
-def read_theme(is_dark):
+def read_theme(is_dark: bool) -> str:
     with open(resolve_theme_file(is_dark), encoding="utf-8") as stylesheet:
         return stylesheet.read()
 
 
-def selectors_of(css):
+def selectors_of(css: str) -> set[str]:
     """Returns: set: Every selector the stylesheet declares."""
     without_comments = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
     return {
@@ -31,7 +31,7 @@ def selectors_of(css):
     }
 
 
-def variables_of(css):
+def variables_of(css: str) -> set[str]:
     """Returns: set: Every custom property the stylesheet defines."""
     return set(re.findall(r"(--[\w-]+)\s*:", css))
 

@@ -13,10 +13,11 @@ import json
 import os
 import subprocess
 import sys
+from typing import Any, cast
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from agno.skills import LocalSkills
+from agno.skills import LocalSkills, Skill
 
 from app.agents.dashboard.prompts import dashboard_agent_description, dashboard_agent_instructions
 from app.agents.dashboard.runner import (
@@ -28,7 +29,7 @@ from app.agents.dashboard.runner import (
     collect_script_proposals,
 )
 from app.agents.dashboard.tools import ProposalBuffer
-from app.core.actions import ActionType, build_payload
+from app.core.actions import ActionType, RestartSimulationPayload, build_payload
 from app.core.config import SimulationConfig
 
 MODEL_FOR_ASSEMBLY = "llama3.2:3b"
@@ -47,11 +48,11 @@ EXPECTED_SKILLS = {
 DEFERRED_SKILLS = {"restart-simulation", "run-full-simulation"}
 
 
-def script_of(skill_name):
+def script_of(skill_name: str) -> str:
     return os.path.join(SKILLS_DIRECTORY, skill_name, "scripts", "propose.py")
 
 
-def run_skill(skill_name: str, arguments: list[str]) -> dict:
+def run_skill(skill_name: str, arguments: list[str]) -> dict[str, Any]:
     """Runs one skill's script with the running interpreter and returns what it printed.
 
     Args:
@@ -70,7 +71,7 @@ def run_skill(skill_name: str, arguments: list[str]) -> dict:
 class FakeExecution:
     """Stands in for one agno tool execution."""
 
-    def __init__(self, tool_name, result):
+    def __init__(self, tool_name: str, result: str) -> None:
         self.tool_name = tool_name
         self.result = result
 
@@ -78,11 +79,11 @@ class FakeExecution:
 class FakeResponse:
     """Stands in for what `agent.run` returns."""
 
-    def __init__(self, tools):
+    def __init__(self, tools: list[FakeExecution]) -> None:
         self.tools = tools
 
 
-def load_skills():
+def load_skills() -> list[Skill]:
     return LocalSkills(SKILLS_DIRECTORY).load()
 
 
@@ -113,7 +114,10 @@ def test_a_description_says_when_to_use_the_skill():
 def test_tools_mode_builds_with_the_proposal_tools():
     agent = build_agent(MODEL_FOR_ASSEMBLY, MODE_TOOLS, ProposalBuffer())
 
-    assert len(agent.tools) == len(ProposalBuffer().get_tools())
+    # Ignoring the bare `Dict` agno's own annotation leaves in `Agent.tools`.
+    tools: object = agent.tools  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
+    assert isinstance(tools, list)
+    assert len(cast(list[object], tools)) == len(ProposalBuffer().get_tools())
 
 
 def test_skills_mode_builds_instead_of_raising():
@@ -129,7 +133,8 @@ def test_skills_mode_does_not_get_the_proposal_tools():
     """
     agent = build_agent(MODEL_FOR_ASSEMBLY, MODE_SKILLS, ProposalBuffer())
 
-    assert not (agent.tools or [])
+    # Ignoring the bare `Dict` agno's own annotation leaves in `Agent.tools`.
+    assert not agent.tools  # pyright: ignore[reportUnknownMemberType]
 
 
 def test_a_skill_script_proposal_reaches_the_buffer():
@@ -278,8 +283,10 @@ def test_a_restart_reaches_the_buffer_once_the_runner_supplies_the_configuration
     recorded = collect_script_proposals(FakeResponse([FakeExecution(SKILL_SCRIPT_TOOL, printed)]), buffer)
 
     assert recorded == 1
-    assert buffer.get_proposals()[0].payload.config.num_users == 40
-    assert buffer.get_proposals()[0].payload.config.scenario == "hybrid"
+    payload = buffer.get_proposals()[0].payload
+    assert isinstance(payload, RestartSimulationPayload)
+    assert payload.config.num_users == 40
+    assert payload.config.scenario == "hybrid"
 
 
 def test_every_skill_script_runs_by_itself():

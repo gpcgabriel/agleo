@@ -9,6 +9,7 @@ hand so no simulation clock has to advance.
 
 import os
 import sys
+from collections.abc import Sequence
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -19,11 +20,10 @@ from leosim.components.application_access_models import FixedDurationAccessModel
 
 def reset_components():
     for component_class in (Application, GroundStation, Satellite, User, FixedDurationAccessModel):
-        component_class._instances = []
-        component_class._object_count = 0
+        component_class.clear()
 
 
-def make_user_with_application(access_points):
+def make_user_with_application(access_points: Sequence[GroundStation | Satellite]) -> tuple[User, Application]:
     """Builds a user owning one application, reachable through `access_points`."""
     user = User(coordinates=(0.0, 0.0, 0.0))
     application = Application()

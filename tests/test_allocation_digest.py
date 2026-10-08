@@ -9,13 +9,14 @@ candidate, the station agent stops deciding and starts rubber-stamping.
 import os
 import sys
 from json import dumps
+from typing import Any
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.agents.allocation.digest import build_delay_by_satellite, render_digest, render_process_units
 
 
-def make_state():
+def make_state() -> dict[str, Any]:
     """Builds a state shaped like `build_network_state` returns."""
     return {
         "step": 7,
@@ -71,7 +72,7 @@ def test_free_capacity_is_reported_instead_of_total_and_used():
     state = make_state()
     lines = render_process_units(state["process_units"], state["unit_hosts"], {4: 1.0})
 
-    identifier, cpu_free, mem_free, host, delay = lines[0].split()
+    _identifier, cpu_free, mem_free, _host, _delay = lines[0].split()
     assert (cpu_free, mem_free) == ("4", "20")
 
 
@@ -79,7 +80,7 @@ def test_a_unit_in_orbit_reports_its_satellite_and_link_delay():
     state = make_state()
     lines = render_process_units(state["process_units"], state["unit_hosts"], {4: 1.0})
 
-    identifier, cpu_free, mem_free, host, delay = lines[0].split()
+    _identifier, _cpu_free, _mem_free, host, delay = lines[0].split()
     assert host == "Sat_4"
     assert delay == "1.0"
 
@@ -88,18 +89,19 @@ def test_a_unit_on_the_station_reports_no_radio_hop():
     state = make_state()
     lines = render_process_units(state["process_units"], state["unit_hosts"], {4: 1.0})
 
-    identifier, cpu_free, mem_free, host, delay = lines[1].split()
+    _identifier, _cpu_free, _mem_free, host, delay = lines[1].split()
     assert host == "GS_1"
     assert delay == "0"
 
 
 def test_a_unit_with_no_recorded_host_says_so_instead_of_guessing():
     state = make_state()
-    state["unit_hosts"] = {}
+    no_hosts: dict[str, str] = {}
+    state["unit_hosts"] = no_hosts
 
     lines = render_process_units(state["process_units"], state["unit_hosts"], {4: 1.0})
 
-    identifier, cpu_free, mem_free, host, delay = lines[0].split()
+    _identifier, _cpu_free, _mem_free, host, delay = lines[0].split()
     assert host == "-"
     assert delay == "-"
 

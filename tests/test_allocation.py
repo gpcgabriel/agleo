@@ -153,9 +153,10 @@ def test_every_process_unit_records_where_it_sits():
     session = make_session()
 
     for station in GroundStation.all():
-        state, pending, reason = collect_state(session.simulator, station, "hybrid")
+        state, _pending, reason = collect_state(session.simulator, station, "hybrid")
         if reason:
             continue
+        assert state is not None
 
         for unit_key in state["process_units"]:
             host = state["unit_hosts"].get(unit_key)

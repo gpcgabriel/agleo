@@ -4,8 +4,10 @@ The project has no pytest dependency: each test module is executable on its
 own and reports through this helper.
 """
 
+from typing import Any
 
-def run_module_tests(namespace):
+
+def run_module_tests(namespace: dict[str, Any]) -> int:
     """Runs every `test_*` callable found in a module namespace.
 
     Args:

@@ -31,7 +31,7 @@ from app.helper_functions.ollama_helper import (
 HELPER = "app.helper_functions.ollama_helper"
 
 
-def respond_with(status_code, payload=None):
+def respond_with(status_code: int, payload: object = None) -> MagicMock:
     """Returns: MagicMock: A response object shaped like `requests` returns."""
     response = MagicMock()
     response.status_code = status_code
@@ -127,7 +127,7 @@ def test_a_reply_shaped_unlike_a_model_list_raises_instead_of_listing_nothing():
 # -- Downloading one --------------------------------------------------------
 
 
-def pulling(*updates):
+def pulling(*updates: ProgressResponse) -> MagicMock:
     """Returns: MagicMock: A client whose download streams the given updates."""
     client = MagicMock()
     client.pull.return_value = iter(updates)
@@ -142,7 +142,7 @@ def test_a_download_reports_every_progress_update():
         ProgressResponse(status="success"),
     )
 
-    reported = []
+    reported: list[str] = []
     with patch("ollama.Client", return_value=client):
         assert pull_model("llama3.1", progress_callback=reported.append) is True
 

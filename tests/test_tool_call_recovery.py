@@ -5,10 +5,12 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from proposals import last_proposal
+
 from app.agents.dashboard.runner import UNUSABLE_TOOL_CALL_MESSAGE, answer_for_a_reply_that_is_a_call
 from app.agents.dashboard.tool_call_recovery import looks_like_tool_call, parse_tool_call, recover
 from app.agents.dashboard.tools import ProposalBuffer
-from app.core.actions import ActionType
+from app.core.actions import ActionType, AddNodesPayload, RunSimulationPayload
 
 # Holding the exact text a model returned instead of calling the tool.
 OBSERVED_BLOB = (
@@ -21,8 +23,9 @@ def test_recovers_the_call_observed_in_the_dashboard():
     buffer = ProposalBuffer()
     assert recover(buffer, OBSERVED_BLOB) is not None
 
-    action = buffer.get_last_proposal()
+    action = last_proposal(buffer)
     assert action.action_type == ActionType.ADD_NODES
+    assert isinstance(action.payload, AddNodesPayload)
     assert abs(action.payload.nodes[0].lat - (-7.2406)) < 1e-6, "the arithmetic was not evaluated"
 
 
@@ -62,14 +65,18 @@ def test_plain_prose_is_not_mistaken_for_a_tool_call():
 def test_alternative_field_names_are_accepted():
     buffer = ProposalBuffer()
     assert recover(buffer, '{"tool": "propose_run_simulation", "arguments": {"steps": 4}}') is not None
-    assert buffer.get_last_proposal().payload.steps == 4
+    payload = last_proposal(buffer).payload
+    assert isinstance(payload, RunSimulationPayload)
+    assert payload.steps == 4
 
 
 def test_a_call_embedded_in_surrounding_prose_is_found():
     buffer = ProposalBuffer()
     text = 'Sure, I will do that:\n{"name": "propose_run_simulation", "parameters": {"steps": 2}}\nConfirm below.'
     assert recover(buffer, text) is not None
-    assert buffer.get_last_proposal().payload.steps == 2
+    payload = last_proposal(buffer).payload
+    assert isinstance(payload, RunSimulationPayload)
+    assert payload.steps == 2
 
 
 def test_code_in_the_payload_is_refused():
@@ -87,6 +94,7 @@ def test_unknown_tool_names_are_ignored():
 def test_wrong_arguments_do_not_raise():
     buffer = ProposalBuffer()
     result = recover(buffer, '{"name": "propose_run_simulation", "parameters": {"ticks": 3}}')
+    assert result is not None
     assert result.startswith("Error:")
     assert buffer.get_proposals() == []
 

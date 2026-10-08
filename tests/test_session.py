@@ -12,6 +12,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.core.config import SimulationConfig
 from app.core.session import create_session
+from app.core.snapshot import Snapshot
 from leosim.components import User
 
 
@@ -27,7 +28,7 @@ def make_session():
     return create_session(config)
 
 
-def count_connected_users(snapshot):
+def count_connected_users(snapshot: Snapshot) -> int:
     return sum(1 for user in snapshot["users"] if user["connected_aps"])
 
 

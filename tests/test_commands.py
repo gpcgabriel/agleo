@@ -11,7 +11,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.agents.dashboard.runner import MODE_TOOLS, run_agent
-from app.core.actions import ActionType
+from app.core.actions import ActionType, RestartSimulationPayload, RunSimulationPayload
 from app.core.config import SimulationConfig
 from app.helper_functions.ollama_helper import DEFAULT_MODEL, is_ollama_running, list_local_models
 
@@ -60,6 +60,7 @@ def test_step_command_proposes_running_the_simulation():
 
     assert action is not None, "the agent proposed no action"
     assert action.action_type == ActionType.RUN_SIMULATION
+    assert isinstance(action.payload, RunSimulationPayload)
     assert action.payload.steps == 5
 
 
@@ -74,6 +75,7 @@ def test_restart_command_proposes_restarting_with_current_config():
 
     assert action is not None, "the agent proposed no action"
     assert action.action_type == ActionType.RESTART_SIMULATION
+    assert isinstance(action.payload, RestartSimulationPayload)
     assert action.payload.config.scenario == "hybrid"
 
 

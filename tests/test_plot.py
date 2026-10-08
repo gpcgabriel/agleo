@@ -10,10 +10,12 @@ import os
 import sys
 import tempfile
 from functools import partial
+from typing import Any
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from plot import (
+    Row,
     RunLogs,
     average_runs,
     compare_algorithms_averaged,
@@ -34,7 +36,7 @@ from plot import (
 INFINITE = float("inf")
 
 
-def access(requested: bool, provisioned: bool, delay: float = 1.0) -> dict:
+def access(requested: bool, provisioned: bool, delay: float = 1.0) -> dict[str, Any]:
     """Returns: dict: One application access as `User.collect_metrics` records it."""
     return {
         "Request Provisioning": requested,
@@ -44,12 +46,14 @@ def access(requested: bool, provisioned: bool, delay: float = 1.0) -> dict:
     }
 
 
-def user(user_id: int, application_access: dict, access_points: tuple | list = ()) -> dict:
+def user(
+    user_id: int, application_access: dict[str, Any], access_points: tuple[str, ...] | list[str] = ()
+) -> dict[str, Any]:
     """Returns: dict: One user's metrics, with a single application."""
     return {"ID": user_id, "Access to Applications": [application_access], "Network Access Points": list(access_points)}
 
 
-def write_run(directory: str, filename: str, rows: list[dict]) -> None:
+def write_run(directory: str, filename: str, rows: list[Row]) -> None:
     """Writes rows as the JSON Lines file a run leaves behind."""
     os.makedirs(directory, exist_ok=True)
     with open(os.path.join(directory, filename), "w", encoding="utf-8") as file:
@@ -57,9 +61,9 @@ def write_run(directory: str, filename: str, rows: list[dict]) -> None:
             file.write(json.dumps(row) + "\n")
 
 
-def application_rows(hosted_per_step: list[int]) -> list[dict]:
+def application_rows(hosted_per_step: list[int]) -> list[Row]:
     """Returns: list: Application rows where the given number of applications is hosted at each step."""
-    rows = []
+    rows: list[Row] = []
     for step, hosted in enumerate(hosted_per_step):
         metrics = [
             {
@@ -76,7 +80,7 @@ def application_rows(hosted_per_step: list[int]) -> list[dict]:
     return rows
 
 
-def user_rows(provisioned_per_step: list[int]) -> list[dict]:
+def user_rows(provisioned_per_step: list[int]) -> list[Row]:
     """Returns: list: User rows where the first users are served, all on ground station 1."""
     return [
         {

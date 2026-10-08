@@ -6,17 +6,21 @@ several seconds of topology management and these tests do not need one.
 
 import os
 import sys
+from collections.abc import Callable
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from proposals import last_proposal, propose_nodes
+
 from app.agents.dashboard.tools import ProposalBuffer
+from app.core.action_result import ActionResult
 from app.core.config import SimulationConfig
 from app.core.executor import execute_action
-from app.core.session import create_session
+from app.core.session import SimulationSession, create_session
 from leosim.components import GroundStation, Satellite
 
 
-def make_session():
+def make_session() -> SimulationSession:
     config = SimulationConfig(
         gml_path="datasets/rnp.gml",
         satellites_path="datasets/satellites_brazil.json",
@@ -28,10 +32,10 @@ def make_session():
     return create_session(config)
 
 
-def apply(session, build_proposal):
+def apply(session: SimulationSession, build_proposal: Callable[[ProposalBuffer], object]) -> ActionResult:
     buffer = ProposalBuffer(current_config=session.config)
     build_proposal(buffer)
-    return execute_action(session, buffer.get_last_proposal())
+    return execute_action(session, last_proposal(buffer))
 
 
 def test_added_satellite_continues_the_internal_numbering():
@@ -41,7 +45,7 @@ def test_added_satellite_continues_the_internal_numbering():
     ids_before = {satellite.id for satellite in Satellite.all()}
     expected_id = max(ids_before) + 1
 
-    apply(session, lambda buffer: buffer.propose_add_node(["Satellite"], [-7.23], [-35.88], [550.0]))
+    apply(session, lambda buffer: propose_nodes(buffer, ["Satellite"], [-7.23], [-35.88], [550.0]))
 
     new_satellites = [satellite for satellite in Satellite.all() if satellite.id not in ids_before]
     assert len(new_satellites) == 1
@@ -52,7 +56,7 @@ def test_added_satellite_continues_the_internal_numbering():
 def test_infrastructure_changes_never_advance_the_clock():
     session = make_session()
 
-    apply(session, lambda buffer: buffer.propose_add_node(["Satellite"], [-7.23], [-35.88], [550.0]))
+    apply(session, lambda buffer: propose_nodes(buffer, ["Satellite"], [-7.23], [-35.88], [550.0]))
     apply(session, lambda buffer: buffer.propose_add_user(-23.5, -46.6, 1500))
     apply(session, lambda buffer: buffer.propose_add_process_unit("GroundStation", 1, 50, 50))
 
@@ -96,6 +100,7 @@ def test_adding_an_application_to_an_unknown_user_is_reported():
     session = make_session()
     result = apply(session, lambda buffer: buffer.propose_add_app_to_user(9999, 10, 10))
 
+    assert result.toast is not None
     assert "not found" in result.toast
 
 

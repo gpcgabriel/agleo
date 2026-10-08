@@ -8,6 +8,7 @@ import json
 import os
 import sys
 import tempfile
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import requests
@@ -46,7 +47,7 @@ def seen(satellite_id: int, latitude: float) -> Sighting:
     }
 
 
-def answering(payload: dict) -> MagicMock:
+def answering(payload: dict[str, Any]) -> MagicMock:
     """Returns: MagicMock: A response from the API carrying the given payload."""
     response = MagicMock()
     response.json.return_value = payload

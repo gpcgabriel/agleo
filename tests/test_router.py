@@ -10,14 +10,15 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.core.router import QUICK_COMMAND_CONTEXT, Blocked, DispatchToAgent, LocalReply, route
+from app.core.snapshot import Snapshot
 
 
 class FakeSession:
     """Minimal session exposing what the router reads."""
 
-    def __init__(self, viewing_latest=True, snapshot=None):
+    def __init__(self, viewing_latest: bool = True, snapshot: Snapshot | None = None) -> None:
         self.viewing_latest = viewing_latest
-        self.snapshot = snapshot or {
+        self.snapshot: Snapshot = snapshot or {
             "step": 0,
             "satellites": [],
             "ground_stations": [],
@@ -25,10 +26,10 @@ class FakeSession:
             "links": [],
         }
 
-    def is_viewing_latest(self):
+    def is_viewing_latest(self) -> bool:
         return self.viewing_latest
 
-    def get_current_snapshot(self):
+    def get_current_snapshot(self) -> Snapshot:
         return self.snapshot
 
 
@@ -103,6 +104,7 @@ def test_a_question_reaches_the_agent_with_no_way_to_act():
 def test_a_change_reaches_the_agent_able_to_propose_one():
     decision = route("add a satellite at -7.2, -35.8", FakeSession(), has_pending_action=False)
 
+    assert isinstance(decision, DispatchToAgent)
     assert decision.allows_changes is True
 
 

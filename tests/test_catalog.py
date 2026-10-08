@@ -25,6 +25,7 @@ def test_closest_satellite_is_found_and_its_trace_starts_at_that_position():
     catalog_id, position = catalog.get_closest_satellite(GROUND_STATION_3)
 
     assert catalog_id is not None
+    assert position is not None
     trace = catalog.get_coordinates_trace(catalog_id, position)
     assert trace[0] == position
     assert len(trace) >= 1
@@ -33,6 +34,7 @@ def test_closest_satellite_is_found_and_its_trace_starts_at_that_position():
 def test_excluded_satellites_are_never_returned():
     catalog = get_catalog(TRACES)
     first_id, _ = catalog.get_closest_satellite(GROUND_STATION_3)
+    assert first_id is not None
     second_id, _ = catalog.get_closest_satellite(GROUND_STATION_3, exclude_ids={first_id})
 
     assert second_id is not None
