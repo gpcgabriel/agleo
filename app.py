@@ -15,7 +15,7 @@ from app.core.report import collect_run_metrics, summarize_run
 from app.core.session import SimulationSession
 from app.ui.chat import render_chat_panel
 from app.ui.css import inject_css
-from app.ui.gui.styles import apply_theme, inject_accessibility_script
+from app.ui.gui.styles import apply_theme, inject_page_scripts
 from app.ui.header import render_header
 from app.ui.map import render_map
 from app.ui.ollama import ollama_setup
@@ -248,8 +248,8 @@ def main_app() -> None:
 
     inject_css(is_dark)
 
-    # Injecting the accessibility helper script for axe-core compliance.
-    inject_accessibility_script()
+    # Injecting the page scripts: the accessibility fixes, the slash menu and the theme fade.
+    inject_page_scripts()
 
     # Re-rendering while scheduled steps remain, so the operator sees progress
     # and can stop the run between batches, and once more when the last batch

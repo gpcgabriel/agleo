@@ -14,6 +14,8 @@ DARK_THEME_FILE = "theme_dark.css"
 LIGHT_THEME_FILE = "theme_light.css"
 # Naming the rules both themes share, which follow the chosen theme's palette.
 BASE_THEME_FILE = "theme_base.css"
+# Naming the scripts run in the page: the accessibility fixes and slash menu, and the fade between themes.
+PAGE_SCRIPT_FILES = ("accessibility.js", "theme_transition.js")
 
 
 def resolve_theme_file(is_dark: bool) -> str:
@@ -52,33 +54,33 @@ def build_theme_css(is_dark: bool) -> str:
     return "\n".join(stylesheets)
 
 
-def inject_accessibility_script() -> None:
-    """Injects the accessibility attributes, landmarks and the slash menu.
+def inject_page_scripts() -> None:
+    """Injects the accessibility attributes, landmarks and slash menu, and the fade between themes.
 
-    The script is loaded inside an iframe so that its HTML and JS do not leak
-    into the visible DOM. Nothing theme-dependent is interpolated into it: the
-    menu it builds reads the palette through CSS variables, which keeps the
+    The scripts are loaded inside an iframe so that their HTML and JS do not leak
+    into the visible DOM. Nothing theme-dependent is interpolated into them: the
+    menu they build reads the palette through CSS variables, which keeps the
     injected text identical between renders, and an iframe whose content does
     not change is one Streamlit does not remount.
     """
-    js_filepath = os.path.join(HTML_DIR, "accessibility.js")
     try:
-        with open(js_filepath, encoding="utf-8") as f:
-            js_content = f.read()
+        sources = []
+        for filename in PAGE_SCRIPT_FILES:
+            with open(os.path.join(HTML_DIR, filename), encoding="utf-8") as script:
+                sources.append(script.read())
 
         commands_json = json.dumps(get_commands_for_js(), ensure_ascii=False)
 
-        # Appending the execution call so the script runs on iframe load.
-        js_content_with_call = (
-            js_content + f"\nif (typeof initAccessibility === 'function') {{ initAccessibility({commands_json}); }}"
-        )
+        # Appending the calls that start the scripts once the iframe has loaded them.
+        sources.append(f"if (typeof initAccessibility === 'function') {{ initAccessibility({commands_json}); }}")
+        sources.append("if (typeof initThemeTransition === 'function') { initThemeTransition(); }")
 
-        # Reading the script from a file in this project: it never comes from
+        # Reading the scripts from files in this project: they never come from
         # operator input or from model output.
         #
         # `st.iframe` rejects height=0, so the iframe is given 1px and the
         # marker below lets the stylesheet collapse the surrounding block.
         st.markdown('<div class="a11y-script-marker"></div>', unsafe_allow_html=True)
-        st.iframe(f"<script>\n{js_content_with_call}\n</script>", height=1)
+        st.iframe("<script>\n" + "\n".join(sources) + "\n</script>", height=1)
     except Exception as e:
-        st.error(f"Error loading accessibility JS: {e}")
+        st.error(f"Error loading the page scripts: {e}")

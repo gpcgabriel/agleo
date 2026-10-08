@@ -641,3 +641,23 @@ div.stElementContainer:has(.a11y-script-marker) + div.stElementContainer {
 [data-testid="stTooltipContent"] * {
     color: var(--text-primary) !important;
 }
+
+/* Fading between the themes. theme_transition.js holds `theme-switching` on
+   the page while the palette changes, so only the switch fades and hover
+   states keep their own timing; the important flag and the class outrank the
+   buttons' own transition. It holds `map-waiting` until the map drawn in the
+   new theme has its tiles: the map fades out and back in, instead of showing
+   the old theme's tiles and then an empty frame. The map's rule names `html`
+   to outrank the switching rule, which would otherwise drop its opacity fade. */
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after {
+    transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease,
+        fill 0.4s ease, stroke 0.4s ease, box-shadow 0.4s ease !important;
+}
+html iframe[title="streamlit_folium.st_folium"] {
+    transition: opacity 0.4s ease !important;
+}
+html.map-waiting iframe[title="streamlit_folium.st_folium"] {
+    opacity: 0 !important;
+}
