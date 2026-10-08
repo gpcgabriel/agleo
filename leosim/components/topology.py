@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import math
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 import networkx as nx
 from geopy.distance import geodesic
@@ -12,8 +14,20 @@ from .process_unit import ProcessUnit
 from .satellite import Satellite
 from .user import User
 
+# Naming what the graph links: users reach the network through access points and are never nodes.
+Node = GroundStation | Satellite | ProcessUnit
+# Naming what has a position and a connection range, so its distance to another can be weighed.
+Reachable = GroundStation | Satellite | User
 
-class Topology(ComponentManager, nx.Graph):
+if TYPE_CHECKING:
+    # Parametrizing the graph by its nodes for the type checker alone: networkx's Graph cannot be
+    # subscripted at runtime.
+    NodeGraph = nx.Graph[Node]
+else:
+    NodeGraph = nx.Graph
+
+
+class Topology(ComponentManager, NodeGraph):
     """Manages the network graph and connectivity logic of the simulation.
 
     Inherits from networkx.Graph to provide graph theory operations while
@@ -32,7 +46,9 @@ class Topology(ComponentManager, nx.Graph):
     # Leaving the topology out of the scenario file: `Simulator.initialize` rebuilds it from the links.
     saved_in_scenario = False
 
-    def __init__(self, obj_id: int = 0, existing_graph: nx.Graph = None) -> None:
+    # Ignoring the constructor mismatch pyright reports: networkx's stubs give Graph a catch-all `__new__`
+    # for backend dispatch, which no subclass's `__init__` signature matches.
+    def __init__(self, obj_id: int = 0, existing_graph: nx.Graph[Node] | None = None) -> None:  # pyright: ignore[reportInconsistentConstructor]
         """Initializes a Topology instance.
 
         Args:
@@ -49,9 +65,32 @@ class Topology(ComponentManager, nx.Graph):
         self.id = obj_id
 
         if existing_graph is None:
-            nx.Graph.__init__(self)
+            super().__init__()
         else:
-            nx.Graph.__init__(self, incoming_graph_data=existing_graph)
+            super().__init__(incoming_graph_data=existing_graph)
+
+    def attach_link(self, link: NetworkLink) -> None:
+        """Adds the edge between a link's two nodes and stores the link itself as the edge's data.
+
+        Args:
+            link (NetworkLink): The link, its `nodes` already set.
+        """
+        node, other = link["nodes"][0], link["nodes"][1]
+        self.add_edge(node, other)
+
+        # Replacing the edge's data dictionary with the link through `_adj`, which networkx's type
+        # stubs leave out: every edge lookup then returns the link object, not a copy of its fields.
+        self._adj[node][other] = link  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType]
+        self._adj[other][node] = link  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType]
+
+    def delay_shortest_path(self, source: Node, target: Node) -> list[Node]:
+        """Returns: list: The path from one node to another with the least total link delay."""
+        # Ignoring the untyped backend keyword arguments networkx's stub declares on `shortest_path`.
+        return nx.shortest_path(G=self, source=source, target=target, weight="delay")  # pyright: ignore[reportUnknownMemberType]
+
+    def link_between(self, node: Node, other: Node) -> NetworkLink:
+        """Returns: NetworkLink: The link stored as the data of the edge between two nodes."""
+        return cast(NetworkLink, self[node][other])
 
     def step(self) -> None:
         """Executes the topology events for the current simulation step.
@@ -104,21 +143,20 @@ class Topology(ComponentManager, nx.Graph):
             if need_to_reroute:
                 if flow.metadata.get("type", "default") == "request_response":
                     user = flow.source
-                    connection_paths = []
+                    connection_paths: list[list[Node]] = []
 
                     # Checking every user access point to see whether the application is
                     # reachable.
                     for access_point in user.network_access_points:
                         if nx.has_path(G=self, source=access_point, target=flow.target):
-                            new_path = nx.shortest_path(
-                                G=self.model.topology, source=access_point, target=flow.target, weight="delay"
-                            )
+                            new_path = self.model.topology.delay_shortest_path(access_point, flow.target)
                             connection_paths.append(new_path)
 
-                    path = min(connection_paths, key=len, default=[])
+                    no_path: list[Node] = []
+                    path = min(connection_paths, key=len, default=no_path)
 
                 elif nx.has_path(G=self, source=flow.source, target=flow.target):
-                    path = nx.shortest_path(G=self, source=flow.source, target=flow.target, weight="delay")
+                    path = self.delay_shortest_path(flow.source, flow.target)
                 else:
                     path = []
 
@@ -142,17 +180,17 @@ class Topology(ComponentManager, nx.Graph):
 
                 # Registering the flow on the new links.
                 for i in range(len(path) - 1):
-                    link = self[flow.path[i]][flow.path[i + 1]]
+                    link = self.link_between(flow.path[i], flow.path[i + 1])
                     link["flows"].append(flow)
                     flow.bandwidth[link.id] = 0
 
     def remove_invalid_connections(self) -> None:
         """Reevaluates link existence and removes edges exceeding range limits."""
         for satellite in Satellite.all():
-            link_to_removed = []
+            link_to_removed: list[tuple[Node, Node]] = []
 
             for neighbor in self[satellite]:
-                link = self[satellite][neighbor]
+                link = self.link_between(satellite, neighbor)
 
                 if isinstance(neighbor, ProcessUnit):
                     continue
@@ -166,7 +204,7 @@ class Topology(ComponentManager, nx.Graph):
             for nodes in link_to_removed:
                 self.remove_edge(nodes[0], nodes[1])
 
-    def get_path_delay(self, path: list[Any]) -> float:
+    def get_path_delay(self, path: list[Node]) -> float:
         """Calculates the total propagation delay of a given path.
 
         Args:
@@ -175,11 +213,13 @@ class Topology(ComponentManager, nx.Graph):
         Returns:
             float: Total delay including the initial wireless delay.
         """
-        path_delay = nx.classes.function.path_weight(G=self, path=path, weight="delay")
-        path_delay += path[0].wireless_delay
+        # Ignoring the parameters networkx's stub leaves untyped on `path_weight`.
+        path_delay: float = nx.classes.function.path_weight(G=self, path=path, weight="delay")  # pyright: ignore[reportUnknownMemberType]
+        # Reading the wireless hop from the path's first node, which is always the user's access point.
+        path_delay += cast(GroundStation | Satellite, path[0]).wireless_delay
         return path_delay
 
-    def get_flow_delay(self, flow: Any) -> float:
+    def get_flow_delay(self, flow: NetworkFlow) -> float:
         """Calculates the current delay of a specific network flow.
 
         Args:
@@ -191,14 +231,16 @@ class Topology(ComponentManager, nx.Graph):
         if flow.status == "waiting":
             path_delay = float("inf")
         else:
-            path_delay = nx.classes.function.path_weight(G=self, path=flow.path, weight="delay")
+            # Ignoring the parameters networkx's stub leaves untyped on `path_weight`.
+            path_delay = nx.classes.function.path_weight(G=self, path=flow.path, weight="delay")  # pyright: ignore[reportUnknownMemberType]
 
             if isinstance(flow.source, User):
-                path_delay += flow.path[0].wireless_delay
+                # Reading the wireless hop from the path's first node, the user's access point.
+                path_delay += cast(GroundStation | Satellite, flow.path[0]).wireless_delay
         return path_delay
 
     @staticmethod
-    def within_range(object_1: Any, object_2: Any) -> bool:
+    def within_range(object_1: Reachable, object_2: Reachable) -> bool:
         """Evaluates if the distance between two components is within communication range.
 
         Args:
@@ -221,7 +263,7 @@ class Topology(ComponentManager, nx.Graph):
         return min(distance_nodes) > math.sqrt(ground_distance**2 + air_distance**2)
 
     @staticmethod
-    def calculate_distance(object_1: Any, object_2: Any) -> float:
+    def calculate_distance(object_1: Reachable, object_2: Reachable) -> float:
         """Calculates the 3D Euclidean distance between two components.
 
         Args:
@@ -242,8 +284,8 @@ class Topology(ComponentManager, nx.Graph):
 
         return math.sqrt(ground_distance**2 + air_distance**2)
 
-    def export_topology(self) -> dict:
-        user_sat_links = []
+    def export_topology(self) -> dict[str, Any]:
+        user_sat_links: list[dict[str, Any]] = []
         for user in User.all():
             for sat in Satellite.all():
                 if self.has_edge(user, sat):
@@ -259,11 +301,11 @@ class Topology(ComponentManager, nx.Graph):
                         }
                     )
 
-        gs_sat_edges = []
+        gs_sat_edges: list[dict[str, Any]] = []
         for gs in GroundStation.all():
             for sat in Satellite.all():
                 if self.has_edge(gs, sat):
-                    link = self[gs][sat]
+                    link = self.link_between(gs, sat)
                     gs_sat_edges.append(
                         {
                             "gs": gs.id,

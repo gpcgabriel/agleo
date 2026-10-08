@@ -1,10 +1,21 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
 import networkx as nx
 
 from ..satellite import Satellite
 from ..user import User
 
+if TYPE_CHECKING:
+    from ...simulator import Simulator
+    from ..application import Application
+    from ..application_access_models import AccessModel
+    from ..process_unit import ProcessUnit
+    from ..topology import Topology
 
-def has_path(topology, origin, target):
+
+def has_path(topology: Topology, origin: User, target: ProcessUnit) -> bool:
     for access_point in origin.network_access_points:
         if nx.has_path(G=topology, source=access_point, target=target):
             return True
@@ -12,9 +23,9 @@ def has_path(topology, origin, target):
     return False
 
 
-def best_fit_allocation(model, parameters):
+def best_fit_allocation(model: Simulator, parameters: dict[str, Any]) -> None:
 
-    def best_fit(app, process_units):
+    def best_fit(app: Application, process_units: list[ProcessUnit]) -> ProcessUnit:
         return min(
             process_units,
             key=lambda unit: (
@@ -22,7 +33,7 @@ def best_fit_allocation(model, parameters):
             ),
         )
 
-    applications_to_be_allocated = []
+    applications_to_be_allocated: list[AccessModel] = []
 
     # Selecting the applications that require provisioning.
     for user in User.all():
@@ -37,7 +48,7 @@ def best_fit_allocation(model, parameters):
                 # Skipping what is not directly connected to a network access point.
                 if (
                     not any(
-                        process_unit in model.topology.neighbors(access_point)
+                        process_unit in list(model.topology.neighbors(access_point))
                         for access_point in user.network_access_points
                     )
                     or user.network_access_points == []
@@ -46,7 +57,7 @@ def best_fit_allocation(model, parameters):
 
     # Iterating over the provisioning demands.
     for access_model in applications_to_be_allocated:
-        process_units = []
+        process_units: list[ProcessUnit] = []
         # Searching for process units directly connected to network access points.
         for access_point in access_model.user.network_access_points:
             if isinstance(access_point, Satellite) and access_point.process_unit is not None:

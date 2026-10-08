@@ -1,11 +1,20 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
 import networkx as nx
 
 from ..process_unit import ProcessUnit
 from ..satellite import Satellite
 from ..user import User
 
+if TYPE_CHECKING:
+    from ...simulator import Simulator
+    from ..application_access_models import AccessModel
+    from ..topology import Topology
 
-def has_path(topology, origin, target):
+
+def has_path(topology: Topology, origin: User, target: ProcessUnit) -> bool:
     for access_point in origin.network_access_points:
         if nx.has_path(G=topology, source=access_point, target=target):
             return True
@@ -13,15 +22,15 @@ def has_path(topology, origin, target):
     return False
 
 
-def simple_allocation(model, parameters):
-    def is_better(other, current_unit):
+def simple_allocation(model: Simulator, parameters: dict[str, Any]) -> None:
+    def is_better(other: ProcessUnit, current_unit: ProcessUnit) -> bool:
         return (
             (other.cpu - other.cpu_demand) < (current_unit.cpu - current_unit.cpu_demand)
             and (other.memory - other.memory_demand) < (current_unit.memory - current_unit.memory_demand)
             and (other.storage - other.storage_demand) < (current_unit.storage - current_unit.storage_demand)
         )
 
-    applications_to_be_allocated = []
+    applications_to_be_allocated: list[AccessModel] = []
 
     # Selecting the applications that need provisioning.
     for user in User.all():
@@ -34,7 +43,7 @@ def simple_allocation(model, parameters):
                     # Skipping what is not directly connected to a network access point.
                     if (
                         not any(
-                            process_unit in model.topology.neighbors(access_point)
+                            process_unit in list(model.topology.neighbors(access_point))
                             for access_point in user.network_access_points
                         )
                         or user.network_access_points == []
@@ -47,7 +56,7 @@ def simple_allocation(model, parameters):
 
     # Iterating over the provisioning demands.
     for access_model in applications_to_be_allocated:
-        process_units = []
+        process_units: list[ProcessUnit] = []
 
         # Looking for process units directly connected to network access points.
         for access_point in access_model.user.network_access_points:

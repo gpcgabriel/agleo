@@ -1,20 +1,39 @@
+from __future__ import annotations
+
 from math import sqrt
+from typing import TYPE_CHECKING, Any, TypedDict
 
 import networkx as nx
 from geopy.distance import geodesic
 
+from ...geometry import Coordinates
 from ..application import Application
 from ..satellite import Satellite
 
+if TYPE_CHECKING:
+    from ...simulator import Simulator
+    from ..process_unit import ProcessUnit
+    from ..topology import Topology
+    from ..user import User
 
-def has_path(topology, origin, target):
+
+class HybridResults(TypedDict):
+    """How many applications each run of `hybrid_allocation` placed, failed to place or left in place."""
+
+    provisioned: int
+    failed: int
+    already: int
+    details: list[dict[str, int | str]]
+
+
+def has_path(topology: Topology, origin: User, target: ProcessUnit) -> bool:
     for access_point in origin.network_access_points:
         if nx.has_path(G=topology, source=access_point, target=target):
             return True
     return False
 
 
-def distance(coordinates1, coordinates2):
+def distance(coordinates1: Coordinates | None, coordinates2: Coordinates | None) -> float:
     if coordinates1 is None or coordinates2 is None:
         return float("inf")
     ground_distance = geodesic(coordinates1[:2], coordinates2[:2]).kilometers
@@ -22,7 +41,7 @@ def distance(coordinates1, coordinates2):
     return sqrt(ground_distance**2 + air_distance**2)
 
 
-def get_exposure_time(user, satellite):
+def get_exposure_time(user: User, satellite: Satellite) -> int:
     step = user.model.scheduler.steps
     max_distance = min(user.max_connection_range, satellite.max_connection_range)
     count = 0
@@ -35,8 +54,8 @@ def get_exposure_time(user, satellite):
     return count
 
 
-def get_eligible_pus(app, user, model, parameters):
-    process_units = []
+def get_eligible_pus(app: Application, user: User, model: Simulator, parameters: dict[str, Any]) -> list[ProcessUnit]:
+    process_units: list[ProcessUnit] = []
     for access_point in user.network_access_points:
         if isinstance(access_point, Satellite) and access_point.process_unit is not None:
             pu = access_point.process_unit
@@ -51,14 +70,16 @@ def get_eligible_pus(app, user, model, parameters):
     return process_units
 
 
-def load_ratio(pu):
+def load_ratio(pu: ProcessUnit) -> float:
     cpu_r = pu.cpu_demand / pu.cpu if pu.cpu > 0 else 1.0
     mem_r = pu.memory_demand / pu.memory if pu.memory > 0 else 1.0
     sto_r = pu.storage_demand / pu.storage if pu.storage > 0 else 1.0
     return cpu_r + mem_r + sto_r
 
 
-def allocate_single_app(app, user, model, parameters, strategy):
+def allocate_single_app(
+    app: Application, user: User, model: Simulator, parameters: dict[str, Any], strategy: str
+) -> str:
     if strategy == "best_fit":
         process_units = get_eligible_pus(app, user, model, parameters)
         if not process_units:
@@ -73,8 +94,8 @@ def allocate_single_app(app, user, model, parameters, strategy):
         return "already_provisioned"
 
     elif strategy == "longest_duration":
-        best_target = None
-        max_duration = -1
+        best_target: ProcessUnit | None = None
+        max_duration: float = -1
         scenario = parameters.get("scenario", "hybrid")
 
         if parameters["ground_station"].process_unit and (scenario == "terrestrial" or scenario == "hybrid"):
@@ -131,8 +152,15 @@ def allocate_single_app(app, user, model, parameters, strategy):
     return "unknown_strategy"
 
 
-def hybrid_allocation(model, parameters, best_fit_apps, longest_duration_apps, latency_aware_apps, load_balanced_apps):
-    results = {"provisioned": 0, "failed": 0, "already": 0, "details": []}
+def hybrid_allocation(
+    model: Simulator,
+    parameters: dict[str, Any],
+    best_fit_apps: list[int],
+    longest_duration_apps: list[int],
+    latency_aware_apps: list[int],
+    load_balanced_apps: list[int],
+) -> HybridResults:
+    results: HybridResults = {"provisioned": 0, "failed": 0, "already": 0, "details": []}
 
     for app_id_list, strategy_name in [
         (best_fit_apps, "best_fit"),

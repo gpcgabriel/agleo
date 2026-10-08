@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 from random import choice
+from typing import TYPE_CHECKING, Any
 
 import networkx as nx
 
@@ -6,8 +9,13 @@ from ..process_unit import ProcessUnit
 from ..satellite import Satellite
 from ..user import User
 
+if TYPE_CHECKING:
+    from ...simulator import Simulator
+    from ..application_access_models import AccessModel
+    from ..topology import Topology
 
-def has_path(topology, origin, target):
+
+def has_path(topology: Topology, origin: User, target: ProcessUnit) -> bool:
     for access_point in origin.network_access_points:
         if nx.has_path(G=topology, source=access_point, target=target):
             return True
@@ -15,8 +23,8 @@ def has_path(topology, origin, target):
     return False
 
 
-def random_allocation(model, parameters):
-    applications_to_be_allocated = []
+def random_allocation(model: Simulator, parameters: dict[str, Any]) -> None:
+    applications_to_be_allocated: list[AccessModel] = []
 
     for user in User.all():
         for access_model in user.applications_access_models:
@@ -28,7 +36,7 @@ def random_allocation(model, parameters):
                     # Skipping what is not directly connected to a network access point.
                     if (
                         not any(
-                            process_unit in model.topology.neighbors(access_point)
+                            process_unit in list(model.topology.neighbors(access_point))
                             for access_point in user.network_access_points
                         )
                         or user.network_access_points == []
@@ -38,7 +46,7 @@ def random_allocation(model, parameters):
                 access_model.application.deprovision()
 
     for access_model in applications_to_be_allocated:
-        process_units = []
+        process_units: list[ProcessUnit] = []
 
         for access_point in access_model.user.network_access_points:
             if isinstance(access_point, Satellite) and access_point.process_unit is not None:

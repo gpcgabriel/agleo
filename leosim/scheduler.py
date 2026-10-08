@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from .components.application import Application
 from .components.ground_station import GroundStation
 from .components.network_flow import NetworkFlow
@@ -5,15 +9,18 @@ from .components.process_unit import ProcessUnit
 from .components.satellite import Satellite
 from .components.user import User
 
+if TYPE_CHECKING:
+    from .simulator import Simulator
+
 
 class Scheduler:
     """Class responsible for scaling simulator components"""
 
-    def __init__(self, model: object):
+    def __init__(self, model: Simulator) -> None:
         self.model = model
         self.steps = 0
 
-    def step(self):
+    def step(self) -> None:
         """Method that performs the scheduling of components in standard order"""
         for application in Application.all():
             application.step()

@@ -1,4 +1,12 @@
-def deterministic_failure_model(satellite: object, **parameters) -> bool:
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from ..satellite import Satellite
+
+
+def deterministic_failure_model(satellite: Satellite, **parameters: Any) -> bool:
     failure_steps = parameters.get("failure_steps", [])
 
     first_step = parameters.get("first_error_step", 0)

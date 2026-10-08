@@ -52,9 +52,6 @@ def load_ground_topology_from_gml(filepath: str, default_delay: int = 1) -> Topo
         link["delay"] = default_delay
         link["type"] = "static"
 
-        topology.add_edge(node_1, node_2, link=link)
-
-        topology._adj[node_1][node_2] = link
-        topology._adj[node_2][node_1] = link
+        topology.attach_link(link)
 
     return topology

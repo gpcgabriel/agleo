@@ -1,10 +1,16 @@
 # Importing the simulator components.
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 
 from ..component_manager import ComponentManager
+from ..geometry import Coordinates
 from .network_link import NetworkLink
 from .satellite import Satellite
 from .user import User
+
+if TYPE_CHECKING:
+    from .process_unit import ProcessUnit
 
 
 class GroundStation(ComponentManager):
@@ -14,7 +20,7 @@ class GroundStation(ComponentManager):
     def __init__(
         self,
         id: int = 0,
-        coordinates: tuple[float, float, float] | None = None,
+        coordinates: Coordinates | None = None,
         wireless_delay: int = 0,
         max_connection_range: int = 2000,
     ) -> None:
@@ -30,7 +36,7 @@ class GroundStation(ComponentManager):
         self.max_connection_range = max_connection_range
 
         self.users: list[User] = []
-        self.process_unit = []
+        self.process_unit: list[ProcessUnit] | None = []
 
     def export(self) -> dict[str, Any]:
         component = {
@@ -49,7 +55,7 @@ class GroundStation(ComponentManager):
         }
         return component
 
-    def connect_server(self, server) -> None:
+    def connect_server(self, server: ProcessUnit) -> None:
         # `export()` writes None when the station has no servers, and
         # `Simulator.initialize` restores that None. Without this guard,
         # attaching the first server to an empty station raises AttributeError.
@@ -91,14 +97,12 @@ class GroundStation(ComponentManager):
                 link["bandwidth"] = NetworkLink.default_bandwidth
                 link["delay"] = link.get_delay()
                 link["type"] = "dynamic"
-                topology.add_edge(satellite, self)
-                topology._adj[satellite][self] = link
-                topology._adj[self][satellite] = link
+                topology.attach_link(link)
 
     @staticmethod
-    def export_groundstations() -> dict:
-        gs_data = {}
-        for gs in GroundStation._instances:
+    def export_groundstations() -> dict[str, dict[str, Any]]:
+        gs_data: dict[str, dict[str, Any]] = {}
+        for gs in GroundStation.all():
             gpos = gs.coordinates
             gs_data[f"GS_{gs.id}"] = {
                 "pos": (round(gpos[0], 1), round(gpos[1], 1)) if gpos else None,

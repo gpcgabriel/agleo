@@ -1,4 +1,13 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
 from ..component_manager import ComponentManager
+
+if TYPE_CHECKING:
+    from .process_unit import ProcessUnit
+    from .topology import Node
+    from .user import User
 
 
 class NetworkFlow(ComponentManager):
@@ -16,17 +25,21 @@ class NetworkFlow(ComponentManager):
     _instances = []
     _object_count = 0
 
+    # Holding the flow's two ends, which every caller passes; only the scenario loader builds a flow without them.
+    source: User
+    target: ProcessUnit
+
     def __init__(
         self,
         id: int = 0,
         status: str = "active",
-        source: object = None,
-        target: object = None,
+        source: User | None = None,
+        target: ProcessUnit | None = None,
         start: int = 0,
-        path: list | None = None,
+        path: list[Node] | None = None,
         data_to_transfer: int = 0,
-        metadata: dict | None = None,
-    ):
+        metadata: dict[str, User | str] | None = None,
+    ) -> None:
         """Initializes a NetworkFlow instance.
 
         Args:
@@ -52,30 +65,32 @@ class NetworkFlow(ComponentManager):
 
         self.status = status
 
-        self.source = source
-        self.target = target
+        if source is not None:
+            self.source = source
+        if target is not None:
+            self.target = target
 
         self.start = start
-        self.end = None
+        self.end: int | None = None
         self.data_to_transfer = data_to_transfer
-        self.metadata = metadata if metadata is not None else {}
+        self.metadata: dict[str, User | str] = metadata if metadata is not None else {}
 
         self.path = path
-        self.bandwidth = {}
+        self.bandwidth: dict[int, int] = {}
 
         # Tracking the attributes that make change management easier.
         self.last_path = path.copy()
-        self.last_bandwidth = {}
+        self.last_bandwidth: dict[int, int] = {}
 
         for i in range(len(path) - 1):
-            link = self.model.topology[path[i]][path[i + 1]]
+            link = self.model.topology.link_between(path[i], path[i + 1])
 
             link["flows"].append(self)
 
             self.bandwidth[link.id] = 0
             self.last_bandwidth[link.id] = 0
 
-    def step(self):
+    def step(self) -> None:
         """Activates the component and ensures its operation during the simulation.
 
         Note:
@@ -83,7 +98,7 @@ class NetworkFlow(ComponentManager):
         """
         pass
 
-    def export(self) -> dict:
+    def export(self) -> dict[str, Any]:
         """Generates a dictionary representation of the object for context saving.
 
         Returns:

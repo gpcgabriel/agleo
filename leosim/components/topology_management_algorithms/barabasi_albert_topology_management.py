@@ -1,11 +1,18 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
 import numpy as np
 from geopy.distance import geodesic
 
 from ..network_link import NetworkLink
 from ..satellite import Satellite
 
+if TYPE_CHECKING:
+    from ..topology import Topology
 
-def barabasi_albert_network(topology, min_num_links: int = 2):
+
+def barabasi_albert_network(topology: Topology, min_num_links: int = 2) -> None:
     satellites = [sat for sat in Satellite.all() if sat.coordinates]
     alpha = 0.05
 
@@ -17,7 +24,7 @@ def barabasi_albert_network(topology, min_num_links: int = 2):
             continue
 
         degrees = {node: len(list(topology[node])) for node in potential_targets}
-        probabilities = []
+        probabilities: list[float] = []
 
         for target in potential_targets:
             degree = degrees[target]
@@ -41,11 +48,8 @@ def barabasi_albert_network(topology, min_num_links: int = 2):
             link["delay"] = NetworkLink.get_delay()
             link["type"] = "dynamic"
 
-            topology.add_edge(satellite, target)
-
-            topology._adj[satellite][target] = link
-            topology._adj[target][satellite] = link
+            topology.attach_link(link)
 
 
-def barabasi_albert_topology_management(topology: object, **parameters):
+def barabasi_albert_topology_management(topology: Topology, **parameters: Any) -> None:
     barabasi_albert_network(topology=topology, min_num_links=parameters.get("min_num_links", 2))

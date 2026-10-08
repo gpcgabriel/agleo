@@ -1,10 +1,16 @@
 # Importing the simulator components.
+from __future__ import annotations
+
 from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from ..component_manager import ComponentManager
+from ..geometry import Coordinates
 from ..orbit_models.linear_estimation import linear_estimation
 from .user import User
+
+if TYPE_CHECKING:
+    from .process_unit import ProcessUnit
 
 
 class Satellite(ComponentManager):
@@ -38,11 +44,11 @@ class Satellite(ComponentManager):
         self,
         id: int = 0,
         name: str = "",
-        coordinates: tuple[float, float, float] | None = None,
+        coordinates: Coordinates | None = None,
         wireless_delay: int = 0,
         max_connection_range: int = 1000,
         is_gateway: bool = False,
-        mobility_model: Callable = linear_estimation,
+        mobility_model: Callable[[Satellite], Coordinates | None] = linear_estimation,
     ) -> None:
         """Initializes a Satellite instance.
 
@@ -63,32 +69,32 @@ class Satellite(ComponentManager):
 
         self.name = name if name else str(self)
 
-        self.process_unit = None
+        self.process_unit: ProcessUnit | None = None
         self.active = True
         self.wireless_delay = wireless_delay
         self.is_gateway = is_gateway
-        self.users = []
+        self.users: list[User] = []
         self.max_connection_range = max_connection_range
-        self.power = 0
-        self.min_power = 0
+        self.power: float = 0
+        self.min_power: float = 0
 
         # Holding the satellite coordinates.
-        self.coordinates = coordinates
-        self.coordinates_trace = []
+        self.coordinates: Coordinates | None = coordinates
+        self.coordinates_trace: list[Coordinates | None] = []
 
         # Holding the models the satellite runs.
         self.mobility_model = mobility_model
-        self.mobility_model_parameters = {}
+        self.mobility_model_parameters: dict[str, Any] = {}
 
-        self.power_generation_model = None
-        self.power_generation_model_parameters = {}
+        self.power_generation_model: Callable[[Satellite], None] | None = None
+        self.power_generation_model_parameters: dict[str, Any] = {}
 
-        self.power_consumption_model = None
-        self.power_consumption_model_parameters = {}
+        self.power_consumption_model: Callable[[Satellite], None] | None = None
+        self.power_consumption_model_parameters: dict[str, Any] = {}
 
-        self.failure_model = None
+        self.failure_model: Callable[[Satellite], bool] | None = None
         self.failure_occurred = False
-        self.failure_model_parameters = {}
+        self.failure_model_parameters: dict[str, Any] = {}
 
     def collect_metrics(self) -> dict[str, Any]:
         """Collects operational metrics from the satellite.
@@ -240,15 +246,15 @@ class Satellite(ComponentManager):
         return component
 
     @staticmethod
-    def export_satellites() -> dict:
-        satellite_data = {}
-        for sat in Satellite._instances:
+    def export_satellites() -> dict[str, dict[str, Any]]:
+        satellite_data: dict[str, dict[str, Any]] = {}
+        for sat in Satellite.all():
             step = sat.model.scheduler.steps
             future = [
                 (round(c[0], 1), round(c[1], 1)) if c else None for c in sat.coordinates_trace[step + 1 : step + 16]
             ]
             pu = sat.process_unit
-            pu_info = None
+            pu_info: dict[str, Any] | None = None
             if pu:
                 pu_info = {
                     "id": pu.id,

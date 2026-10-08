@@ -1,13 +1,23 @@
+from __future__ import annotations
+
 from math import sqrt
+from typing import TYPE_CHECKING, Any
 
 import networkx as nx
 from geopy.distance import geodesic
 
+from ...geometry import Coordinates
 from ..satellite import Satellite
 from ..user import User
 
+if TYPE_CHECKING:
+    from ...simulator import Simulator
+    from ..application_access_models import AccessModel
+    from ..process_unit import ProcessUnit
+    from ..topology import Topology
 
-def has_path(topology, origin, target):
+
+def has_path(topology: Topology, origin: User, target: ProcessUnit) -> bool:
     """Returns whether the terrestrial network provides connectivity."""
     for access_point in origin.network_access_points:
         if nx.has_path(G=topology, source=access_point, target=target):
@@ -15,7 +25,7 @@ def has_path(topology, origin, target):
     return False
 
 
-def distance(coordinates1, coordinates2):
+def distance(coordinates1: Coordinates | None, coordinates2: Coordinates | None) -> float:
     """Returns the 3D distance in kilometres between two coordinates."""
     if coordinates1 is None or coordinates2 is None:
         return float("inf")
@@ -24,7 +34,7 @@ def distance(coordinates1, coordinates2):
     return sqrt(ground_distance**2 + air_distance**2)
 
 
-def get_exposure_time(user, satellite):
+def get_exposure_time(user: User, satellite: Satellite) -> int:
     """Returns for how many simulation steps the satellite stays visible."""
     step = user.model.scheduler.steps
     max_distance = min(user.max_connection_range, satellite.max_connection_range)
@@ -40,7 +50,7 @@ def get_exposure_time(user, satellite):
     return count
 
 
-def longest_duration_allocation(model, parameters):
+def longest_duration_allocation(model: Simulator, parameters: dict[str, Any]) -> None:
     # Counting the provisionings made on each step.
 
     # Keeping a dictionary on the model object so the counts survive between steps.
@@ -51,7 +61,7 @@ def longest_duration_allocation(model, parameters):
     if step_atual_str not in model.provisioning_history:
         model.provisioning_history[step_atual_str] = 0
 
-    applications_to_be_allocated = []
+    applications_to_be_allocated: list[AccessModel] = []
 
     # Identifying the applications that need provisioning.
     for user in User.all():
@@ -63,13 +73,13 @@ def longest_duration_allocation(model, parameters):
             else:
                 process_unit = access_model.application.process_unit
                 if (
-                    not any(process_unit in model.topology.neighbors(ap) for ap in user.network_access_points)
+                    not any(process_unit in list(model.topology.neighbors(ap)) for ap in user.network_access_points)
                     or user.network_access_points == []
                 ):
                     applications_to_be_allocated.append(access_model)
 
     # Ordering the applications.
-    def get_remaining_time(access_model):
+    def get_remaining_time(access_model: AccessModel) -> int:
         last_access = access_model.history[-1]
         if last_access.get("required_provisioning_time"):
             return last_access.get("required_provisioning_time") - last_access["provisioned_time"]
@@ -79,9 +89,8 @@ def longest_duration_allocation(model, parameters):
 
     # Allocating.
     for access_model in applications_to_be_allocated:
-        best_target = None
-        max_duration = -1
-        sat = None
+        best_target: ProcessUnit | None = None
+        max_duration: float = -1
 
         # Trying the ground stations.
         if parameters["ground_station"].process_unit and (

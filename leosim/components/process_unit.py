@@ -1,6 +1,13 @@
-from typing import Any
+from __future__ import annotations
+
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 from ..component_manager import ComponentManager
+from ..geometry import Coordinates
+
+if TYPE_CHECKING:
+    from .application import Application
 
 
 class ProcessUnit(ComponentManager):
@@ -37,10 +44,10 @@ class ProcessUnit(ComponentManager):
         cpu: int = 0,
         memory: int = 0,
         storage: int = 0,
-        coordinates: tuple[float, float, float] | None = None,
+        coordinates: Coordinates | None = None,
         model_name: str = "",
         architecture: dict[str, Any] | None = None,
-    ):
+    ) -> None:
         """Initializes a ProcessUnit instance.
 
         Args:
@@ -60,13 +67,13 @@ class ProcessUnit(ComponentManager):
         self.id = id
 
         self.model_name = model_name
-        self.coordinates = coordinates
+        self.coordinates: Coordinates | None = coordinates
 
         # Holding the total computational capacity.
         self.cpu = cpu
         self.memory = memory
         self.storage = storage
-        self.power = 0
+        self.power: float = 0
 
         # Tracking the current demands.
         self.cpu_demand = 0
@@ -74,25 +81,25 @@ class ProcessUnit(ComponentManager):
         self.storage_demand = 0
 
         # Describing the architectural specifications.
-        self.architecture = architecture if architecture is not None else {}
+        self.architecture: dict[str, Any] = architecture if architecture is not None else {}
 
         # Allowing integration with the relevant models.
-        self.power_generation_model = None
-        self.power_generation_model_parameters = {}
+        self.power_generation_model: Callable[[ProcessUnit], None] | None = None
+        self.power_generation_model_parameters: dict[str, Any] = {}
 
-        self.power_consumption_model = None
-        self.power_consumption_model_parameters = {}
+        self.power_consumption_model: Callable[[ProcessUnit], None] | None = None
+        self.power_consumption_model_parameters: dict[str, Any] = {}
 
-        self.failure_model = None
-        self.failure_model_parameters = {}
+        self.failure_model: Callable[[ProcessUnit], bool] | None = None
+        self.failure_model_parameters: dict[str, Any] = {}
 
         # Listing the applications currently allocated in the unit.
-        self.applications = []
+        self.applications: list[Application] = []
 
         # Recording whether the unit is available.
         self.available = True
 
-    def collect_metrics(self) -> dict:
+    def collect_metrics(self) -> dict[str, Any]:
         """Collects telemetry data from the specific process unit instance.
 
         Returns:
@@ -127,7 +134,7 @@ class ProcessUnit(ComponentManager):
                 app.available = False
                 app.deprovision()
 
-    def export(self) -> dict:
+    def export(self) -> dict[str, Any]:
         """Generates a dictionary representation for saving the current context.
 
         Returns:
@@ -158,7 +165,7 @@ class ProcessUnit(ComponentManager):
 
         return component
 
-    def has_capacity_to_host(self, application: object) -> bool:
+    def has_capacity_to_host(self, application: Application) -> bool:
         """Checks if there are enough available resources to host an application.
 
         Args:
@@ -174,9 +181,9 @@ class ProcessUnit(ComponentManager):
         return self.cpu >= cpu_demand and self.memory >= memory_demand and self.storage >= storage_demand
 
     @staticmethod
-    def export_processunits() -> dict:
-        pu_data = {}
-        for pu in ProcessUnit._instances:
+    def export_processunits() -> dict[str, dict[str, Any]]:
+        pu_data: dict[str, dict[str, Any]] = {}
+        for pu in ProcessUnit.all():
             pu_data[f"PU_{pu.id}"] = {
                 "cpu_total": pu.cpu,
                 "cpu_used": pu.cpu_demand,

@@ -1,7 +1,16 @@
+from __future__ import annotations
+
 from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 from ..component_manager import ComponentManager
+from ..geometry import Coordinates
+
+if TYPE_CHECKING:
+    from .application import Application
+    from .application_access_models import AccessModel
+    from .ground_station import GroundStation
+    from .satellite import Satellite
 
 
 class User(ComponentManager):
@@ -30,9 +39,7 @@ class User(ComponentManager):
     _instances = []
     _object_count = 0
 
-    def __init__(
-        self, id: int = 0, coordinates: tuple[float, float, float] | None = None, max_connection_range: int = 300
-    ) -> None:
+    def __init__(self, id: int = 0, coordinates: Coordinates | None = None, max_connection_range: int = 300) -> None:
         """Initializes a User instance.
 
         Args:
@@ -50,20 +57,20 @@ class User(ComponentManager):
         self.id = id
 
         # Holding the user's applications.
-        self.applications = []
+        self.applications: list[Application] = []
 
         # Holding the user's coordinates.
-        self.coordinates = coordinates
-        self.coordinates_trace = []
+        self.coordinates: Coordinates | None = coordinates
+        self.coordinates_trace: list[Coordinates | None] = []
 
         # Holding the user's mobility model.
-        self.mobility_model = None
-        self.mobility_model_parameters = {}
+        self.mobility_model: Callable[[User], None] | None = None
+        self.mobility_model_parameters: dict[str, Any] = {}
 
         # Holding the user's application access model.
-        self.applications_access_models = []
+        self.applications_access_models: list[AccessModel] = []
 
-        self.network_access_points = []
+        self.network_access_points: list[GroundStation | Satellite] = []
 
         self.max_connection_range = max_connection_range
 
@@ -114,14 +121,24 @@ class User(ComponentManager):
                 # Getting the next access from the model, the current one having ended.
                 access_model.get_next_access(current_access["next_access"])
 
-        # Updating the position from the mobility model.
-        while len(self.coordinates_trace) <= self.model.scheduler.steps:
-            self.mobility_model(self)
-
-        if self.coordinates != self.coordinates_trace[self.model.scheduler.steps]:
-            self.coordinates = self.coordinates_trace[self.model.scheduler.steps]
+        self.move()
 
         self.network_access_points = []
+
+    def move(self) -> None:
+        """Extends the user's path up to the current step with its mobility model and moves the user there.
+
+        Raises:
+            ValueError: If the path has to grow and the user has no mobility model.
+        """
+        step = self.model.scheduler.steps
+        while len(self.coordinates_trace) <= step:
+            if self.mobility_model is None:
+                raise ValueError(f"{self} has no mobility model to extend its path to step {step}.")
+            self.mobility_model(self)
+
+        if self.coordinates != self.coordinates_trace[step]:
+            self.coordinates = self.coordinates_trace[step]
 
     def collect_metrics(self) -> dict[str, Any]:
         """Collects telemetry data from the user and their application accesses.
@@ -132,7 +149,7 @@ class User(ComponentManager):
         """
         topology = ComponentManager.model.topology
 
-        accesses = []
+        accesses: list[dict[str, Any]] = []
 
         for access_model in self.applications_access_models:
             last_access = access_model.history[-1].copy()
@@ -145,7 +162,8 @@ class User(ComponentManager):
 
             if flow and flow.status != "waiting":
                 delay = topology.get_path_delay(flow.path)
-                delay += flow.path[0].wireless_delay
+                # Reading the wireless hop from the path's first node, the user's access point.
+                delay += cast("GroundStation | Satellite", flow.path[0]).wireless_delay
 
             accesses.append(
                 {
@@ -194,7 +212,7 @@ class User(ComponentManager):
 
         return attributes
 
-    def set_mobility_model(self, model: Callable, parameters: dict[str, Any]) -> None:
+    def set_mobility_model(self, model: Callable[[User], None], parameters: dict[str, Any]) -> None:
         """Assigns a mobility model to the user.
 
         Args:
@@ -204,7 +222,7 @@ class User(ComponentManager):
         self.mobility_model = model
         self.mobility_model_parameters = parameters
 
-    def connection_to_application(self, application: Any, access_model: Any) -> None:
+    def connection_to_application(self, application: Application, access_model: AccessModel) -> None:
         """Links the user to an application through an access model.
 
         Args:
@@ -224,7 +242,7 @@ class User(ComponentManager):
         # that a user has applications at all.
         self.applications.append(application)
 
-    def connect_to_access_point(self, access_point: Any) -> None:
+    def connect_to_access_point(self, access_point: GroundStation | Satellite) -> None:
         """Registers a connection with a network access point.
 
         Args:
@@ -234,11 +252,11 @@ class User(ComponentManager):
         access_point.users.append(self)
 
     @staticmethod
-    def export_users() -> dict:
-        users_data = {}
-        for user in User._instances:
+    def export_users() -> dict[str, dict[str, Any]]:
+        users_data: dict[str, dict[str, Any]] = {}
+        for user in User.all():
             upos = user.coordinates
-            pending_apps = []
+            pending_apps: list[int] = []
             for am in user.applications_access_models:
                 if am.request_provisioning and not am.application.available:
                     pending_apps.append(am.application.id)

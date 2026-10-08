@@ -1,9 +1,17 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
 from geopy.distance import geodesic
 
 from ..component_manager import ComponentManager
 
+if TYPE_CHECKING:
+    from .network_flow import NetworkFlow
+    from .topology import Node, Topology
 
-class NetworkLink(ComponentManager, dict):
+
+class NetworkLink(ComponentManager, dict[str, Any]):
     """Represents a network connection between two nodes in the topology.
 
     Since NetworkX stores edges as dictionaries, this class inherits from the
@@ -23,7 +31,16 @@ class NetworkLink(ComponentManager, dict):
     default_delay = 10  # ms
     _dynamic = False
 
-    def __init__(self, id: int = 0):
+    # Declaring the keys every link holds, which attribute access reaches through `__getattr__`.
+    topology: Topology | None
+    nodes: list[Node]
+    delay: float
+    bandwidth: float
+    flows: list[NetworkFlow]
+    active: bool
+    type: str
+
+    def __init__(self, id: int = 0) -> None:
         """Initializes a NetworkLink instance with default edge attributes.
 
         Args:
@@ -44,7 +61,7 @@ class NetworkLink(ComponentManager, dict):
         self["active"] = True
         self["type"] = "default"
 
-    def collect_metrics(self) -> dict:
+    def collect_metrics(self) -> dict[str, Any]:
         """Collects the current state metrics of the network link.
 
         Returns:
@@ -62,7 +79,7 @@ class NetworkLink(ComponentManager, dict):
 
         return metrics
 
-    def export(self) -> dict:
+    def export(self) -> dict[str, Any]:
         """Generates a dictionary representation for saving the current context.
 
         Returns:
@@ -108,7 +125,7 @@ class NetworkLink(ComponentManager, dict):
 
         return delay
 
-    def __getattr__(self, attribute_name: str):
+    def __getattr__(self, attribute_name: str) -> Any:
         """Provides access to dictionary keys via attribute notation.
 
         Args:
@@ -125,7 +142,7 @@ class NetworkLink(ComponentManager, dict):
         else:
             raise AttributeError(f"Object {self} has no such attribute '{attribute_name}'.")
 
-    def __setattr__(self, attribute_name: str, value: object):
+    def __setattr__(self, attribute_name: str, value: object) -> None:
         """Allows setting dictionary keys via attribute notation.
 
         Args:

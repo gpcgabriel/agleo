@@ -1,8 +1,13 @@
 # Importing the simulator components.
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 
 from ..component_manager import ComponentManager
 from .user import User
+
+if TYPE_CHECKING:
+    from .process_unit import ProcessUnit
 
 
 class Application(ComponentManager):
@@ -37,9 +42,9 @@ class Application(ComponentManager):
     def __init__(
         self,
         id: int = 0,
-        cpu_demand: int | None = None,
-        memory_demand: int | None = None,
-        storage_demand: int | None = None,
+        cpu_demand: int = 0,
+        memory_demand: int = 0,
+        storage_demand: int = 0,
         dependency_labels: list[str] | None = None,
         architectural_demands: dict[str, Any] | None = None,
         state: int = 0,
@@ -72,9 +77,9 @@ class Application(ComponentManager):
         self.dependency_labels = dependency_labels if dependency_labels is not None else []
         self.architectural_demands = architectural_demands if architectural_demands is not None else {}
 
-        self.user = None
-        self.process_unit = None
-        self.migrations = []
+        self.user: User | None = None
+        self.process_unit: ProcessUnit | None = None
+        self.migrations: list[dict[str, Any]] = []
         self.available = False
         self._available = False
         self.being_provisioned = False
@@ -120,7 +125,7 @@ class Application(ComponentManager):
             migr = self.migrations[-1]
             # TODO: Implement a formal dependency management system.
             # Standing in for the state machine until that system exists.
-            dependencies_on_process_unit = []
+            dependencies_on_process_unit: list[str] = []
 
             # Treating data transfer as instantaneous, which is what the model does today.
             if migr["status"] == "waiting" and (
@@ -160,8 +165,9 @@ class Application(ComponentManager):
                 if self.process_unit:
                     self.process_unit.applications.remove(self)
 
-                self.process_unit = migr["target"]
-                self.process_unit.applications.append(self)
+                target: ProcessUnit = migr["target"]
+                self.process_unit = target
+                target.applications.append(self)
 
                 self.being_provisioned = False
                 self.available = True
@@ -176,7 +182,7 @@ class Application(ComponentManager):
 
         self._available = self.available
 
-    def export(self) -> dict:
+    def export(self) -> dict[str, Any]:
         """Generates a dictionary representation for context saving.
 
         Returns:
@@ -203,7 +209,7 @@ class Application(ComponentManager):
         }
         return component
 
-    def provision(self, process_unit: Any) -> None:
+    def provision(self, process_unit: ProcessUnit) -> None:
         """Starts the provisioning process on a target processing unit.
 
         Args:
@@ -251,9 +257,9 @@ class Application(ComponentManager):
         self.process_unit = None
 
     @staticmethod
-    def export_applications() -> dict:
-        apps = {}
-        for app in Application._instances:
+    def export_applications() -> dict[str, dict[str, Any]]:
+        apps: dict[str, dict[str, Any]] = {}
+        for app in Application.all():
             remaining = 0
             pending = False
             for user in User.all():

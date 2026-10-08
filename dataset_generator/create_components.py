@@ -131,10 +131,7 @@ def create_link(
     link["delay"] = delay
     link["type"] = "static"
 
-    topology.add_edge(node, other)
-
-    topology._adj[node][other] = link
-    topology._adj[other][node] = link
+    topology.attach_link(link)
     return link
 
 

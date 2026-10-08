@@ -1,8 +1,15 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
 from ..network_link import NetworkLink
 from ..satellite import Satellite
 
+if TYPE_CHECKING:
+    from ..topology import Topology
 
-def mesh_network(topology):
+
+def mesh_network(topology: Topology) -> None:
     satellites = [sat for sat in Satellite.all() if sat.coordinates is not None]
 
     for satellite in satellites:
@@ -23,11 +30,8 @@ def mesh_network(topology):
             link["delay"] = link.get_delay()
             link["type"] = "dynamic"
 
-            topology.add_edge(satellite, target)
-
-            topology._adj[satellite][target] = link
-            topology._adj[target][satellite] = link
+            topology.attach_link(link)
 
 
-def default_topology_management(topology: object, **parameters):
+def default_topology_management(topology: Topology, **parameters: Any) -> None:
     mesh_network(topology=topology)

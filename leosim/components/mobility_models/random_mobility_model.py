@@ -1,14 +1,18 @@
+from __future__ import annotations
+
 from math import atan2, cos, degrees, radians, sin
 from random import choice
 
 from geopy.distance import geodesic
 from geopy.point import Point
 
+from ...geometry import Coordinates
 from ..ground_station import GroundStation
+from ..user import User
 
 
 # Calculating the bearing between two points.
-def calculate_bearing(origin, destination):
+def calculate_bearing(origin: Coordinates, destination: Coordinates) -> float:
     lat1, lon1 = map(radians, origin)
     lat2, lon2 = map(radians, destination)
 
@@ -20,16 +24,19 @@ def calculate_bearing(origin, destination):
     return (degrees(bearing) + 360) % 360  # Converting the angle to the 0-360 range.
 
 
-def random_mobility_model(user: object):
+def random_mobility_model(user: User) -> None:
     parameters = user.mobility_model_parameters
     station = choice(GroundStation.all())
+
+    if user.coordinates is None or station.coordinates is None:
+        raise ValueError(f"{user} and {station} need positions for the user to walk towards the station.")
 
     total_distance = geodesic(user.coordinates[:2], station.coordinates[:2]).kilometers
     num_steps = int(total_distance // parameters.get("step_km", 0.5))
 
     num_steps = num_steps if num_steps > 0 else 1
 
-    points = []
+    points: list[Coordinates] = []
     start_point = Point(user.coordinates[:2])
 
     # Obtaining the bearing.

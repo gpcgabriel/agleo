@@ -1,10 +1,17 @@
+from __future__ import annotations
+
 from itertools import cycle
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import networkx as nx
 
 from ...component_manager import ComponentManager
 from ..network_flow import NetworkFlow
+
+if TYPE_CHECKING:
+    from ..application import Application
+    from ..topology import Node
+    from ..user import User
 
 
 class DynamicDurationAccessModel(ComponentManager):
@@ -32,10 +39,15 @@ class DynamicDurationAccessModel(ComponentManager):
     _instances = []
     _object_count = 0
 
+    # Linking the model to its user and application: `User.connection_to_application` sets both, and
+    # so does `Simulator.initialize` for a model read back from a scenario file.
+    user: User
+    application: Application
+
     def __init__(
         self,
-        user: Any | None = None,
-        application: Any | None = None,
+        user: User | None = None,
+        application: Application | None = None,
         start: int = 1,
         duration_values: list[int] | None = None,
         connection_duration_values: list[int] | None = None,
@@ -53,12 +65,15 @@ class DynamicDurationAccessModel(ComponentManager):
         self.connection_duration_values = connection_duration_values if connection_duration_values is not None else []
         self.connection_interval_values = connection_interval_values if connection_interval_values is not None else []
 
-        self.history = []
+        self.history: list[dict[str, Any]] = []
         self.request_provisioning = False
-        self.flow = None
+        self.flow: NetworkFlow | None = None
 
-        self.user = user
-        self.application = application
+        # Leaving the links unset on the empty model the scenario loader builds; it sets them right after.
+        if user is not None:
+            self.user = user
+        if application is not None:
+            self.application = application
 
         if application and user:
             self.get_next_access(start)
@@ -103,7 +118,7 @@ class DynamicDurationAccessModel(ComponentManager):
         connection_duration = next(self.connection_duration_generator)
         connection_interval = next(self.connection_interval_generator)
 
-        making_request_times = {}
+        making_request_times: dict[str, bool] = {}
         request_time = start
         end_time = start + duration
 
@@ -148,15 +163,14 @@ class DynamicDurationAccessModel(ComponentManager):
                 return
 
             if self.flow is None:
-                connection_paths = []
+                connection_paths: list[list[Node]] = []
                 for access_point in user.network_access_points:
                     if nx.has_path(G=self.model.topology, source=access_point, target=app.process_unit):
-                        path = nx.shortest_path(
-                            G=self.model.topology, source=access_point, target=app.process_unit, weight="delay"
-                        )
+                        path = self.model.topology.delay_shortest_path(access_point, app.process_unit)
                         connection_paths.append(path)
 
-                path = min(connection_paths, key=len, default=[])
+                no_path: list[Node] = []
+                path = min(connection_paths, key=len, default=no_path)
                 self.flow = NetworkFlow(
                     start=self.model.scheduler.steps + 1,
                     source=user,

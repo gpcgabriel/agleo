@@ -1,5 +1,7 @@
 """The simulator: loads a scenario from a file and runs it tick by tick."""
 
+from __future__ import annotations
+
 import datetime
 import json
 import os
@@ -24,7 +26,7 @@ from .scheduler import Scheduler
 
 # Naming the functions a scenario file may refer to, which are the models a component runs:
 # `save_scenary` writes a model by its `__name__`, and `initialize` reads it back from here.
-SCENARIO_FUNCTIONS = {
+SCENARIO_FUNCTIONS: dict[str, Callable[..., Any]] = {
     function.__name__: function
     for function in (
         coordinates_history,
@@ -57,19 +59,23 @@ class Simulator(ComponentManager):
     # Leaving the simulator out of the scenario file: it loads the file rather than belonging to it.
     saved_in_scenario = False
 
+    # Declaring the provisionings per step that `longest_duration_allocation` counts on the simulator,
+    # creating the attribute on its first run.
+    provisioning_history: dict[str, int]
+
     def __init__(
         self,
         id: int = 0,
-        stopping_criterion: Callable | None = None,
-        resource_management_algorithm: Callable | None = None,
+        stopping_criterion: Callable[[Simulator], bool] | None = None,
+        resource_management_algorithm: Callable[[Simulator, dict[str, Any]], object] | None = None,
         resource_management_algorithm_parameters: dict[str, Any] | None = None,
-        topology_management_algorithm: Callable = default_topology_management,
+        topology_management_algorithm: Callable[..., None] = default_topology_management,
         topology_management_algorithm_parameters: dict[str, Any] | None = None,
-        user_defined_functions: list[Callable] | None = None,
-        scheduler: Callable = Scheduler,
+        user_defined_functions: list[Callable[..., Any]] | None = None,
+        scheduler: type[Scheduler] = Scheduler,
         dump_interval: int = 100,
         logs_directory: str = "logs",
-        ignore_list: list[Any] | None = None,
+        ignore_list: list[type[ComponentManager]] | None = None,
         clean_data_in_memory: bool = False,
         tick_duration: int = 1,
         time_unit: str = "seconds",
@@ -139,7 +145,7 @@ class Simulator(ComponentManager):
         self.dump_interval = dump_interval
         self.last_dump = 0
         self.clean_data_in_memory = clean_data_in_memory
-        self.agent_metrics = {}
+        self.agent_metrics: dict[str, list[dict[str, Any]]] = {}
         self.ignore_list = list(ignore_list or [])
 
         # Converting the time unit through timedelta, for a single standard.
@@ -171,7 +177,7 @@ class Simulator(ComponentManager):
         with open(dataset, encoding="UTF-8") as file:
             dataset_data = json.load(file)
 
-        created_components = []
+        created_components: list[ComponentManager] = []
 
         # Instantiating the objects described by the dataset schema.
         for class_name, components in dataset_data.items():
@@ -193,11 +199,11 @@ class Simulator(ComponentManager):
 
         # Establishing the network links.
         for link in NetworkLink.all():
-            self.topology.add_edge(link["nodes"][0], link["nodes"][1])
-            self.topology._adj[link["nodes"][0]][link["nodes"][1]] = link
-            self.topology._adj[link["nodes"][1]][link["nodes"][0]] = link
+            self.topology.attach_link(link)
 
-    def resolve_relationship(self, obj: ComponentManager, key: str, value: Any) -> None:
+    def resolve_relationship(
+        self, obj: ComponentManager, key: str, value: str | dict[str, Any] | list[dict[str, Any]] | None
+    ) -> None:
         """Restores one relationship of a loaded component from what the scenario file recorded.
 
         A value that matches none of the recorded shapes leaves the attribute
@@ -206,7 +212,7 @@ class Simulator(ComponentManager):
         Args:
             obj (ComponentManager): The component being restored.
             key (str): The attribute the relationship fills.
-            value (Any): What the file holds: a model's name, a reference such as
+            value (str | dict | list | None): What the file holds: a model's name, a reference such as
                 {"class": "User", "id": 3}, a mapping to model names, a list of
                 references, or None.
         """
@@ -261,7 +267,10 @@ class Simulator(ComponentManager):
         """
         for component_class in ComponentManager.__subclasses__():
             if component_class not in self.ignore_list + [self.__class__]:
-                metrics = {"Step": self.scheduler.steps, "metrics": component_class.collect_class_metrics()}
+                metrics: dict[str, Any] = {
+                    "Step": self.scheduler.steps,
+                    "metrics": component_class.collect_class_metrics(),
+                }
 
                 if not metrics["metrics"]:
                     continue
@@ -297,6 +306,13 @@ class Simulator(ComponentManager):
         Runs until the `stopping_criterion` evaluates to True. Performs
         initial monitoring and a final data dump after termination.
         """
+        stopping_criterion = self.stopping_criterion
+        if stopping_criterion is None:
+            raise ValueError(
+                "Invalid stopping_criterion: None. Simulator.run needs a function of the simulator that "
+                "returns True when the run should stop."
+            )
+
         self.running = True
         self.initialize_logs()
         self.monitor()
@@ -307,7 +323,7 @@ class Simulator(ComponentManager):
             self.monitor()
 
             # Stopping once the criterion is met.
-            if self.stopping_criterion(self):
+            if stopping_criterion(self):
                 self.running = False
 
         self.dump_data()
