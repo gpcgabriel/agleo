@@ -13,13 +13,11 @@ second one still leaves every station answering the same network-wide question.
 
 from __future__ import annotations
 
-from math import sqrt
 from typing import TYPE_CHECKING, Any
-
-from geopy.distance import geodesic
 
 from app.agents.allocation.digest import component_id
 from leosim.components import Application, GroundStation, ProcessUnit, Satellite, User
+from leosim.geometry import slant_range
 
 if TYPE_CHECKING:
     from leosim import Simulator
@@ -53,11 +51,9 @@ def find_reachable_satellite_ids(station: GroundStation) -> set[int]:
         if not (satellite.is_gateway and satellite.active and satellite.coordinates):
             continue
 
-        ground_distance = geodesic(station.coordinates[:2], satellite.coordinates[:2]).kilometers
-        altitude_difference = station.coordinates[2] - satellite.coordinates[2]
-        distance = sqrt(ground_distance**2 + altitude_difference**2)
-
-        if distance < min(station.max_connection_range, satellite.max_connection_range):
+        if slant_range(station.coordinates, satellite.coordinates) < min(
+            station.max_connection_range, satellite.max_connection_range
+        ):
             reachable.add(satellite.id)
 
     return reachable

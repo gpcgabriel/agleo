@@ -3,7 +3,6 @@ from __future__ import annotations
 from itertools import cycle
 from typing import TYPE_CHECKING, Any
 
-
 from ...component_manager import ComponentManager
 from ..network_flow import NetworkFlow
 

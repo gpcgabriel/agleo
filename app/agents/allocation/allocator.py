@@ -106,7 +106,9 @@ class LLMAllocator:
         Returns:
             dict: The allocation results.
         """
-        return hybrid_allocation(model, parameters, best_fit_ids, longest_duration_ids, [], [])
+        return hybrid_allocation(
+            model, parameters, {"best_fit": best_fit_ids, "longest_duration": longest_duration_ids}
+        )
 
     def record(
         self, model: Simulator, station: GroundStation, decision: ReconciledDecision, results: HybridResults

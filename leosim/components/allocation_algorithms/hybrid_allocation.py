@@ -1,20 +1,18 @@
 from __future__ import annotations
 
-from math import sqrt
 from typing import TYPE_CHECKING, Any, NotRequired, TypedDict
 
-import networkx as nx
-from geopy.distance import geodesic
-
-from ...geometry import Coordinates
+from ...geometry import slant_range
 from ..application import Application
-from ..satellite import Satellite
+from .placement import best_fit_unit, eligible_units, longest_duration_unit, station_units
 
 if TYPE_CHECKING:
     from ...simulator import Simulator
     from ..process_unit import ProcessUnit
-    from ..topology import Topology
     from ..user import User
+
+# Naming the strategies in the order `hybrid_allocation` applies them.
+STRATEGIES = ("best_fit", "longest_duration", "latency_aware", "load_balanced")
 
 
 class HybridResults(TypedDict):
@@ -29,157 +27,107 @@ class HybridResults(TypedDict):
     invented: NotRequired[int]
 
 
-def has_path(topology: Topology, origin: User, target: ProcessUnit) -> bool:
-    for access_point in origin.network_access_points:
-        if nx.has_path(G=topology, source=access_point, target=target):
-            return True
-    return False
+def load_ratio(unit: ProcessUnit) -> float:
+    """Returns: float: The shares of CPU, memory and storage in use, summed; a resource with no capacity is full."""
+    cpu_ratio = unit.cpu_demand / unit.cpu if unit.cpu > 0 else 1.0
+    memory_ratio = unit.memory_demand / unit.memory if unit.memory > 0 else 1.0
+    storage_ratio = unit.storage_demand / unit.storage if unit.storage > 0 else 1.0
+    return cpu_ratio + memory_ratio + storage_ratio
 
 
-def distance(coordinates1: Coordinates | None, coordinates2: Coordinates | None) -> float:
-    if coordinates1 is None or coordinates2 is None:
+def distance_to_user(user: User, unit: ProcessUnit) -> float:
+    """Returns: float: The slant range from the user to the unit, or infinity when either has no position."""
+    if user.coordinates is None or not unit.coordinates:
         return float("inf")
-    ground_distance = geodesic(coordinates1[:2], coordinates2[:2]).kilometers
-    air_distance = coordinates1[2] - coordinates2[2]
-    return sqrt(ground_distance**2 + air_distance**2)
+    return slant_range(user.coordinates, unit.coordinates)
 
 
-def get_exposure_time(user: User, satellite: Satellite) -> int:
-    step = user.model.scheduler.steps
-    max_distance = min(user.max_connection_range, satellite.max_connection_range)
-    count = 0
-    for coordinates in satellite.coordinates_trace[step:]:
-        if coordinates is not None:
-            if distance(coordinates1=coordinates, coordinates2=user.coordinates) < max_distance:
-                count += 1
-            else:
-                break
-    return count
+def best_fit_choice(
+    model: Simulator, application: Application, user: User, parameters: dict[str, Any]
+) -> ProcessUnit | None:
+    """Returns: ProcessUnit or None: The eligible unit the application fits most tightly."""
+    units = eligible_units(model, application, user, station_units(parameters))
+    return best_fit_unit(application, units) if units else None
 
 
-def get_eligible_pus(app: Application, user: User, model: Simulator, parameters: dict[str, Any]) -> list[ProcessUnit]:
-    process_units = []
-    for access_point in user.network_access_points:
-        if isinstance(access_point, Satellite) and access_point.process_unit is not None:
-            pu = access_point.process_unit
-            if pu.has_capacity_to_host(app) and pu.available:
-                process_units.append(pu)
-
-    if not process_units and parameters["ground_station"].process_unit:
-        for unit in parameters["ground_station"].process_unit:
-            if unit.has_capacity_to_host(app) and unit.available and has_path(model.topology, user, unit):
-                process_units.append(unit)
-
-    return process_units
+def latency_aware_choice(
+    model: Simulator, application: Application, user: User, parameters: dict[str, Any]
+) -> ProcessUnit | None:
+    """Returns: ProcessUnit or None: The eligible unit nearest the user."""
+    units = eligible_units(model, application, user, station_units(parameters))
+    return min(units, key=lambda unit: distance_to_user(user, unit)) if units else None
 
 
-def load_ratio(pu: ProcessUnit) -> float:
-    cpu_r = pu.cpu_demand / pu.cpu if pu.cpu > 0 else 1.0
-    mem_r = pu.memory_demand / pu.memory if pu.memory > 0 else 1.0
-    sto_r = pu.storage_demand / pu.storage if pu.storage > 0 else 1.0
-    return cpu_r + mem_r + sto_r
+def load_balanced_choice(
+    model: Simulator, application: Application, user: User, parameters: dict[str, Any]
+) -> ProcessUnit | None:
+    """Returns: ProcessUnit or None: The eligible unit with the lowest share of its resources in use."""
+    units = eligible_units(model, application, user, station_units(parameters))
+    return min(units, key=load_ratio) if units else None
+
+
+# Mapping each strategy to how it chooses a unit for one application.
+CHOICES = {
+    "best_fit": best_fit_choice,
+    "longest_duration": longest_duration_unit,
+    "latency_aware": latency_aware_choice,
+    "load_balanced": load_balanced_choice,
+}
 
 
 def allocate_single_app(
-    app: Application, user: User, model: Simulator, parameters: dict[str, Any], strategy: str
+    model: Simulator, application: Application, user: User, parameters: dict[str, Any], strategy: str
 ) -> str:
-    if strategy == "best_fit":
-        process_units = get_eligible_pus(app, user, model, parameters)
-        if not process_units:
-            return "failed_no_capacity"
-        target = min(
-            process_units,
-            key=lambda u: (u.cpu - app.cpu_demand) + (u.memory - app.memory_demand) + (u.storage - app.storage_demand),
-        )
-        if target != app.process_unit:
-            app.provision(target)
-            return "provisioned"
-        return "already_provisioned"
+    """Places one application by one strategy.
 
-    elif strategy == "longest_duration":
-        best_target = None
-        max_duration = -1
-        scenario = parameters.get("scenario", "hybrid")
+    Args:
+        model (Simulator): The running simulator.
+        application (Application): The application to place.
+        user (User): Its user.
+        parameters (dict): The algorithm's parameters, with the ground station it runs for.
+        strategy (str): One of `STRATEGIES`.
 
-        if parameters["ground_station"].process_unit and (scenario == "terrestrial" or scenario == "hybrid"):
-            for unit in parameters["ground_station"].process_unit:
-                if not isinstance(getattr(unit, "owner", None), Satellite):
-                    if unit.has_capacity_to_host(app) and unit.available:
-                        if has_path(model.topology, user, unit):
-                            best_target = unit
-                            max_duration = float("inf")
-                            break
+    Returns:
+        str: "provisioned", "already_provisioned", "failed_no_capacity" or "unknown_strategy".
+    """
+    choose = CHOICES.get(strategy)
+    if choose is None:
+        return "unknown_strategy"
 
-        if best_target is None:
-            for access_point in user.network_access_points:
-                if not model.topology.has_node(access_point):
-                    continue
-                if isinstance(access_point, Satellite) and access_point.active:
-                    pu = getattr(access_point, "process_unit", None)
-                    if pu and pu.available and pu.has_capacity_to_host(app):
-                        duration = get_exposure_time(user, access_point)
-                        if duration > max_duration:
-                            max_duration = duration
-                            best_target = pu
-
-        if best_target is not None:
-            if best_target != app.process_unit:
-                app.provision(best_target)
-                return "provisioned"
-            return "already_provisioned"
+    target = choose(model, application, user, parameters)
+    if target is None:
         return "failed_no_capacity"
-
-    elif strategy == "latency_aware":
-        process_units = get_eligible_pus(app, user, model, parameters)
-        if not process_units:
-            return "failed_no_capacity"
-        user_coords = user.coordinates
-        target = min(
-            process_units, key=lambda pu: distance(user_coords, pu.coordinates) if pu.coordinates else float("inf")
-        )
-        if target != app.process_unit:
-            app.provision(target)
-            return "provisioned"
+    if target == application.process_unit:
         return "already_provisioned"
 
-    elif strategy == "load_balanced":
-        process_units = get_eligible_pus(app, user, model, parameters)
-        if not process_units:
-            return "failed_no_capacity"
-        target = min(process_units, key=load_ratio)
-        if target != app.process_unit:
-            app.provision(target)
-            return "provisioned"
-        return "already_provisioned"
-
-    return "unknown_strategy"
+    application.provision(target)
+    return "provisioned"
 
 
 def hybrid_allocation(
-    model: Simulator,
-    parameters: dict[str, Any],
-    best_fit_apps: list[int],
-    longest_duration_apps: list[int],
-    latency_aware_apps: list[int],
-    load_balanced_apps: list[int],
+    model: Simulator, parameters: dict[str, Any], app_ids_by_strategy: dict[str, list[int]]
 ) -> HybridResults:
+    """Places each listed application by the strategy it is listed under, strategy by strategy in `STRATEGIES` order.
+
+    Args:
+        model (Simulator): The running simulator.
+        parameters (dict): The algorithm's parameters, with the ground station it runs for.
+        app_ids_by_strategy (dict): Application ids under the strategy that places them; a strategy
+            left out places nothing.
+
+    Returns:
+        dict: How many were provisioned, failed or already in place, with one detail row per application.
+    """
     results: HybridResults = {"provisioned": 0, "failed": 0, "already": 0, "details": []}
 
-    for app_id_list, strategy_name in [
-        (best_fit_apps, "best_fit"),
-        (longest_duration_apps, "longest_duration"),
-        (latency_aware_apps, "latency_aware"),
-        (load_balanced_apps, "load_balanced"),
-    ]:
-        for app_id in app_id_list:
-            app = Application.find_by("id", app_id)
-            if not app:
+    for strategy in STRATEGIES:
+        for app_id in app_ids_by_strategy.get(strategy, []):
+            application = Application.find_by("id", app_id)
+            if not application or not application.user:
                 continue
-            user = app.user
-            if not user:
-                continue
-            result = allocate_single_app(app, user, model, parameters, strategy_name)
-            results["details"].append({"app": app_id, "strategy": strategy_name, "result": result})
+
+            result = allocate_single_app(model, application, application.user, parameters, strategy)
+            results["details"].append({"app": app_id, "strategy": strategy, "result": result})
             if result == "provisioned":
                 results["provisioned"] += 1
             elif result == "failed_no_capacity":

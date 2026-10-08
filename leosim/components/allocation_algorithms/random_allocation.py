@@ -3,75 +3,31 @@ from __future__ import annotations
 from random import choice
 from typing import TYPE_CHECKING, Any
 
-import networkx as nx
-
 from ..process_unit import ProcessUnit
-from ..satellite import Satellite
-from ..user import User
+from .placement import collect_requested_unserved, eligible_units
 
 if TYPE_CHECKING:
     from ...simulator import Simulator
-    from ..topology import Topology
-
-
-def has_path(topology: Topology, origin: User, target: ProcessUnit) -> bool:
-    for access_point in origin.network_access_points:
-        if nx.has_path(G=topology, source=access_point, target=target):
-            return True
-
-    return False
 
 
 def random_allocation(model: Simulator, parameters: dict[str, Any]) -> None:
-    applications_to_be_allocated = []
+    """Places each requested application on an eligible unit drawn at random from the seeded generator.
 
-    for user in User.all():
-        for access_model in user.applications_access_models:
-            if access_model.request_provisioning:
-                if not access_model.application.available:
-                    applications_to_be_allocated.append(access_model)
-                else:
-                    process_unit = access_model.application.process_unit
-                    # Skipping what is not directly connected to a network access point.
-                    if (
-                        not any(
-                            process_unit in list(model.topology.neighbors(access_point))
-                            for access_point in user.network_access_points
-                        )
-                        or user.network_access_points == []
-                    ):
-                        applications_to_be_allocated.append(access_model)
-            elif access_model.application.available:
-                access_model.application.deprovision()
+    Any reachable unit in the network may host an application its user's satellites cannot.
 
-    for access_model in applications_to_be_allocated:
-        process_units = []
+    Args:
+        model (Simulator): The running simulator.
+        parameters (dict): The algorithm's parameters, unused by this one.
+    """
+    for access_model in collect_requested_unserved(model):
+        application = access_model.application
+        units = eligible_units(model, application, access_model.user, ProcessUnit.all())
 
-        for access_point in access_model.user.network_access_points:
-            if isinstance(access_point, Satellite) and access_point.process_unit is not None:
-                process_unit = access_point.process_unit
-
-                if process_unit.has_capacity_to_host(access_model.application) and process_unit.available:
-                    process_units.append(process_unit)
-
-        # Trying the ground network first.
-        if process_units == []:
-            process_units = []
-            for unit in ProcessUnit.all():
-                # Checking whether communication with this server is possible.
-                if (
-                    unit.has_capacity_to_host(access_model.application)
-                    and unit.available
-                    and has_path(model.topology, access_model.user, unit)
-                ):
-                    process_units.append(unit)
-
-        if process_units == []:
-            if access_model.application.available:
-                access_model.application.deprovision()
+        if not units:
+            if application.available:
+                application.deprovision()
             continue
 
-        target = choice(process_units)
-
-        if target != access_model.application.process_unit:
-            access_model.application.provision(target)
+        target = choice(units)
+        if target != application.process_unit:
+            application.provision(target)

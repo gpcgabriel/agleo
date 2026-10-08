@@ -7,12 +7,15 @@ minutes.
 """
 
 import inspect
+import json
 import os
 import sys
+import tempfile
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.agents.allocation.allocator import LLMAllocator
+from app.agents.allocation.allocator import LOG_FILENAME, LLMAllocator
 from app.agents.allocation.decision import AllocationDecision, reconcile
 from app.agents.allocation.prompt import build_allocation_prompt, build_history_section
 from app.agents.allocation.state import collect_state, find_pending_app_ids
@@ -211,6 +214,90 @@ def test_decisions_are_kept_per_ground_station() -> None:
 
     assert len(allocator.get_decisions(1)) == 1
     assert allocator.get_decisions(2) == []
+
+
+# -- Applying a decision ----------------------------------------------------
+
+
+def find_station_with_work(session: SimulationSession) -> tuple[GroundStation, list[int]]:
+    """Returns: tuple: The first station with applications to decide, and those applications, ticking until one has."""
+    for _ in range(5):
+        session.advance_one_step()
+        for station in GroundStation.all():
+            _state, pending, reason = collect_state(session.simulator, station, "hybrid")
+            if not reason and pending:
+                return station, pending
+    raise AssertionError("no station had applications to decide in five ticks")
+
+
+def allocate_with_reply(
+    session: SimulationSession, station: GroundStation, directory: str, reply: AllocationDecision | Exception
+) -> LLMAllocator:
+    """Returns: LLMAllocator: An allocator that asked the station once, the model's reply replaced by `reply`."""
+    allocator = LLMAllocator(model_name="unused", logs_directory=directory)
+    if isinstance(reply, Exception):
+        replaced = patch.object(allocator, "ask_model", side_effect=reply)
+    else:
+        replaced = patch.object(allocator, "ask_model", return_value=reply)
+    with replaced:
+        allocator.allocate(session.simulator, {"ground_station": station, "scenario": "hybrid"})
+    return allocator
+
+
+def read_log(directory: str) -> list[dict[str, object]]:
+    with open(os.path.join(directory, LOG_FILENAME), encoding="utf-8") as file:
+        return [json.loads(line) for line in file]
+
+
+def test_a_reply_is_applied_recorded_and_measured() -> None:
+    session = make_session()
+    station, pending = find_station_with_work(session)
+
+    with tempfile.TemporaryDirectory() as directory:
+        reply = AllocationDecision(best_fit=pending[:1], longest_duration=pending[1:])
+        allocator = allocate_with_reply(session, station, directory, reply)
+        logged = read_log(directory)
+
+    entry = allocator.get_decisions(station.id)[0]
+    assert (entry["best_fit"], entry["longest_duration"]) == (pending[:1], pending[1:])
+    assert [row["app"] for row in entry["results"]["details"]] == pending
+    assert logged[0]["ground_station"] == station.id
+    assert allocator.metrics.records[-1]["outcome"] == "answered"
+
+
+def test_applications_the_reply_left_out_are_recorded_as_omitted() -> None:
+    session = make_session()
+    station, pending = find_station_with_work(session)
+
+    with tempfile.TemporaryDirectory() as directory:
+        allocator = allocate_with_reply(session, station, directory, AllocationDecision(best_fit=pending[:1]))
+
+    results = allocator.get_decisions(station.id)[0]["results"]
+    assert results["omitted"] == len(pending) - 1
+    assert [row["app"] for row in results["details"] if row["result"] == "omitted_by_model"] == pending[1:]
+
+
+def test_a_model_failure_falls_back_to_best_fit_and_says_so() -> None:
+    session = make_session()
+    station, _pending = find_station_with_work(session)
+
+    with tempfile.TemporaryDirectory() as directory:
+        allocator = allocate_with_reply(session, station, directory, RuntimeError("model unreachable"))
+        logged = read_log(directory)
+
+    assert logged == [{"step": session.simulator.scheduler.steps, "ground_station": station.id, "fallback": True}]
+    assert allocator.metrics.records[-1]["outcome"] == "fallback"
+    assert allocator.get_decisions(station.id) == []
+
+
+def test_a_station_with_nothing_to_decide_is_skipped_without_asking() -> None:
+    session = make_session()
+    station = GroundStation.all()[0]
+
+    with tempfile.TemporaryDirectory() as directory:
+        allocator = allocate_with_reply(session, station, directory, AssertionError("the model was asked"))
+
+    assert allocator.metrics.records[-1]["outcome"] == "skipped"
 
 
 # -- Integration ------------------------------------------------------------

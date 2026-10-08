@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import math
 from typing import TYPE_CHECKING, Any, cast
 
 import networkx as nx
-from geopy.distance import geodesic
 
 from ..component_manager import ComponentManager
+from ..geometry import slant_range
 from .ground_station import GroundStation
 from .network_flow import NetworkFlow
 from .network_link import NetworkLink
@@ -86,6 +85,12 @@ class Topology(ComponentManager, NodeGraph):
     def delay_shortest_path(self, source: Node, target: Node) -> list[Node]:
         """Returns: list: The path from one node to another with the least total link delay."""
         return nx.shortest_path(G=self, source=source, target=target, weight="delay")
+
+    def has_path_from_access_points(self, user: User, target: Node) -> bool:
+        """Returns: bool: Whether any of the user's access points has a path to the target."""
+        return any(
+            nx.has_path(G=self, source=access_point, target=target) for access_point in user.network_access_points
+        )
 
     def path_from_access_points(self, user: User, target: Node) -> list[Node]:
         """Finds the route a user's traffic takes to a node.
@@ -258,11 +263,8 @@ class Topology(ComponentManager, NodeGraph):
         if object_1.coordinates is None or object_2.coordinates is None:
             return False
 
-        distance_nodes = [object_1.max_connection_range, object_2.max_connection_range]
-        ground_distance = geodesic(object_1.coordinates[:2], object_2.coordinates[:2]).kilometers
-        air_distance = object_1.coordinates[2] - object_2.coordinates[2]
-
-        return min(distance_nodes) > math.sqrt(ground_distance**2 + air_distance**2)
+        reach = min(object_1.max_connection_range, object_2.max_connection_range)
+        return reach > slant_range(object_1.coordinates, object_2.coordinates)
 
     @staticmethod
     def calculate_distance(object_1: Reachable, object_2: Reachable) -> float:
@@ -281,10 +283,7 @@ class Topology(ComponentManager, NodeGraph):
         if object_1.coordinates is None or object_2.coordinates is None:
             return float("inf")
 
-        ground_distance = geodesic(object_1.coordinates[:2], object_2.coordinates[:2]).kilometers
-        air_distance = object_1.coordinates[2] - object_2.coordinates[2]
-
-        return math.sqrt(ground_distance**2 + air_distance**2)
+        return slant_range(object_1.coordinates, object_2.coordinates)
 
     def export_topology(self) -> dict[str, Any]:
         user_sat_links = []

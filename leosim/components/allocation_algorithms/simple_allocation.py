@@ -2,91 +2,59 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-import networkx as nx
-
 from ..process_unit import ProcessUnit
-from ..satellite import Satellite
-from ..user import User
+from .placement import collect_requested_unserved, eligible_units
 
 if TYPE_CHECKING:
     from ...simulator import Simulator
-    from ..topology import Topology
 
 
-def has_path(topology: Topology, origin: User, target: ProcessUnit) -> bool:
-    for access_point in origin.network_access_points:
-        if nx.has_path(G=topology, source=access_point, target=target):
-            return True
+def is_tighter(unit: ProcessUnit, other: ProcessUnit) -> bool:
+    """Returns: bool: Whether `unit` has less free CPU, memory and storage than `other`, all three at once."""
+    return (
+        (unit.cpu - unit.cpu_demand) < (other.cpu - other.cpu_demand)
+        and (unit.memory - unit.memory_demand) < (other.memory - other.memory_demand)
+        and (unit.storage - unit.storage_demand) < (other.storage - other.storage_demand)
+    )
 
-    return False
+
+def tightest_unit(units: list[ProcessUnit]) -> ProcessUnit:
+    """Returns: ProcessUnit: The first unit, replaced in order by any tighter than the one held so far."""
+    selected = units[0]
+    for unit in units:
+        if is_tighter(unit, selected):
+            selected = unit
+    return selected
 
 
 def simple_allocation(model: Simulator, parameters: dict[str, Any]) -> None:
-    def is_better(other: ProcessUnit, current_unit: ProcessUnit) -> bool:
-        return (
-            (other.cpu - other.cpu_demand) < (current_unit.cpu - current_unit.cpu_demand)
-            and (other.memory - other.memory_demand) < (current_unit.memory - current_unit.memory_demand)
-            and (other.storage - other.storage_demand) < (current_unit.storage - current_unit.storage_demand)
-        )
+    """Places each requested application on a tight eligible unit.
 
-    applications_to_be_allocated = []
+    The eligible units are scanned in order, keeping the first and replacing it by
+    any unit with less free CPU, memory and storage, all three at once. Any
+    reachable unit in the network may host an application its user's satellites
+    cannot. An application that moved out of its user's reach is deprovisioned
+    before anything is placed.
 
-    # Selecting the applications that need provisioning.
-    for user in User.all():
-        for access_model in user.applications_access_models:
-            if access_model.request_provisioning:
-                if not access_model.application.available:
-                    applications_to_be_allocated.append(access_model)
-                else:
-                    process_unit = access_model.application.process_unit
-                    # Skipping what is not directly connected to a network access point.
-                    if (
-                        not any(
-                            process_unit in list(model.topology.neighbors(access_point))
-                            for access_point in user.network_access_points
-                        )
-                        or user.network_access_points == []
-                    ):
-                        access_model.application.deprovision()
-                        applications_to_be_allocated.append(access_model)
+    Args:
+        model (Simulator): The running simulator.
+        parameters (dict): The algorithm's parameters, unused by this one.
+    """
+    to_place = collect_requested_unserved(model)
 
-            elif access_model.application.available:
-                access_model.application.deprovision()
+    for access_model in to_place:
+        if access_model.application.available:
+            access_model.application.deprovision()
 
-    # Iterating over the provisioning demands.
-    for access_model in applications_to_be_allocated:
-        process_units = []
+    for access_model in to_place:
+        application = access_model.application
+        units = eligible_units(model, application, access_model.user, ProcessUnit.all())
 
-        # Looking for process units directly connected to network access points.
-        for access_point in access_model.user.network_access_points:
-            if isinstance(access_point, Satellite) and access_point.process_unit is not None:
-                process_unit = access_point.process_unit
-
-                if process_unit.has_capacity_to_host(access_model.application) and process_unit.available:
-                    process_units.append(process_unit)
-
-        # Trying the ground network first.
-        if process_units == []:
-            process_units = []
-            for unit in ProcessUnit.all():
-                # Checking whether communication with this server is possible.
-                if (
-                    unit.has_capacity_to_host(access_model.application)
-                    and unit.available
-                    and has_path(model.topology, access_model.user, unit)
-                ):
-                    process_units.append(unit)
-
-        if process_units == []:
-            if access_model.application.available:
-                access_model.application.deprovision()
+        if not units:
+            if application.available:
+                application.deprovision()
             continue
 
-        selected = process_units[0]
-
-        for process_unit in process_units:
-            if is_better(process_unit, selected):
-                selected = process_unit
-
-        if selected != access_model.application.process_unit:
-            access_model.application.provision(selected)
+        selected = tightest_unit(units)
+        if selected != application.process_unit:
+            application.provision(selected)
