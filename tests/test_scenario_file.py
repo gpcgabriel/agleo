@@ -9,19 +9,21 @@ import json
 import os
 import sys
 import tempfile
+from unittest.mock import patch
 
 import networkx as nx
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from app.core import bootstrap
 from app.core.bootstrap import build_simulator
 from app.core.config import SimulationConfig
 from leosim import ComponentManager, Simulator, clear_components
 from leosim.components import NetworkLink, Topology
 
 
-def make_simulator(directory: str) -> Simulator:
-    config = SimulationConfig(
+def make_config() -> SimulationConfig:
+    return SimulationConfig(
         gml_path="datasets/rnp.gml",
         satellites_path="datasets/satellites_brazil.json",
         num_users=6,
@@ -29,7 +31,12 @@ def make_simulator(directory: str) -> Simulator:
         scenario="hybrid",
         algorithm="best_fit_allocation",
     )
-    return build_simulator(config, scenary_path=os.path.join(directory, "scenario.json"), logs_directory=directory)
+
+
+def make_simulator(directory: str) -> Simulator:
+    return build_simulator(
+        make_config(), scenary_path=os.path.join(directory, "scenario.json"), logs_directory=directory
+    )
 
 
 def test_every_loaded_link_belongs_to_the_simulators_topology() -> None:
@@ -81,6 +88,23 @@ def test_topologies_get_their_own_ids() -> None:
     clear_components()
 
     assert [Topology().id, Topology().id] == [1, 2]
+
+
+def test_each_simulator_built_without_a_path_reads_its_own_scenario_file() -> None:
+    """The dashboard and a test run may build at the same moment; one shared path let them read each other's."""
+    written = []
+    build_scenario = bootstrap.build_scenario
+
+    def recording(config: SimulationConfig, scenary_path: str) -> str:
+        written.append(scenary_path)
+        return build_scenario(config, scenary_path)
+
+    with tempfile.TemporaryDirectory() as logs, patch("app.core.bootstrap.build_scenario", side_effect=recording):
+        build_simulator(make_config(), logs_directory=logs)
+        build_simulator(make_config(), logs_directory=logs)
+
+    assert len(set(written)) == 2
+    assert all(path.startswith(tempfile.gettempdir()) and not os.path.exists(path) for path in written)
 
 
 if __name__ == "__main__":

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import os
 import random
+import tempfile
 from typing import TYPE_CHECKING
 
 import dataset as ds
@@ -14,7 +16,6 @@ if TYPE_CHECKING:
     from leosim.components import Topology
     from leosim.simulator import AllocationAlgorithm
 
-DEFAULT_SCENARY_PATH = "datasets/temp_dashboard_scenary.json"
 DEFAULT_LOGS_DIRECTORY = "logs/dashboard"
 
 # Fixing the seed so two runs of the same configuration produce the same
@@ -66,7 +67,7 @@ def distribute_process_units(topology: Topology, scenario: str) -> None:
         ds.add_process_unit_to_satellites(topology, num_process_units=total_resources)
 
 
-def build_scenario(config: SimulationConfig, scenary_path: str = DEFAULT_SCENARY_PATH) -> str:
+def build_scenario(config: SimulationConfig, scenary_path: str) -> str:
     """Assembles the scenario in memory and writes it to disk.
 
     Args:
@@ -94,7 +95,7 @@ def build_scenario(config: SimulationConfig, scenary_path: str = DEFAULT_SCENARY
 
 def build_simulator(
     config: SimulationConfig,
-    scenary_path: str = DEFAULT_SCENARY_PATH,
+    scenary_path: str | None = None,
     logs_directory: str = DEFAULT_LOGS_DIRECTORY,
     allocation_algorithm: AllocationAlgorithm | None = None,
 ) -> Simulator:
@@ -102,7 +103,8 @@ def build_simulator(
 
     Args:
         config (SimulationConfig): Simulation configuration.
-        scenary_path (str): Where to write the intermediate scenario file.
+        scenary_path (str, optional): Where to write the intermediate scenario file. When None, it
+            goes to a private temporary file, removed once the simulator has read it.
         logs_directory (str): Directory the simulator writes metrics to.
         allocation_algorithm (Callable): Allocation strategy to inject. When
             None, it is resolved from `config.algorithm`. The composition root
@@ -113,15 +115,20 @@ def build_simulator(
         Simulator: A simulator initialized at step zero.
     """
     algorithm = allocation_algorithm or resolve_algorithm(config.algorithm)
-    scenary_file = build_scenario(config, scenary_path=scenary_path)
 
-    simulator = Simulator(
-        stopping_criterion=lambda model: False,
-        resource_management_algorithm=algorithm,
-        topology_management_algorithm=default_topology_management,
-        clean_data_in_memory=False,
-        logs_directory=logs_directory,
-        scenario=config.scenario,
-    )
-    simulator.initialize(scenary_file)
+    with tempfile.TemporaryDirectory(prefix="agleo-scenario-") as directory:
+        # Writing to a private file when the caller names none: the dashboard and a test run building
+        # simulators at the same moment would otherwise read each other's scenario.
+        scenary_file = build_scenario(config, scenary_path or os.path.join(directory, "scenario.json"))
+
+        simulator = Simulator(
+            stopping_criterion=lambda model: False,
+            resource_management_algorithm=algorithm,
+            topology_management_algorithm=default_topology_management,
+            clean_data_in_memory=False,
+            logs_directory=logs_directory,
+            scenario=config.scenario,
+        )
+        simulator.initialize(scenary_file)
+
     return simulator
