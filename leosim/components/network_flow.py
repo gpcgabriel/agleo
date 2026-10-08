@@ -71,7 +71,7 @@ class NetworkFlow(ComponentManager):
             self.target = target
 
         self.start = start
-        self.end = None
+        self.end: int | None = None
         self.data_to_transfer = data_to_transfer
         self.metadata = metadata if metadata is not None else {}
 

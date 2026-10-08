@@ -92,7 +92,7 @@ class Satellite(ComponentManager):
         self.power_consumption_model = None
         self.power_consumption_model_parameters = {}
 
-        self.failure_model = None
+        self.failure_model: Callable[[Satellite], bool] | None = None
         self.failure_occurred = False
         self.failure_model_parameters = {}
 
@@ -117,89 +117,87 @@ class Satellite(ComponentManager):
     def step(self) -> None:
         """Executes the satellite's logic for the current simulation step.
 
-        Updates mobility, manages attached ProcessUnit status, evaluates
-        failure/power models, and handles user connections.
+        Moves the satellite, takes it in or out of service with its position and
+        its failure model, runs its power models and connects the users in range.
         """
         # Preparing to check which users fall within range on the next step.
         self.users = []
 
-        # Checking whether the index is missing, or holds an invalid value.
-        needs_calculation = (len(self.coordinates_trace) <= self.model.scheduler.steps) or (
-            self.coordinates_trace[self.model.scheduler.steps] is None
-        )
-
-        if needs_calculation:
-            # Expecting the model to return the position; the class handles insertion.
-            new_position = self.mobility_model(self)
-
-            # Growing the list, or replacing the None already in that slot.
-            if len(self.coordinates_trace) <= self.model.scheduler.steps:
-                self.coordinates_trace.append(new_position)
-            else:
-                self.coordinates_trace[self.model.scheduler.steps] = new_position
-
         had_position = self.coordinates is not None
+        self.move()
 
-        # Updating the coordinates.
-        if self.coordinates != self.coordinates_trace[self.model.scheduler.steps]:
-            self.coordinates = self.coordinates_trace[self.model.scheduler.steps]
-
-        # Updating the coordinates of the attached process unit, if there is one.
-        if self.process_unit:
-            self.process_unit.coordinates = self.coordinates
-
-        # Marking any linked process unit unavailable: with no coordinates the
-        # satellite cannot interact with the other components.
+        # Taking the satellite out of service: with no position it cannot interact with the other components.
         if self.coordinates is None:
-            self.active = False
-
-            if self.process_unit:
-                process_unit = self.process_unit
-                process_unit.available = False
+            self.set_in_service(False)
             return
 
         # Bringing the satellite into service at its first position: until the capture saw it, it had none.
         if not had_position:
-            self.active = True
-            if self.process_unit:
-                self.process_unit.available = True
+            self.set_in_service(True)
 
-        # Running the failure model, when one is set.
-        if self.failure_model:
-            self.failure_occurred = self.failure_model(self)
+        if self.has_failed():
+            return
 
-            if self.failure_occurred:
-                self.active = False
-
-                # Removing the users from the current list.
-                for user in User.all():
-                    if self in user.network_access_points:
-                        user.network_access_points.remove(self)
-
-                # Marking the process unit unavailable.
-                if self.process_unit:
-                    self.process_unit.available = False
-
-                # Removing the existing network connections.
-                if self.model.topology.has_node(self):
-                    for neighbor in list(self.model.topology.neighbors(self)):
-                        self.model.topology.remove_edge(self, neighbor)
-                return
-
-            else:
-                self.active = True
-                if self.process_unit:
-                    self.process_unit.available = True
-
-        # Triggering the power models, when they are set.
         if self.power_generation_model:
             self.power_generation_model(self)
 
         if self.power_consumption_model:
             self.power_consumption_model(self)
 
-        # Serving the users within range, as long as the satellite is operational.
         self.connect_users()
+
+    def move(self) -> None:
+        """Moves the satellite, and the unit it carries, to its position for the current step.
+
+        A step the trace has no position for, missing or empty, takes the one the
+        mobility model returns, which the trace then keeps.
+        """
+        step = self.model.scheduler.steps
+
+        if len(self.coordinates_trace) <= step:
+            self.coordinates_trace.append(self.mobility_model(self))
+        elif self.coordinates_trace[step] is None:
+            self.coordinates_trace[step] = self.mobility_model(self)
+
+        self.coordinates = self.coordinates_trace[step]
+
+        if self.process_unit:
+            self.process_unit.coordinates = self.coordinates
+
+    def set_in_service(self, in_service: bool) -> None:
+        """Marks the satellite, and the unit it carries, as serving or not."""
+        self.active = in_service
+
+        if self.process_unit:
+            self.process_unit.available = in_service
+
+    def has_failed(self) -> bool:
+        """Runs the failure model, when there is one, and cuts the satellite off if it fails.
+
+        A failed satellite leaves service, drops out of its users' access points and
+        loses its links; one that does not fail is back in service.
+
+        Returns:
+            bool: Whether the satellite failed this step.
+        """
+        if self.failure_model is None:
+            return False
+
+        self.failure_occurred = self.failure_model(self)
+        self.set_in_service(not self.failure_occurred)
+        if not self.failure_occurred:
+            return False
+
+        for user in User.all():
+            if self in user.network_access_points:
+                user.network_access_points.remove(self)
+
+        topology = self.model.topology
+        if topology.has_node(self):
+            for neighbor in list(topology.neighbors(self)):
+                topology.remove_edge(self, neighbor)
+
+        return True
 
     def connect_users(self) -> None:
         """Connects every user currently within range to this satellite.

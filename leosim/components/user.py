@@ -81,49 +81,66 @@ class User(ComponentManager):
         waiting times) and moves the user according to the mobility trace.
         """
         for access_model in self.applications_access_models:
-            app = access_model.application
-            current_access = access_model.history[-1]
-
-            # Updating the metrics when the application requests provisioning.
-            if access_model.request_provisioning:
-                if app.available:
-                    current_access["is_provisioned"] = True
-                    current_access["provisioned_time"] += 1
-
-                    if current_access["making_request"].get(str(access_model.model.scheduler.steps)):
-                        if access_model.flow and access_model.flow.status == "active":
-                            current_access["access_time"] += 1
-
-                        else:
-                            current_access["connection_failure_time"] += 1
-                else:
-                    current_access["is_provisioned"] = False
-                    current_access["waiting_provisioning"] += 1
-
-            elif access_model.flow is not None:
-                access_model.flow.status = "finished"
-                access_model.flow.end = access_model.model.scheduler.steps
-
-                access_model.flow = None
-
-            # Setting the flag from the model's answer.
-            if current_access["start"] == access_model.model.scheduler.steps + 1:
-                access_model.request_provisioning = True
-
-            elif current_access["end"] == access_model.model.scheduler.steps + 1:
-                access_model.request_provisioning = False
-
-                if access_model.flow is not None:
-                    access_model.flow.status = "finished"
-
-                access_model.flow = None
-
-                # Getting the next access from the model, the current one having ended.
-                access_model.get_next_access(current_access["next_access"])
+            self.follow_access(access_model)
 
         self.move()
 
         self.network_access_points = []
+
+    def follow_access(self, access_model: AccessModel) -> None:
+        """Counts this step against an access and opens or closes its request on schedule.
+
+        Args:
+            access_model (AccessModel): One of the user's access models.
+        """
+        current_access = access_model.history[-1]
+        next_step = access_model.model.scheduler.steps + 1
+
+        # Updating the metrics when the application requests provisioning.
+        if access_model.request_provisioning:
+            self.count_request_step(access_model, current_access)
+
+        elif access_model.flow is not None:
+            access_model.flow.status = "finished"
+            access_model.flow.end = access_model.model.scheduler.steps
+
+            access_model.flow = None
+
+        # Setting the flag from the model's answer.
+        if current_access["start"] == next_step:
+            access_model.request_provisioning = True
+
+        elif current_access["end"] == next_step:
+            access_model.request_provisioning = False
+
+            if access_model.flow is not None:
+                access_model.flow.status = "finished"
+
+            access_model.flow = None
+
+            # Getting the next access from the model, the current one having ended.
+            access_model.get_next_access(current_access["next_access"])
+
+    def count_request_step(self, access_model: AccessModel, current_access: dict[str, Any]) -> None:
+        """Adds this step to an access's provisioned or waiting time, and to its served or failed requests.
+
+        Args:
+            access_model (AccessModel): The access model requesting provisioning.
+            current_access (dict): Its access under way, the last in its history.
+        """
+        if not access_model.application.available:
+            current_access["is_provisioned"] = False
+            current_access["waiting_provisioning"] += 1
+            return
+
+        current_access["is_provisioned"] = True
+        current_access["provisioned_time"] += 1
+
+        if current_access["making_request"].get(str(access_model.model.scheduler.steps)):
+            if access_model.flow and access_model.flow.status == "active":
+                current_access["access_time"] += 1
+            else:
+                current_access["connection_failure_time"] += 1
 
     def move(self) -> None:
         """Extends the user's path up to the current step with its mobility model and moves the user there.

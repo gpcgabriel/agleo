@@ -10,6 +10,14 @@ if TYPE_CHECKING:
     from .process_unit import ProcessUnit
 
 
+# Naming the counter each migration stage adds its steps to.
+MIGRATION_STAGE_TIMES = {
+    "waiting": "waiting_time",
+    "download_dependencies": "download_time",
+    "application_state_migration": "application_state_migration_time",
+}
+
+
 class Application(ComponentManager):
     """Represents an application with specific resource demands.
 
@@ -117,72 +125,74 @@ class Application(ComponentManager):
     def step(self) -> None:
         """Updates the component state for the current simulation tick.
 
-        This method manages the migration lifecycle (waiting, downloading,
-        state transfer, and finishing) and ensures resource consistency
-        between processing units.
+        Advances the migration under way, if any, and makes the application
+        available exactly when its host is.
         """
-        if len(self.migrations) > 0 and self.migrations[-1]["end"] is None:
-            migr = self.migrations[-1]
-            # TODO: Implement a formal dependency management system.
-            # Standing in for the state machine until that system exists.
-            dependencies_on_process_unit = []
+        if self.migrations and self.migrations[-1]["end"] is None:
+            self.advance_migration(self.migrations[-1])
 
-            # Treating data transfer as instantaneous, which is what the model does today.
-            if migr["status"] == "waiting" and (
-                len(dependencies_on_process_unit) > 0
-                or len(dependencies_on_process_unit) == len(self.dependency_labels)
-            ):
-                migr["status"] = "download_dependencies"
-
-            # Transitioning straight to the next stage while dependency simulation is
-            # still pending.
-            if migr["status"] == "download_dependencies" and len(dependencies_on_process_unit) == len(
-                self.dependency_labels
-            ):
-                # Releasing the resources held on the source processing unit.
-                if self.process_unit:
-                    self.process_unit.cpu_demand -= self.cpu_demand
-                    self.process_unit.memory_demand -= self.memory_demand
-                    self.process_unit.storage_demand -= self.storage_demand
-
-                if self.process_unit is None or self.state == 0:
-                    migr["status"] = "finished"
-                else:
-                    # TODO: Implement complex state migration logic.
-                    migr["status"] = "application_state_migration"
-
-            # Logging the time spent in each migration phase.
-            if migr["status"] == "waiting":
-                migr["waiting_time"] += 1
-            elif migr["status"] == "download_dependencies":
-                migr["download_time"] += 1
-            elif migr["status"] == "application_state_migration":
-                migr["application_state_migration_time"] += 1
-            elif migr["status"] == "finished":
-                # Terminating the migration and updating the host references.
-                migr["end"] = self.model.scheduler.steps + 1
-
-                if self.process_unit:
-                    self.process_unit.applications.remove(self)
-
-                target = migr["target"]
-                self.process_unit = target
-                target.applications.append(self)
-
-                self.being_provisioned = False
-                self.available = True
-
-        # Updating the availability flags from the host's status.
-        if self.process_unit and not self.process_unit.available:
-            self.available = False
-        elif self.process_unit and not self.available:
-            self.available = True
-        elif self.process_unit is None and self.available:
-            self.available = False
+        # Following the host: an application runs only on a unit that is available.
+        self.available = bool(self.process_unit and self.process_unit.available)
 
         # Recording the availability this tick began with, which `User.collect_metrics` reports after
         # allocation and the process units may have changed `available`.
         self.available_when_stepped = self.available
+
+    def advance_migration(self, migration: dict[str, Any]) -> None:
+        """Moves a migration through its stages, logging the steps spent in each.
+
+        Args:
+            migration (dict): The migration under way, the last in `migrations`.
+        """
+        # TODO: Implement a formal dependency management system.
+        # Standing in for the state machine until that system exists.
+        dependencies_on_process_unit = []
+
+        # Treating data transfer as instantaneous, which is what the model does today.
+        if migration["status"] == "waiting" and (
+            len(dependencies_on_process_unit) > 0 or len(dependencies_on_process_unit) == len(self.dependency_labels)
+        ):
+            migration["status"] = "download_dependencies"
+
+        # Transitioning straight to the next stage while dependency simulation is
+        # still pending.
+        if migration["status"] == "download_dependencies" and len(dependencies_on_process_unit) == len(
+            self.dependency_labels
+        ):
+            self.release_resources()
+            # TODO: Implement complex state migration logic.
+            stateless = self.process_unit is None or self.state == 0
+            migration["status"] = "finished" if stateless else "application_state_migration"
+
+        if migration["status"] == "finished":
+            self.finish_migration(migration)
+        elif migration["status"] in MIGRATION_STAGE_TIMES:
+            migration[MIGRATION_STAGE_TIMES[migration["status"]]] += 1
+
+    def release_resources(self) -> None:
+        """Returns the CPU, memory and storage the application holds to its current unit, if it has one."""
+        if self.process_unit:
+            self.process_unit.cpu_demand -= self.cpu_demand
+            self.process_unit.memory_demand -= self.memory_demand
+            self.process_unit.storage_demand -= self.storage_demand
+
+    def finish_migration(self, migration: dict[str, Any]) -> None:
+        """Closes a migration and moves the application onto its target, available there.
+
+        Args:
+            migration (dict): The migration under way, the last in `migrations`.
+        """
+        migration["end"] = self.model.scheduler.steps + 1
+
+        if self.process_unit:
+            self.process_unit.applications.remove(self)
+
+        target = migration["target"]
+        self.process_unit = target
+        target.applications.append(self)
+
+        self.being_provisioned = False
+        self.available = True
 
     def export(self) -> dict[str, Any]:
         """Generates a dictionary representation for context saving.
@@ -247,36 +257,54 @@ class Application(ComponentManager):
         Resets availability and clears the reference to the processing unit.
         """
         self.available = False
-        process_unit = self.process_unit
+        self.release_resources()
 
-        if process_unit:
-            process_unit.cpu_demand -= self.cpu_demand
-            process_unit.memory_demand -= self.memory_demand
-            process_unit.storage_demand -= self.storage_demand
-
-            process_unit.applications.remove(self)
+        if self.process_unit:
+            self.process_unit.applications.remove(self)
 
         self.process_unit = None
+
+    def access_status(self) -> tuple[bool, int]:
+        """Reads whether the application is requested and how many steps its access still runs.
+
+        The users are searched in order and each one's first access model of this
+        application read, stopping at the first that requests it.
+
+        Returns:
+            tuple: (requested, remaining steps), the steps possibly negative.
+        """
+        pending = False
+        remaining = 0
+
+        for user in User.all():
+            access_model = next(
+                (
+                    model
+                    for model in user.applications_access_models
+                    if model.application.id == self.id and model.history
+                ),
+                None,
+            )
+            if access_model is None:
+                continue
+
+            pending = access_model.request_provisioning
+            last = access_model.history[-1]
+            if last.get("required_provisioning_time"):
+                remaining = last["required_provisioning_time"] - last["provisioned_time"]
+            elif last.get("end"):
+                remaining = last["end"] - self.model.scheduler.steps
+
+            if pending:
+                break
+
+        return pending, remaining
 
     @staticmethod
     def export_applications() -> dict[str, dict[str, Any]]:
         apps = {}
         for app in Application.all():
-            remaining = 0
-            pending = False
-            for user in User.all():
-                for am in user.applications_access_models:
-                    if am.application.id == app.id and am.history:
-                        pending = am.request_provisioning
-                        last = am.history[-1]
-                        if last.get("required_provisioning_time"):
-                            remaining = last["required_provisioning_time"] - last["provisioned_time"]
-                        elif last.get("end"):
-                            remaining = last["end"] - app.model.scheduler.steps
-                        break
-                if pending:
-                    break
-
+            pending, remaining = app.access_status()
             apps[f"App_{app.id}"] = {
                 "cpu": app.cpu_demand,
                 "mem": app.memory_demand,

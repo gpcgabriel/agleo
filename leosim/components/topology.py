@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from itertools import pairwise
 from typing import TYPE_CHECKING, Any, cast
 
 import networkx as nx
@@ -147,71 +148,67 @@ class Topology(ComponentManager, NodeGraph):
         based on delay if the existing path is broken.
         """
         for flow in NetworkFlow.all():
-            if flow.status == "finished":
-                continue
+            if flow.status != "finished" and self.needs_reroute(flow):
+                self.reroute(flow)
 
-            path = flow.path
-            need_to_reroute = False
+    def needs_reroute(self, flow: NetworkFlow) -> bool:
+        """Returns: bool: Whether the path is empty, broken, or a request's not leaving from an access point."""
+        path = flow.path
+        if path == []:
+            return True
 
-            if path == [] or (
-                flow.metadata.get("type", "default") == "request_response"
-                and path[0] not in flow.source.network_access_points
-            ):
-                need_to_reroute = True
+        if (
+            flow.metadata.get("type", "default") == "request_response"
+            and path[0] not in flow.source.network_access_points
+        ):
+            return True
 
-            else:
-                for i in range(len(path) - 1):
-                    if not self.has_edge(path[i], path[i + 1]):
-                        need_to_reroute = True
-                        break
+        return not all(self.has_edge(node, following) for node, following in pairwise(path))
 
-            if need_to_reroute:
-                # Routing from the user's access points: a flow's source is a user, never a node of the graph.
-                path = self.path_from_access_points(flow.source, flow.target)
+    def reroute(self, flow: NetworkFlow) -> None:
+        """Moves a flow onto the route its user's access points give now, leaving it waiting when there is none.
 
-                if path == []:
-                    flow.status = "waiting"
-                else:
-                    flow.status = "active"
+        Args:
+            flow (NetworkFlow): The flow to move.
+        """
+        # Routing from the user's access points: a flow's source is a user, never a node of the graph.
+        path = self.path_from_access_points(flow.source, flow.target)
 
-                flow.last_path = flow.path
-                flow.path = path
+        flow.status = "waiting" if path == [] else "active"
+        flow.last_path = flow.path
+        flow.path = path
 
-                # Cleaning up the flows that belonged to the previous links.
-                for i in range(len(flow.last_path) - 1):
-                    link = self[flow.last_path[i]].get(flow.last_path[i + 1])
-                    if link is None:
-                        continue
-                    if flow in link["flows"]:
-                        link["flows"].remove(flow)
+        # Cleaning up the flows that belonged to the previous links.
+        for node, following in pairwise(flow.last_path):
+            link = self[node].get(following)
+            if link is not None and flow in link["flows"]:
+                link["flows"].remove(flow)
 
-                flow.bandwidth = {}
+        flow.bandwidth = {}
 
-                # Registering the flow on the new links.
-                for i in range(len(path) - 1):
-                    link = self.link_between(flow.path[i], flow.path[i + 1])
-                    link["flows"].append(flow)
-                    flow.bandwidth[link.id] = 0
+        # Registering the flow on the new links.
+        for node, following in pairwise(path):
+            link = self.link_between(node, following)
+            link["flows"].append(flow)
+            flow.bandwidth[link.id] = 0
 
     def remove_invalid_connections(self) -> None:
         """Reevaluates link existence and removes edges exceeding range limits."""
         for satellite in Satellite.all():
-            link_to_removed = []
+            # Keeping the satellite's own unit, which travels with it and is never out of range.
+            invalid_neighbors = [
+                neighbor
+                for neighbor in self[satellite]
+                if not isinstance(neighbor, ProcessUnit)
+                and (not Topology.within_range(satellite, neighbor) or not satellite.active)
+            ]
 
-            for neighbor in self[satellite]:
+            for neighbor in invalid_neighbors:
                 link = self.link_between(satellite, neighbor)
+                if link in NetworkLink.all():
+                    NetworkLink.remove(link)
 
-                if isinstance(neighbor, ProcessUnit):
-                    continue
-
-                if not Topology.within_range(satellite, neighbor) or not satellite.active:
-                    if link in NetworkLink.all():
-                        NetworkLink.remove(link)
-
-                    link_to_removed.append((satellite, neighbor))
-
-            for nodes in link_to_removed:
-                self.remove_edge(nodes[0], nodes[1])
+                self.remove_edge(satellite, neighbor)
 
     def get_path_delay(self, path: list[Node]) -> float:
         """Calculates the total propagation delay of a given path.
@@ -285,45 +282,36 @@ class Topology(ComponentManager, NodeGraph):
 
         return slant_range(object_1.coordinates, object_2.coordinates)
 
-    def export_topology(self) -> dict[str, Any]:
-        user_sat_links = []
+    def export_user_satellite_links(self) -> list[dict[str, Any]]:
+        """Returns: list: Each user's link to a satellite access point, with its slant range and margin."""
+        links = []
         for user in User.all():
             for sat in Satellite.all():
                 # Reading the user's access points: users reach satellites through them and are never graph nodes.
-                if sat in user.network_access_points:
-                    dist = self.calculate_distance(user, sat)
-                    max_range = min(user.max_connection_range, sat.max_connection_range)
-                    margin = round(((max_range - dist) / max_range) * 100, 1) if max_range > 0 else 0
-                    user_sat_links.append(
-                        {
-                            "user": user.id,
-                            "sat": sat.id,
-                            "dist": round(dist, 1),
-                            "margin_pct": margin,
-                        }
-                    )
+                if sat not in user.network_access_points:
+                    continue
 
-        gs_sat_edges = []
-        for gs in GroundStation.all():
-            for sat in Satellite.all():
-                if self.has_edge(gs, sat):
-                    link = self.link_between(gs, sat)
-                    gs_sat_edges.append(
-                        {
-                            "gs": gs.id,
-                            "sat": sat.id,
-                            "delay": link.get("delay", 0),
-                        }
-                    )
+                dist = self.calculate_distance(user, sat)
+                max_range = min(user.max_connection_range, sat.max_connection_range)
+                margin = round(((max_range - dist) / max_range) * 100, 1) if max_range > 0 else 0
+                links.append({"user": user.id, "sat": sat.id, "dist": round(dist, 1), "margin_pct": margin})
+        return links
 
-        link_count = sum(1 for _ in self.edges())
-        active_flows = sum(1 for f in NetworkFlow.all() if f.status == "active")
-        waiting_flows = sum(1 for f in NetworkFlow.all() if f.status == "waiting")
+    def export_station_satellite_links(self) -> list[dict[str, Any]]:
+        """Returns: list: Each ground station's link to a satellite, with its delay."""
+        return [
+            {"gs": gs.id, "sat": sat.id, "delay": self.link_between(gs, sat).get("delay", 0)}
+            for gs in GroundStation.all()
+            for sat in Satellite.all()
+            if self.has_edge(gs, sat)
+        ]
 
+    def export_topology(self) -> dict[str, Any]:
+        """Returns: dict: The link count, the user and station links to satellites, and the flows by status."""
         return {
-            "link_count": link_count,
-            "user_sat": user_sat_links,
-            "gs_sat": gs_sat_edges,
-            "flows_active": active_flows,
-            "flows_waiting": waiting_flows,
+            "link_count": sum(1 for _ in self.edges()),
+            "user_sat": self.export_user_satellite_links(),
+            "gs_sat": self.export_station_satellite_links(),
+            "flows_active": sum(1 for flow in NetworkFlow.all() if flow.status == "active"),
+            "flows_waiting": sum(1 for flow in NetworkFlow.all() if flow.status == "waiting"),
         }
