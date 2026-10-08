@@ -12,12 +12,19 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.ui.gui.styles import DARK_THEME_FILE, HTML_DIR, LIGHT_THEME_FILE, resolve_theme_file
+from app.ui.gui.styles import (
+    BASE_THEME_FILE,
+    DARK_THEME_FILE,
+    HTML_DIR,
+    LIGHT_THEME_FILE,
+    build_theme_css,
+    resolve_theme_file,
+)
 
 
 def read_theme(is_dark: bool) -> str:
-    with open(resolve_theme_file(is_dark), encoding="utf-8") as stylesheet:
-        return stylesheet.read()
+    """Returns: str: The stylesheet `apply_theme` injects for the theme, its palette and the shared rules."""
+    return build_theme_css(is_dark)
 
 
 def selectors_of(css: str) -> set[str]:
@@ -42,7 +49,7 @@ def test_each_theme_resolves_to_its_own_file() -> None:
 
 
 def test_both_stylesheets_exist() -> None:
-    for filename in (DARK_THEME_FILE, LIGHT_THEME_FILE):
+    for filename in (DARK_THEME_FILE, LIGHT_THEME_FILE, BASE_THEME_FILE):
         assert os.path.isfile(os.path.join(HTML_DIR, filename)), f"{filename} is missing"
 
 

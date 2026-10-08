@@ -1,0 +1,643 @@
+/* Holding the rules both themes share: each theme file sets its palette in :root
+   and comes first, and `app/ui/gui/styles.py` injects the two together. */
+
+/* Global Font override */
+.stApp, [data-testid="stSidebar"], input, button, select, textarea, div[role="listbox"], li[role="option"] {
+    font-family: var(--font-family) !important;
+}
+
+/* Viewport-Fit Layout Rules (No Page Scroll) */
+html, body, .stApp, [data-testid="stAppViewContainer"] {
+    height: 100vh !important;
+    max-height: 100vh !important;
+    overflow: hidden !important;
+}
+
+/* Main block container */
+.main .block-container {
+    max-height: 100vh !important;
+    height: 100vh !important;
+    overflow: hidden !important;
+    padding-top: 1.5rem !important;
+    padding-bottom: 1.5rem !important;
+}
+
+/* Hide default streamlit header */
+header[data-testid="stHeader"] {
+    /* visibility: hidden !important;
+    height: 0px !important; */
+    background-color: transparent !important;
+}
+
+/* Base surface colors */
+.stApp {
+    background-color: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+}
+[data-testid="stSidebar"] {
+    background-color: var(--bg-secondary) !important;
+    border-right: 1px solid var(--border-subtle) !important;
+}
+
+[data-testid="stMainBlockContainer"] {
+    padding-top: 0rem;
+    padding-bottom: 0rem;
+}
+/* Ensure the app header is hidden to maximize viewport space */
+.stAppHeader {
+    /* display: none !important; */
+    background-color: transparent !important;
+}
+
+
+/* Columns layout */
+div.stColumn {
+    /*height: calc(100vh - 70px) !important;
+    max-height: calc(100vh - 70px) !important;*/
+    overflow-y: auto !important; /* Allow internal scrolling if content overflows */
+    padding: 10px !important;
+}
+
+/* Hide standard column scrollbars for cleaner grid layout */
+div.stColumn::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+div.stColumn::-webkit-scrollbar-track {
+    background: transparent;
+}
+div.stColumn::-webkit-scrollbar-thumb {
+    background: var(--border-subtle);
+    border-radius: var(--radius-sm);
+}
+
+/* Typography */
+.stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6,
+.stApp p, .stApp li, .stApp span, .stApp label, .stApp strong,
+[data-testid="stMarkdownContainer"] p, [data-testid="stMarkdownContainer"] li, [data-testid="stMarkdownContainer"] span,
+[data-testid="stSidebar"] label, [data-testid="stSidebar"] p, [data-testid="stSidebar"] span, [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
+    color: var(--text-primary) !important;
+}
+
+.stApp h1, [data-testid="stSidebar"] h1 { font-size: 1.5rem !important; font-weight: 700 !important; color: var(--text-primary) !important; margin-bottom: 12px !important; }
+.stApp h2, [data-testid="stSidebar"] h2 { font-size: 1.25rem !important; font-weight: 600 !important; color: var(--text-primary) !important; }
+.stApp h3, [data-testid="stSidebar"] h3 { font-size: 1.1rem !important; font-weight: 500 !important; color: var(--accent-primary) !important; }
+.stApp h4 { font-size: 1.0rem !important; font-weight: 500 !important; color: var(--accent-primary) !important; }
+
+.system-msg {
+    color: var(--text-secondary) !important;
+    font-style: italic;
+    font-size: 0.9rem;
+    padding: 6px 0;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+/* Metrics Cards */
+div[data-testid="stMetric"] {
+    background-color: var(--bg-surface) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: var(--radius-md) !important;
+    padding: 10px 14px !important;
+    box-shadow: var(--shadow-sm) !important;
+}
+div[data-testid="stMetricValue"] {
+    color: var(--accent-primary) !important;
+    font-size: 1.6rem !important;
+    font-weight: 700 !important;
+}
+div[data-testid="stMetricLabel"] {
+    color: var(--text-secondary) !important;
+    font-size: 0.8rem !important;
+    font-weight: 500 !important;
+}
+
+/* Proposed Action Box (Confirmation Gate) */
+.proposed-box {
+    background-color: var(--bg-surface) !important;
+    border: 1px solid var(--accent-primary) !important;
+    border-radius: var(--radius-md) !important;
+    padding: 16px;
+    margin-bottom: 12px;
+    color: var(--text-primary) !important;
+    box-shadow: var(--shadow-md) !important;
+    border-left: 4px solid var(--accent-primary) !important;
+}
+.proposed-box h4 {
+    color: var(--accent-primary) !important;
+    margin-top: 0 !important;
+    margin-bottom: 6px !important;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Form inputs & interactive widgets */
+input, textarea, select {
+    background-color: var(--bg-surface) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: var(--radius-sm) !important;
+}
+
+/* Select box custom styling */
+div[data-baseweb="select"] {
+    background-color: var(--bg-surface) !important;
+    border-radius: var(--radius-sm) !important;
+}
+div[data-baseweb="select"] > div {
+    background-color: var(--bg-surface) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: var(--radius-sm) !important;
+}
+div[data-baseweb="select"] span, div[data-baseweb="select"] div {
+    color: var(--text-primary) !important;
+}
+
+/* Dropdown Menu */
+div[data-testid="stSelectboxVirtualDropdown"], div[role="listbox"], ul[role="listbox"], div[data-baseweb="menu"] {
+    background-color: var(--bg-surface) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: var(--radius-sm) !important;
+}
+div[data-testid="stSelectboxVirtualDropdown"] li, ul[role="listbox"] li, div[role="option"] {
+    background-color: transparent !important;
+    color: var(--text-primary) !important;
+}
+div[data-testid="stSelectboxVirtualDropdown"] li:hover, ul[role="listbox"] li:hover, div[role="option"]:hover,
+div[data-testid="stSelectboxVirtualDropdown"] li[aria-selected="true"], ul[role="listbox"] li[aria-selected="true"] {
+    background-color: var(--bg-elevated) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Number Input */
+div[data-testid="stNumberInput"] div[data-baseweb="input"],
+div[data-testid="stNumberInput"] div[data-baseweb="input"] > div {
+    background-color: var(--bg-surface) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: var(--radius-sm) !important;
+}
+div[data-testid="stNumberInput"] input {
+    background-color: transparent !important;
+    color: var(--text-primary) !important;
+    border: none !important;
+}
+div[data-testid="stNumberInput"] button {
+    background-color: var(--bg-elevated) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-subtle) !important;
+}
+
+/* Expanders (Telemetry Detail) */
+div[data-testid="stExpander"] {
+    background-color: var(--bg-surface) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: var(--radius-md) !important;
+    overflow: hidden !important;
+}
+div[data-testid="stExpander"] summary {
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+    font-weight: 500 !important;
+    padding: 10px 15px !important;
+}
+div[data-testid="stExpander"] summary:hover {
+    background-color: var(--bg-elevated) !important;
+}
+
+/* Viewport-Fit Telemetry Expander Scroll */
+div[data-testid="stExpander"] [data-testid="stExpanderDetails"] {
+    max-height: 250px !important;
+    overflow-y: auto !important;
+}
+
+/* Tabs */
+div[role="tablist"] {
+    border-bottom: 1px solid var(--border-subtle) !important;
+}
+button[role="tab"] {
+    background-color: transparent !important;
+    color: var(--text-secondary) !important;
+    border: none !important;
+    font-weight: 500 !important;
+}
+button[role="tab"][aria-selected="true"] {
+    color: var(--accent-primary) !important;
+}
+div[data-baseweb="tab-highlight"] {
+    background-color: var(--accent-primary) !important;
+}
+
+/* The timeline slider. Its parts carry no testid, so these are positional:
+   inside the group, the first inner div is the rail and the second the thumb.
+   The rail's filled portion is an inline `linear-gradient` whose stops
+   Streamlit computes, which no stylesheet can reach — that colour comes from
+   `primaryColor` in `.streamlit/config.toml` instead. What is set here is the
+   unfilled rail, which shows through the gradient's translucent stops, and the
+   thumb. If the slider breaks after a Streamlit upgrade, the shape below is
+   what changed. */
+[data-testid="stSlider"] [role="group"] > div > div:nth-of-type(1) {
+    background-color: var(--border-subtle) !important;
+}
+[data-testid="stSlider"] [role="group"] > div > div:nth-of-type(2) {
+    background-color: var(--accent-primary) !important;
+}
+[data-testid="stSlider"] [role="group"] input {
+    background-color: var(--accent-primary) !important;
+    border-color: var(--accent-primary) !important;
+}
+[data-testid="stSliderThumbValue"],
+[data-testid="stSliderTickBar"],
+[data-testid="stSliderThumbValue"] *,
+[data-testid="stSliderTickBar"] * {
+    color: var(--text-secondary) !important;
+}
+
+/* Chat Interface (Starlink x ChatGPT Hybrid) */
+
+/* Chatbot container box */
+div.stColumn:has([data-testid="stChatInput"]) {
+    background-color: var(--bg-secondary) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: var(--radius-lg) !important;
+    padding: 16px !important;
+    box-shadow: var(--shadow-md) !important;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Viewport-Fit Chat Container Scroll */
+div.stColumn:has([data-testid="stChatInput"]) div[data-testid="stChatMessageContainer"] {
+    max-height: calc(100vh - 260px) !important;
+    height: calc(100vh - 260px) !important;
+    overflow-y: auto !important;
+    padding-right: 4px;
+}
+
+/* Chat container scrollbars */
+div[data-testid="stChatMessageContainer"]::-webkit-scrollbar {
+    width: 6px;
+}
+div[data-testid="stChatMessageContainer"]::-webkit-scrollbar-track {
+    background: transparent;
+}
+div[data-testid="stChatMessageContainer"]::-webkit-scrollbar-thumb {
+    background: var(--border-subtle);
+    border-radius: var(--radius-sm);
+}
+
+/* User chat bubble */
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]),
+[data-testid="stChatMessage"]:has(img[alt*="user"]) {
+    flex-direction: row-reverse !important;
+    background-color: transparent !important;
+}
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) [data-testid="stChatMessageContent"],
+[data-testid="stChatMessage"]:has(img[alt*="user"]) [data-testid="stChatMessageContent"] {
+    background-color: var(--accent-glow) !important;
+    color: var(--text-primary) !important;
+    border-radius: 18px 18px 4px 18px !important;
+    padding: 10px 14px !important;
+    border: 1px solid var(--accent-primary) !important;
+    margin-left: 15% !important;
+    box-shadow: var(--shadow-sm) !important;
+}
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) [data-testid="stChatMessageContent"] p,
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) [data-testid="stChatMessageContent"] li,
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) [data-testid="stChatMessageContent"] span {
+    color: var(--text-primary) !important;
+}
+
+/* Assistant chat bubble */
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]),
+[data-testid="stChatMessage"]:has(img[alt*="assistant"]) {
+    background-color: transparent !important;
+}
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]) [data-testid="stChatMessageContent"],
+[data-testid="stChatMessage"]:has(img[alt*="assistant"]) [data-testid="stChatMessageContent"] {
+    background-color: var(--bg-surface) !important;
+    color: var(--text-primary) !important;
+    border-radius: 18px 18px 18px 4px !important;
+    padding: 10px 14px !important;
+    border: 1px solid var(--border-subtle) !important;
+    margin-right: 15% !important;
+    box-shadow: var(--shadow-sm) !important;
+}
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]) [data-testid="stChatMessageContent"] p,
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]) [data-testid="stChatMessageContent"] li,
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]) [data-testid="stChatMessageContent"] span {
+    color: var(--text-primary) !important;
+}
+
+/* The conversation's scroll box. Streamlit borders it with white at 20%,
+   which the cream theme swallows entirely. */
+.st-key-chat_history {
+    background-color: var(--bg-primary) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: var(--radius-md) !important;
+    padding: 8px !important;
+}
+
+/* The chat avatars carry Streamlit's own red and orange, which are the two
+   loudest things on either page and the reason they kept reading as bright
+   while everything around them was faded. */
+[data-testid="stChatMessageAvatarAssistant"] {
+    background-color: var(--accent-primary) !important;
+}
+[data-testid="stChatMessageAvatarUser"] {
+    background-color: var(--text-secondary) !important;
+}
+[data-testid="stChatMessageAvatarAssistant"] *,
+[data-testid="stChatMessageAvatarUser"] * {
+    color: var(--bg-surface) !important;
+}
+
+/* Chat Input Styling */
+[data-testid="stChatInput"] {
+    background-color: var(--bg-surface) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: var(--radius-pill) !important;
+    padding: 4px 10px !important;
+    box-shadow: var(--shadow-sm) !important;
+}
+[data-testid="stChatInput"]:focus-within {
+    border-color: var(--border-active) !important;
+    box-shadow: 0 0 0 1px var(--border-active) !important;
+}
+[data-testid="stChatInput"] textarea {
+    background-color: transparent !important;
+    color: var(--text-primary) !important;
+    border: none !important;
+}
+[data-testid="stChatInput"] button {
+    background-color: var(--accent-primary) !important;
+    border-radius: 50% !important;
+    width: 32px !important;
+    height: 32px !important;
+    border: none !important;
+}
+[data-testid="stChatInput"] button svg {
+    color: var(--chat-send-icon) !important;
+}
+
+/* Streamlit's placeholder is its own near-white at 60% opacity whatever the
+   theme is, which on a light field is unreadable. */
+[data-testid="stChatInput"] textarea::placeholder {
+    color: var(--text-secondary) !important;
+    opacity: 1 !important;
+}
+
+/* Alerts keep Streamlit's own palette, which is tuned for its dark theme: on
+   the cream page the info box arrives as a saturated blue slab. */
+[data-testid="stAlertContainer"] {
+    background-color: var(--bg-surface) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-left: 4px solid var(--accent-primary) !important;
+    border-radius: var(--radius-sm) !important;
+    color: var(--text-primary) !important;
+}
+[data-testid="stAlertContainer"] p,
+[data-testid="stAlertContainer"] li,
+[data-testid="stAlertContainer"] span,
+[data-testid="stAlertContainer"] strong {
+    color: var(--text-primary) !important;
+}
+[data-testid="stAlertContainer"]:has([data-testid="stAlertContentWarning"]) {
+    border-left-color: var(--danger) !important;
+}
+[data-testid="stAlertContainer"]:has([data-testid="stAlertContentSuccess"]) {
+    border-left-color: var(--success) !important;
+}
+
+/* The progress strip while a batch of steps runs. On the ordinary surface
+   colour it read as one more inactive panel, which is the opposite of what it
+   is: the only live thing on the page. */
+.st-key-stepping_progress [data-testid="stAlertContainer"] {
+    background-color: var(--accent-glow) !important;
+    border: 1px solid var(--accent-primary) !important;
+    border-left: 4px solid var(--accent-primary) !important;
+}
+
+/* Streamlit fades an element container to a third of its opacity while it
+   waits for its next delta. A run of steps reruns the page continuously, so
+   the whole dashboard spends the run flickering at 0.33 — including the
+   progress strip and its Stop button, which are the one thing on screen that
+   is genuinely live, while the chat avatars carry their own background and
+   stay bright through it. Nothing here is ever stale for long enough that
+   saying so helps. */
+[data-testid="stElementContainer"][data-stale="true"] {
+    opacity: 1 !important;
+}
+
+/* The chat input's inner box and the toasts come straight from Streamlit's
+   base theme, which is pinned to dark in `.streamlit/config.toml`: left alone
+   they are a dark grey box on the cream page and a white card on the near-black
+   one. Both stylesheets set them from the palette so neither depends on the
+   base. */
+[data-testid="stChatInput"] > div {
+    background-color: transparent !important;
+}
+[data-testid="stToast"] {
+    background-color: var(--bg-surface) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: var(--radius-md) !important;
+    box-shadow: var(--shadow-md) !important;
+}
+[data-testid="stToast"],
+[data-testid="stToast"] * {
+    color: var(--text-primary) !important;
+}
+
+/* Buttons Styling */
+button, button p, button span, button div {
+    transition: all 0.2s ease !important;
+}
+button {
+    border-radius: var(--radius-pill) !important;
+    font-weight: 600 !important;
+    padding: 6px 16px !important;
+}
+
+/* Secondary buttons */
+button[data-testid="stBaseButton-secondary"] {
+    background-color: var(--bg-surface) !important;
+    border: 1px solid var(--border-subtle) !important;
+}
+button[data-testid="stBaseButton-secondary"],
+button[data-testid="stBaseButton-secondary"] p,
+button[data-testid="stBaseButton-secondary"] span,
+button[data-testid="stBaseButton-secondary"] div {
+    color: var(--accent-primary) !important;
+}
+button[data-testid="stBaseButton-secondary"]:hover {
+    background-color: var(--bg-elevated) !important;
+    border-color: var(--accent-primary) !important;
+}
+button[data-testid="stBaseButton-secondary"]:hover p,
+button[data-testid="stBaseButton-secondary"]:hover span,
+button[data-testid="stBaseButton-secondary"]:hover div {
+    color: var(--accent-secondary) !important;
+}
+
+/* Primary buttons */
+button[data-testid="stBaseButton-primary"] {
+    background-color: var(--accent-primary) !important;
+    border: none !important;
+}
+button[data-testid="stBaseButton-primary"],
+button[data-testid="stBaseButton-primary"] p,
+button[data-testid="stBaseButton-primary"] span,
+button[data-testid="stBaseButton-primary"] div {
+    color: #ffffff !important;
+}
+button[data-testid="stBaseButton-primary"]:hover {
+    background-color: var(--accent-secondary) !important;
+    box-shadow: var(--shadow-sm) !important;
+}
+
+/* Map visual styling container */
+div[key="simulation_map"] {
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: var(--radius-md) !important;
+    overflow: hidden !important;
+}
+
+/* Theme Toggle Button custom styles */
+div[data-testid="stElementContainer"]:has(.theme-toggle-marker) + div[data-testid="stElementContainer"] button {
+    background-color: var(--bg-surface) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: 50% !important;
+    width: 38px !important;
+    height: 38px !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: var(--shadow-sm) !important;
+}
+div[data-testid="stElementContainer"]:has(.theme-toggle-marker) + div[data-testid="stElementContainer"] button:hover {
+    background-color: var(--bg-elevated) !important;
+    border-color: var(--accent-primary) !important;
+}
+
+/* Iframe carrying the accessibility script: it must exist in the DOM so the
+   browser runs the script, but it must not take up space on the page. */
+div.stElementContainer:has(.a11y-script-marker),
+div.stElementContainer:has(.a11y-script-marker) + div.stElementContainer {
+    display: none !important;
+}
+
+/* Generated Streamlit class names. They carry layout, not colour, and they
+   change between Streamlit releases: if a container stops filling its column
+   or the chat input grows a stray border, check these first. */
+.st-emotion-cache-17zstxb {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 100%;
+    min-width: 1rem;
+    flex: 1 1 auto;
+}
+.st-emotion-cache-jchovf,
+.st-emotion-cache-jchovf:focus-within {
+    background-color: transparent !important;
+    border: unset !important;
+}
+
+/* Streamlit replaced the `data-baseweb` attributes with its own testids, so
+   every rule written against `data-baseweb="input"` or `"select"` matches
+   nothing. The dark theme looked right anyway because Streamlit's own base is
+   dark; the light theme showed black fields. These target what renders today.
+   If a field goes back to Streamlit's colours, check these names first. */
+[data-testid="stNumberInputContainer"] {
+    background-color: var(--bg-surface) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: var(--radius-sm) !important;
+}
+[data-testid="stNumberInputField"] {
+    background-color: transparent !important;
+    color: var(--text-primary) !important;
+    border: none !important;
+}
+[data-testid="stNumberInputStepUp"],
+[data-testid="stNumberInputStepDown"] {
+    background-color: var(--bg-elevated) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-subtle) !important;
+}
+[data-testid="stSelectbox"] div:has(> input) {
+    background-color: var(--bg-surface) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: var(--radius-sm) !important;
+}
+[data-testid="stSelectbox"] input {
+    background-color: transparent !important;
+    color: var(--text-primary) !important;
+}
+[data-testid="stRadioOption"],
+[data-testid="stRadioOption"] * {
+    color: var(--text-primary) !important;
+}
+[data-testid="stWidgetLabel"],
+[data-testid="stWidgetLabel"] * {
+    color: var(--text-secondary) !important;
+}
+
+/* The step buttons pick up the pill radius from the global button rule, which
+   makes them read as two lozenges laid on top of the field instead of part of
+   it. Squaring them and letting them stretch puts them back inside the box. */
+[data-testid="stNumberInputStepUp"],
+[data-testid="stNumberInputStepDown"] {
+    border: none !important;
+    border-left: 1px solid var(--border-subtle) !important;
+    border-radius: 0 !important;
+    align-self: stretch !important;
+    height: auto !important;
+    min-width: 30px !important;
+    padding: 0 !important;
+}
+[data-testid="stNumberInputStepUp"] {
+    border-top-right-radius: var(--radius-sm) !important;
+    border-bottom-right-radius: var(--radius-sm) !important;
+}
+[data-testid="stNumberInputStepUp"] svg,
+[data-testid="stNumberInputStepDown"] svg {
+    fill: var(--text-primary) !important;
+}
+
+/* The dropdown arrow keeps Streamlit's near-white fill, which is invisible on
+   a light field and harsh on a dark one. The icon declares fill="currentColor"
+   and its first path is a fill="none" square, so only `color` is set here:
+   forcing `fill` on the paths paints that square and the arrow becomes a
+   solid block. */
+[data-testid="stSelectbox"] svg {
+    color: var(--text-secondary) !important;
+}
+[data-testid="stSelectbox"]:hover svg {
+    color: var(--text-primary) !important;
+}
+
+/* Streamlit hangs an anchor link off every heading and reveals it on hover.
+   It is dead weight here — the dashboard is one page with no sections to link
+   to — and revealing it widens the heading enough to flash a scrollbar. */
+[data-testid="stHeaderActionElements"] {
+    display: none !important;
+}
+
+/* The tooltip body carries Streamlit's own dark surface whatever the theme is,
+   so on the light theme it arrives as a dark box in the middle of a white
+   page. */
+[data-testid="stTooltipContent"] {
+    background-color: var(--bg-elevated) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: var(--radius-sm) !important;
+    box-shadow: var(--shadow-md) !important;
+}
+[data-testid="stTooltipContent"] * {
+    color: var(--text-primary) !important;
+}

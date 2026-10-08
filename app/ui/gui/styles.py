@@ -12,6 +12,8 @@ HTML_DIR = os.path.join(BASE_DIR, "html")
 
 DARK_THEME_FILE = "theme_dark.css"
 LIGHT_THEME_FILE = "theme_light.css"
+# Naming the rules both themes share, which follow the chosen theme's palette.
+BASE_THEME_FILE = "theme_base.css"
 
 
 def resolve_theme_file(is_dark: bool) -> str:
@@ -27,23 +29,27 @@ def resolve_theme_file(is_dark: bool) -> str:
 
 
 def apply_theme(is_dark: bool) -> None:
-    """Injects the stylesheet for the requested theme.
+    """Injects the stylesheet for the requested theme: its palette, then the rules both themes share.
 
     Args:
         is_dark (bool): Whether the dark theme is on.
 
     Raises:
-        FileNotFoundError: If the stylesheet is missing. A theme that silently
+        FileNotFoundError: If a stylesheet is missing. A theme that silently
             fails to load leaves the operator on Streamlit's defaults, which
             look close enough to working to go unnoticed.
     """
-    filepath = resolve_theme_file(is_dark)
-
-    with open(filepath, encoding="utf-8") as stylesheet:
-        css_content = stylesheet.read()
-
     # Injecting the stylesheet with no leading whitespace before the style tag.
-    st.markdown(f"<style>\n{css_content}\n</style>", unsafe_allow_html=True)
+    st.markdown(f"<style>\n{build_theme_css(is_dark)}\n</style>", unsafe_allow_html=True)
+
+
+def build_theme_css(is_dark: bool) -> str:
+    """Returns: str: The requested theme's palette followed by the rules both themes share."""
+    stylesheets = []
+    for filepath in (resolve_theme_file(is_dark), os.path.join(HTML_DIR, BASE_THEME_FILE)):
+        with open(filepath, encoding="utf-8") as stylesheet:
+            stylesheets.append(stylesheet.read())
+    return "\n".join(stylesheets)
 
 
 def inject_accessibility_script() -> None:
