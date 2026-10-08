@@ -125,11 +125,11 @@ def pending_is_confirmed() -> bool:
 
 
 def set_prompt_for_agent(prompt: str) -> None:
-    """Hands a prompt to the next render instead of running it on this one.
+    """Records a prompt for the agent to answer once the page is drawn.
 
     Answering takes tens of seconds, and Streamlit stops a running script the
-    moment any widget is touched. Deferring the call by one render lets the
-    controls that would interrupt it be drawn disabled first.
+    moment any widget is touched. Recording the prompt before the page is drawn
+    lets the controls that would interrupt the answer be drawn disabled first.
 
     Args:
         prompt (str): What the operator submitted.

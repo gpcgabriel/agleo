@@ -413,7 +413,7 @@ div[data-testid="stChatMessageContainer"]::-webkit-scrollbar-thumb {
     border-left-color: var(--success) !important;
 }
 
-/* The progress strip while a batch of steps runs. On the ordinary surface
+/* The progress strip while steps run. On the ordinary surface
    colour it read as one more inactive panel, which is the opposite of what it
    is: the only live thing on the page. */
 .st-key-stepping_progress [data-testid="stAlertContainer"] {

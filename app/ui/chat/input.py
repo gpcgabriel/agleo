@@ -23,6 +23,7 @@ BUSY_PLACEHOLDER = "⏳ Simulation in progress..."
 NO_OLLAMA_PLACEHOLDER = "⚠️ Agent unavailable — Ollama not running"
 READY_PLACEHOLDER = "Type a command for the agent (e.g., 'Advance simulation by 3 steps')"
 THINKING_PLACEHOLDER = "🤖 Agent is answering..."
+CHAT_INPUT_KEY = "agent_chat_input"
 
 
 if TYPE_CHECKING:
@@ -53,28 +54,39 @@ def resolve_input_state(session: SimulationSession, ollama_ok: bool) -> tuple[st
     return READY_PLACEHOLDER, False
 
 
-def render_chat_input(
-    session: SimulationSession, agent_mode: str | None, ollama_ok: bool, chat_container: DeltaGenerator
-) -> None:
-    """Draws the command field and handles whatever the operator submits.
+def take_submitted_prompt() -> None:
+    """Records what the operator just submitted, before anything else is drawn.
+
+    Streamlit holds the submitted text under the field's key from the start of
+    the render the submission triggers. Recording it here, at the top, puts the
+    message in the history and draws the controls held on this same render,
+    instead of after the sidebar and the map have been drawn once more.
+    """
+    submitted = st.session_state.get(CHAT_INPUT_KEY)
+    if submitted:
+        push_chat("user", submitted)
+        set_prompt_for_agent(submitted)
+
+
+def render_chat_input(session: SimulationSession, ollama_ok: bool) -> None:
+    """Draws the command field; `take_submitted_prompt` records what it submits.
+
+    Args:
+        session (SimulationSession): Active simulation.
+        ollama_ok (bool): Whether Ollama is reachable.
+    """
+    placeholder, disabled = resolve_input_state(session, ollama_ok)
+    st.chat_input(placeholder, disabled=disabled, key=CHAT_INPUT_KEY)
+
+
+def answer_pending_prompt(session: SimulationSession, agent_mode: str | None, chat_container: DeltaGenerator) -> None:
+    """Answers the recorded prompt, once the page is drawn, and reloads to show the reply.
 
     Args:
         session (SimulationSession): Active simulation.
         agent_mode (str): The agent's action mode, or None if disabled.
-        ollama_ok (bool): Whether Ollama is reachable.
         chat_container: History container the spinner is drawn into.
     """
-    placeholder, disabled = resolve_input_state(session, ollama_ok)
-
-    submitted = st.chat_input(placeholder, disabled=disabled, key="agent_chat_input")
-    if submitted:
-        # Handing the prompt to the next render rather than answering here, so
-        # the controls that can interrupt a running script are drawn disabled
-        # before the call starts.
-        push_chat("user", submitted)
-        set_prompt_for_agent(submitted)
-        st.rerun()
-
     prompt = get_prompt_for_agent()
     if prompt is None:
         return
