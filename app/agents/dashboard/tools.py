@@ -187,10 +187,10 @@ class ProposalBuffer:
     def propose_run_full_simulation(
         self,
         steps: int,
-        num_users: int = None,
-        num_satellites: int = None,
-        scenario: str = None,
-        algorithm: str = None,
+        num_users: int | None = None,
+        num_satellites: int | None = None,
+        scenario: str | None = None,
+        algorithm: str | None = None,
     ) -> str:
         """Proposes to carry out a whole new simulation and report its metrics at the end.
 
@@ -225,12 +225,12 @@ class ProposalBuffer:
 
     def propose_restart_simulation(
         self,
-        selected_gml: str = None,
-        selected_json: str = None,
-        num_users: int = None,
-        num_satellites: int = None,
-        scenario: str = None,
-        algorithm: str = None,
+        selected_gml: str | None = None,
+        selected_json: str | None = None,
+        num_users: int | None = None,
+        num_satellites: int | None = None,
+        scenario: str | None = None,
+        algorithm: str | None = None,
     ) -> str:
         """Proposes to restart the simulation back to the initial step (Step 0).
 
@@ -310,10 +310,10 @@ class ProposalBuffer:
 
         return self.register(ProposedAction(ActionType.ADD_APP_TO_USER, payload))
 
-    # Leaving these parameters unannotated on purpose: agno builds the tool's JSON schema from the
-    # annotations, and any annotation would state a type to the model (Any becomes "object"), while
-    # `coerce_list` accepts a list, a JSON string of one, or a single value.
-    def propose_add_node(self, node_types, latitudes=None, longitudes=None, altitudes=None) -> str:
+    # Leaving these parameters unannotated on purpose, the one exception to ruff's ANN001: agno builds
+    # the tool's JSON schema from the annotations, and any annotation would state a type to the model
+    # (Any becomes "object"), while `coerce_list` accepts a list, a JSON string of one, or a single value.
+    def propose_add_node(self, node_types, latitudes=None, longitudes=None, altitudes=None) -> str:  # noqa: ANN001
         """Proposes to add one or more new nodes (Satellites or GroundStations).
 
         Only node_types is required. A position or an altitude the operator did

@@ -9,6 +9,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from agno.tools.function import Function
 from proposals import last_proposal
 
 from app.agents.dashboard.tools import ProposalBuffer
@@ -95,6 +96,21 @@ def test_restart_keeps_current_values_for_omitted_arguments() -> None:
     assert config.num_users == 50
     assert config.scenario == "hybrid"
     assert config.gml_path == "datasets/rnp.gml"
+
+
+def test_an_explicit_null_from_the_model_keeps_the_current_value() -> None:
+    """A model often sends `null` for an argument it means to leave out; agno's validation lets it through."""
+    buffer = ProposalBuffer(current_config=make_config())
+    restart = Function.from_callable(buffer.propose_restart_simulation)
+    restart.process_entrypoint()
+    assert restart.entrypoint is not None
+
+    message = restart.entrypoint(num_users=None, scenario="leo")
+
+    assert message.startswith("Proposal registered")
+    payload = last_proposal(buffer).payload
+    assert isinstance(payload, RestartSimulationPayload)
+    assert (payload.config.num_users, payload.config.scenario) == (20, "leo")
 
 
 def test_restart_without_loaded_simulation_is_refused() -> None:
