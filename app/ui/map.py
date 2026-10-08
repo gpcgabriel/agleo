@@ -25,9 +25,13 @@ class MapColors:
         """Args:
         is_dark (bool): Whether the dark theme is on.
         """
-        self.tiles = "CartoDB dark_matter" if is_dark else "CartoDB positron"
-        # Matching the light theme's muted accents. The saturated sky blues that
-        # were here read as glaring over the pale positron tiles.
+        # Drawing on Stadia's Alidade Smooth tiles, which need no key while the app
+        # is served from localhost; a deployment on another domain needs a Stadia
+        # account. CARTO's basemaps, the other keyless-looking pair in folium's
+        # catalogue, draw "API KEY REQUIRED" over every tile without a key.
+        self.tiles = "Stadia.AlidadeSmoothDark" if is_dark else "Stadia.AlidadeSmooth"
+        # Matching the light theme's muted accents. Saturated sky blues read as
+        # glaring over the pale light tiles.
         self.dynamic_link = "#f59e0b" if is_dark else "#b45309"
         self.static_link = "#06b6d4" if is_dark else "#1f6f8b"
         self.coverage = "#0ea5e9" if is_dark else "#1f6f8b"
