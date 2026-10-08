@@ -81,7 +81,7 @@ class Application(ComponentManager):
         self.process_unit = None
         self.migrations = []
         self.available = False
-        self._available = False
+        self.available_when_stepped = False
         self.being_provisioned = False
         self.completed = False
 
@@ -180,7 +180,9 @@ class Application(ComponentManager):
         elif self.process_unit is None and self.available:
             self.available = False
 
-        self._available = self.available
+        # Recording the availability this tick began with, which `User.collect_metrics` reports after
+        # allocation and the process units may have changed `available`.
+        self.available_when_stepped = self.available
 
     def export(self) -> dict[str, Any]:
         """Generates a dictionary representation for context saving.

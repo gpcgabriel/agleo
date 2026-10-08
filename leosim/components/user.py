@@ -170,7 +170,7 @@ class User(ComponentManager):
                     "Application ID": access_model.application.id,
                     "Request Provisioning": access_model.request_provisioning,
                     "Is Provisioned": last_access["is_provisioned"],
-                    "Provisioning": access_model.application._available,
+                    "Provisioning": access_model.application.available_when_stepped,
                     "Making Request": making_request,
                     "Connectivity": bool(access_model.flow and access_model.flow.path != []),
                     "Path": [str(node) for node in access_model.flow.path] if access_model.flow else [],
