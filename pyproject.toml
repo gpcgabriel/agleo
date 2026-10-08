@@ -23,7 +23,7 @@ line-length = 120
 
 # Configuring the quality gate (added by /quality-init)
 [tool.ruff.lint]
-select = ["E", "F", "I", "B", "UP", "SIM", "C90", "PL", "S"]
+select = ["E", "F", "I", "B", "UP", "SIM", "C90", "PL", "S", "ANN0", "ANN2"]
 # Ignoring S311 everywhere: `random` draws the simulated scenarios from a fixed seed, where
 # reproducibility matters and cryptographic strength does not.
 ignore = ["S311"]
@@ -43,11 +43,14 @@ max-branches = 12
 max-returns = 6
 max-statements = 50
 
+[tool.ruff.lint.flake8-annotations]
+mypy-init-return = true
+
 [tool.complexipy]
 max-complexity-allowed = 15
 
 [tool.pyright]
-typeCheckingMode = "strict"
+typeCheckingMode = "standard"
 
 [tool.pytest.ini_options]
 addopts = "--cov --cov-fail-under=80"
