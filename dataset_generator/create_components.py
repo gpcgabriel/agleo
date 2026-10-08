@@ -2,13 +2,15 @@
 
 Satellites come from a capture of the N2YO "above" endpoint: a list of steps, each the list
 of satellites the API reported above a point at that moment. A traces file such as
-`datasets/satellites_brazil.json` holds one, and `capture_steps_from_api` takes a new one.
+`datasets/satellites_brazil.json` holds one, and `python -m dataset_generator` takes a new one.
 """
 
 import os
+from collections.abc import Iterator
 from json import load
 from random import choices
 from time import sleep
+from typing import TypedDict
 
 import requests
 
@@ -36,6 +38,23 @@ N2YO_ABOVE_URL = (
 )
 N2YO_KEY_VARIABLE = "N2YO_API_KEY"
 REQUEST_TIMEOUT_SECONDS = 30
+STARLINK_CATEGORY = 52
+# Searching the whole sky above the horizon: N2YO measures the radius from the zenith, 0 to 90 degrees.
+MAX_SEARCH_RADIUS = 90
+# Waiting a minute between captures keeps a long capture under the endpoint's 100 requests an hour.
+CAPTURE_INTERVAL_SECONDS = 60
+
+
+class Sighting(TypedDict):
+    """One satellite as the N2YO "above" endpoint reports it, and as a traces file stores it."""
+
+    satid: int
+    satname: str
+    intDesignator: str
+    launchDate: str
+    satlat: float
+    satlng: float
+    satalt: float
 
 
 def create_user(coordinates: tuple, connection_range: int = MAX_RANGE) -> User:
@@ -119,21 +138,28 @@ def create_link(
     return link
 
 
-def get_satellites_from_api(coordinates: tuple, sat_range: int, api_category: int = 52) -> list[dict]:
+def get_satellites_from_api(
+    coordinates: tuple[float, ...], sat_range: int, api_category: int = STARLINK_CATEGORY
+) -> list[Sighting]:
     """Returns the satellites the N2YO API reports above a point, as the API describes them.
 
     Args:
         coordinates (tuple): The point, as (latitude, longitude) or (latitude, longitude, altitude).
-        sat_range (int): Search radius, in degrees, as the API takes it.
-        api_category (int): N2YO category of the satellites, 52 being Starlink.
+        sat_range (int): Search radius, in degrees from the zenith, 0 to 90.
+        api_category (int): N2YO category of the satellites.
 
     Returns:
-        list: One dictionary per satellite, carrying "satid", "satlat", "satlng" and "satalt".
+        list: One sighting per satellite.
 
     Raises:
-        ValueError: If the key is not set, or if the API refuses the request.
+        ValueError: If the radius is out of range, the key is not set, or the API refuses the request.
         requests.RequestException: If the API cannot be reached or answers with an HTTP error.
     """
+    if not 0 <= sat_range <= MAX_SEARCH_RADIUS:
+        raise ValueError(
+            f"Invalid search radius: {sat_range!r}. N2YO takes 0 to {MAX_SEARCH_RADIUS} degrees from the zenith."
+        )
+
     key = os.environ.get(N2YO_KEY_VARIABLE)
     if not key:
         raise ValueError(f"{N2YO_KEY_VARIABLE} is not set; the N2YO API only answers requests that carry a key.")
@@ -156,7 +182,7 @@ def get_satellites_from_api(coordinates: tuple, sat_range: int, api_category: in
     return answer.get("above", [])
 
 
-def build_satellites(steps: list[list[dict]], max_satellites: int) -> None:
+def build_satellites(steps: list[list[Sighting]], max_satellites: int) -> None:
     """Creates the satellites a capture saw, each with its trace through the capture's steps.
 
     Every trace holds one slot per step. The slots of the steps before a satellite is first
@@ -195,29 +221,48 @@ def build_satellites(steps: list[list[dict]], max_satellites: int) -> None:
         satellite.coordinates = satellite.coordinates_trace[0]
 
 
-def capture_steps_from_api(
-    max_steps: int = 10, interval: int = 30, sat_range: int = 1000, api_category: int = 52
-) -> list[list[dict]]:
+def stream_steps_from_api(
+    max_steps: int = 10,
+    interval: int = CAPTURE_INTERVAL_SECONDS,
+    sat_range: int = MAX_SEARCH_RADIUS,
+    api_category: int = STARLINK_CATEGORY,
+) -> Iterator[list[Sighting]]:
     """Asks the N2YO API for the satellites above the reference point, `max_steps` times.
+
+    Each capture is yielded as soon as the API answers, so a caller keeps what was captured
+    before a failure.
 
     Args:
         max_steps (int): How many times to ask.
-        interval (int): Seconds to wait after each answer.
-        sat_range (int): Search radius, in degrees.
+        interval (int): Seconds to wait between two captures.
+        sat_range (int): Search radius, in degrees from the zenith.
         api_category (int): N2YO category of the satellites.
 
-    Returns:
-        list: One list of satellite descriptions per step, in the format of a traces file.
+    Yields:
+        list: The sightings of one capture, a step of a traces file.
     """
-    steps = []
-    for _ in range(max_steps):
-        steps.append(get_satellites_from_api(REFERENCE_POINT, sat_range=sat_range, api_category=api_category))
-        sleep(interval)
-    return steps
+    for index in range(max_steps):
+        if index:
+            sleep(interval)
+        yield get_satellites_from_api(REFERENCE_POINT, sat_range=sat_range, api_category=api_category)
+
+
+def capture_steps_from_api(
+    max_steps: int = 10,
+    interval: int = CAPTURE_INTERVAL_SECONDS,
+    sat_range: int = MAX_SEARCH_RADIUS,
+    api_category: int = STARLINK_CATEGORY,
+) -> list[list[Sighting]]:
+    """Returns: list: Every capture `stream_steps_from_api` takes, in the format of a traces file."""
+    return list(stream_steps_from_api(max_steps, interval, sat_range, api_category))
 
 
 def load_satellites_from_api(
-    max_steps: int = 10, interval: int = 30, sat_range: int = 1000, api_category: int = 52, max_satellites: int = 100
+    max_steps: int = 10,
+    interval: int = CAPTURE_INTERVAL_SECONDS,
+    sat_range: int = MAX_SEARCH_RADIUS,
+    api_category: int = STARLINK_CATEGORY,
+    max_satellites: int = 100,
 ) -> None:
     """Creates the satellites the N2YO API reports above the reference point over `max_steps` captures."""
     build_satellites(capture_steps_from_api(max_steps, interval, sat_range, api_category), max_satellites)
