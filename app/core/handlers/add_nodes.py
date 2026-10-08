@@ -1,5 +1,9 @@
 """Handler for creating new nodes in the topology."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from app.core.action_result import ActionResult
 from app.core.infrastructure import (
     attach_process_unit_to_ground_station,
@@ -9,8 +13,12 @@ from app.core.infrastructure import (
     create_satellite_from_catalog,
 )
 
+if TYPE_CHECKING:
+    from app.core.actions import AddNodesPayload
+    from app.core.session import SimulationSession
 
-def handle(session, payload):
+
+def handle(session: SimulationSession, payload: AddNodesPayload) -> ActionResult:
     """Creates each requested node, along with its process unit.
 
     Args:
@@ -20,7 +28,7 @@ def handle(session, payload):
     Returns:
         ActionResult: Confirmation, or a notice if a node could not be created.
     """
-    created = []
+    created: list[str] = []
 
     for spec in payload.nodes:
         coordinates = (spec.lat, spec.lon, spec.alt)

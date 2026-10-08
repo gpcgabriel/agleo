@@ -1,9 +1,17 @@
 """Handler for advancing the simulation."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from app.core.action_result import ActionResult
 
+if TYPE_CHECKING:
+    from app.core.actions import RunSimulationPayload
+    from app.core.session import SimulationSession
 
-def handle(session, payload):
+
+def handle(session: SimulationSession, payload: RunSimulationPayload) -> ActionResult:
     """Schedules the requested steps.
 
     The steps are not run here: the interface loop consumes them one at a

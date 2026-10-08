@@ -4,13 +4,23 @@ Single source of truth consumed both by the JavaScript autocomplete menu and
 by the Python command router.
 """
 
-# Describing each command as a dict with these keys:
-#   cmd: str          — The slash command string (e.g. "/step ")
-#   desc: str         — Short human-readable description
-#   auto_submit: bool — If True, the JS menu auto-clicks send after selection
-#   local: bool       — If True, command is handled locally (no agent call)
+from typing import TypedDict
 
-SLASH_COMMANDS = [
+
+class SlashCommand(TypedDict):
+    """One command of the registry, as the autocomplete menu and the router read it."""
+
+    # The command string, e.g. "/step ".
+    cmd: str
+    # A short human-readable description.
+    desc: str
+    # Whether the menu sends the command right after it is picked.
+    auto_submit: bool
+    # Whether the command is answered locally, without calling the agent.
+    local: bool
+
+
+SLASH_COMMANDS: list[SlashCommand] = [
     {
         "cmd": "/help",
         "desc": "List all available commands with descriptions",
@@ -57,7 +67,7 @@ def get_help_message() -> str:
     return "\n".join(lines)
 
 
-def get_commands_for_js() -> list[dict]:
+def get_commands_for_js() -> list[dict[str, str | bool]]:
     """
     Returns the command list formatted for the frontend JS autocomplete menu.
     Output: list of {cmd, desc, autoSubmit}

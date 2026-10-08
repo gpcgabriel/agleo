@@ -5,20 +5,28 @@ attach a process unit, link the two. They are kept apart from the handlers so
 that each handler deals with one action, not with how a satellite is born.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from app.core.catalog import CATALOG_ID_ATTRIBUTE, get_taken_catalog_ids
 from dataset_generator.create_components import create_link
 from leosim.components import GroundStation, NetworkLink, ProcessUnit, Satellite
+from leosim.geometry import Coordinates
+
+if TYPE_CHECKING:
+    from app.core.session import SimulationSession
 
 SATELLITE_LINK_DELAY = 1
 GROUND_STATION_LINK_DELAY = 10
 
 
-def build_process_unit(cpu, memory):
+def build_process_unit(cpu: int, memory: int) -> ProcessUnit:
     """Returns: ProcessUnit: A new unit with the given capacity."""
     return ProcessUnit(cpu=cpu, memory=memory, storage=memory)
 
 
-def create_satellite_from_catalog(session, coordinates):
+def create_satellite_from_catalog(session: SimulationSession, coordinates: Coordinates) -> Satellite:
     """Creates a satellite at the requested position, following a real trace.
 
     The internal id is deliberately not supplied: the class counter assigns
@@ -40,7 +48,7 @@ def create_satellite_from_catalog(session, coordinates):
         coordinates, exclude_ids=get_taken_catalog_ids()
     )
 
-    if catalog_id is None:
+    if catalog_id is None or catalog_position is None:
         raise ValueError("No satellite available in the traces file for this position.")
 
     satellite = Satellite(coordinates=coordinates, is_gateway=True)
@@ -52,14 +60,14 @@ def create_satellite_from_catalog(session, coordinates):
     return satellite
 
 
-def create_ground_station(session, coordinates):
+def create_ground_station(session: SimulationSession, coordinates: Coordinates) -> GroundStation:
     """Returns: GroundStation: A new station at the requested position."""
     station = GroundStation(coordinates=coordinates)
     session.simulator.topology.add_node(station)
     return station
 
 
-def attach_process_unit_to_satellite(session, satellite, unit):
+def attach_process_unit_to_satellite(session: SimulationSession, satellite: Satellite, unit: ProcessUnit) -> None:
     """Attaches a process unit to a satellite and links it into the topology."""
     unit.coordinates = satellite.coordinates
     create_link(
@@ -73,7 +81,9 @@ def attach_process_unit_to_satellite(session, satellite, unit):
     session.simulator.topology.add_node(unit)
 
 
-def attach_process_unit_to_ground_station(session, station, unit):
+def attach_process_unit_to_ground_station(
+    session: SimulationSession, station: GroundStation, unit: ProcessUnit
+) -> None:
     """Attaches a process unit to a station and links it into the topology."""
     unit.coordinates = station.coordinates
     create_link(

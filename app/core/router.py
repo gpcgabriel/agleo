@@ -4,8 +4,15 @@ Decides what to do with a message before any inference: answer locally,
 refuse, or forward it to the agent with the appropriate context.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Protocol
+
 from app.core.slash_commands import SLASH_COMMANDS, get_help_message
 from app.core.summary import summarize_snapshot
+
+if TYPE_CHECKING:
+    from app.core.snapshot import Snapshot
 
 HELP_COMMANDS = ("/", "/help")
 REVIEW_COMMAND = "/review"
@@ -20,24 +27,32 @@ VIEWING_HISTORY_MESSAGE = (
 PENDING_ACTION_MESSAGE = "⚠️ Resolve the pending proposed action in the upper panel before continuing the conversation."
 
 
+class ViewedSession(Protocol):
+    """What routing reads from a session: whether its latest step is on screen, and the step that is."""
+
+    def is_viewing_latest(self) -> bool: ...
+
+    def get_current_snapshot(self) -> Snapshot: ...
+
+
 class LocalReply:
     """A reply produced without consulting the agent."""
 
-    def __init__(self, text):
+    def __init__(self, text: str) -> None:
         self.text = text
 
 
 class Blocked:
     """A refusal: the command cannot be accepted in the current state."""
 
-    def __init__(self, reason):
+    def __init__(self, reason: str) -> None:
         self.reason = reason
 
 
 class DispatchToAgent:
     """A forward to the agent, carrying the context it should receive."""
 
-    def __init__(self, context_state, allows_changes=True):
+    def __init__(self, context_state: str, allows_changes: bool = True) -> None:
         """Args:
         context_state (str): Context injected into the agent's prompt.
         allows_changes (bool): Whether the agent may propose anything for
@@ -51,13 +66,13 @@ class DispatchToAgent:
         self.allows_changes = allows_changes
 
 
-def is_known_command(prompt):
+def is_known_command(prompt: str) -> bool:
     """Returns: bool: True if the text starts with a registered command."""
     stripped = prompt.strip()
     return any(stripped.startswith(entry["cmd"].strip()) for entry in SLASH_COMMANDS)
 
 
-def build_agent_context(prompt, snapshot):
+def build_agent_context(prompt: str, snapshot: Snapshot) -> str:
     """Builds the context injected into the agent's prompt.
 
     Slash commands get a minimal context, because the action is already
@@ -82,12 +97,12 @@ def build_agent_context(prompt, snapshot):
     )
 
 
-def route(prompt, session, has_pending_action):
+def route(prompt: str, session: ViewedSession, has_pending_action: bool) -> LocalReply | Blocked | DispatchToAgent:
     """Decides where a command from the operator goes.
 
     Args:
         prompt (str): The text typed.
-        session (SimulationSession): Active simulation.
+        session (ViewedSession): Active simulation.
         has_pending_action (bool): Whether a proposal awaits a decision.
 
     Returns:

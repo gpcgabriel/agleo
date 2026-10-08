@@ -1,11 +1,18 @@
 """Handler for restarting the simulation."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from app.core.action_result import ActionResult
 from app.core.bootstrap import build_simulator
 from app.core.session import SimulationSession
 
+if TYPE_CHECKING:
+    from app.core.actions import RestartSimulationPayload
 
-def handle(session, payload):
+
+def handle(session: SimulationSession, payload: RestartSimulationPayload) -> ActionResult:
     """Rebuilds the simulation from scratch with the proposal's configuration.
 
     Args:

@@ -1,10 +1,19 @@
 """Handler for creating a user."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from app.core.action_result import ActionResult
 from dataset_generator.create_components import create_user
 
+if TYPE_CHECKING:
+    from app.core.actions import AddUserPayload
+    from app.core.session import SimulationSession
+    from leosim.components import User
 
-def keep_user_in_place(user):
+
+def keep_user_in_place(user: User) -> None:
     """Mobility model that keeps the user stationary.
 
     Args:
@@ -13,7 +22,7 @@ def keep_user_in_place(user):
     user.coordinates_trace.append(user.coordinates)
 
 
-def handle(session, payload):
+def handle(session: SimulationSession, payload: AddUserPayload) -> ActionResult:
     """Creates a stationary user at the requested position.
 
     Args:

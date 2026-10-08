@@ -3,10 +3,17 @@
 Each action has its own type and a payload with named, validated fields.
 """
 
+from __future__ import annotations
+
+from collections.abc import Sequence
 from random import randint
+from typing import TYPE_CHECKING, Any
 
 from app.core.plan import SimulationPlan
 from leosim.geometry import MAX_LATITUDE, MAX_LONGITUDE
+
+if TYPE_CHECKING:
+    from app.core.config import SimulationConfig
 
 
 class ActionType:
@@ -35,7 +42,7 @@ class ActionType:
     )
 
 
-def check_coordinates(lat, lon):
+def check_coordinates(lat: float, lon: float) -> tuple[float, float]:
     """Validates a pair of geographic coordinates.
 
     Returns:
@@ -53,40 +60,52 @@ def check_coordinates(lat, lon):
     return lat, lon
 
 
-class RunSimulationPayload:
+class ActionPayload:
+    """The validated data of one proposed action, which the gate describes to the operator."""
+
+    def describe(self) -> str:
+        """Returns: str: Human-readable description shown in the gate."""
+        raise NotImplementedError(f"{type(self).__name__} does not describe itself.")
+
+    def describe_defaults(self) -> str:
+        """Returns: str: What was chosen for the operator, empty when nothing was."""
+        return ""
+
+
+class RunSimulationPayload(ActionPayload):
     """Data for advancing the simulation by N steps."""
 
-    def __init__(self, steps):
+    def __init__(self, steps: int) -> None:
         steps = int(steps)
         if steps < 1:
             raise ValueError(f"steps must be >= 1, got {steps}.")
         self.steps = steps
 
-    def describe(self):
+    def describe(self) -> str:
         """Returns: str: Human-readable description shown in the gate."""
         return f"Advance simulation by {self.steps} steps"
 
 
-class RunFullSimulationPayload:
+class RunFullSimulationPayload(ActionPayload):
     """Data for building a fresh simulation and running it to the end."""
 
-    def __init__(self, plan):
+    def __init__(self, plan: SimulationPlan) -> None:
         """Args: plan (SimulationPlan): Configuration and step budget of the run."""
         self.plan = plan
 
-    def describe(self):
+    def describe(self) -> str:
         """Returns: str: Human-readable description shown in the gate."""
         return self.plan.describe()
 
 
-class RestartSimulationPayload:
+class RestartSimulationPayload(ActionPayload):
     """Data for restarting the simulation at step zero."""
 
-    def __init__(self, config):
+    def __init__(self, config: SimulationConfig) -> None:
         """Args: config (SimulationConfig): Resolved configuration of the restart."""
         self.config = config
 
-    def describe(self):
+    def describe(self) -> str:
         """Returns: str: Human-readable description shown in the gate."""
         return (
             f"Reset simulation to Step 0 "
@@ -95,12 +114,12 @@ class RestartSimulationPayload:
         )
 
 
-class AddProcessUnitPayload:
+class AddProcessUnitPayload(ActionPayload):
     """Data for attaching a process unit to an existing node."""
 
     TARGET_TYPES = ("Satellite", "GroundStation")
 
-    def __init__(self, target_type, target_id, cpu, memory):
+    def __init__(self, target_type: str, target_id: int, cpu: int, memory: int) -> None:
         if target_type not in self.TARGET_TYPES:
             raise ValueError(f"Invalid target_type: {target_type!r}. Expected one of {self.TARGET_TYPES}.")
 
@@ -117,7 +136,7 @@ class AddProcessUnitPayload:
         self.cpu = cpu
         self.memory = memory
 
-    def describe(self):
+    def describe(self) -> str:
         """Returns: str: Human-readable description shown in the gate."""
         return f"Add ProcessUnit (CPU={self.cpu}, Mem={self.memory}) to {self.target_type} {self.target_id}"
 
@@ -131,7 +150,16 @@ class NodeSpec:
     # makes. Satellites in the shipped traces sit between 320 and 528 km.
     DEFAULT_ALTITUDE = {"Satellite": 550.0, "GroundStation": 0.0}
 
-    def __init__(self, node_type, lat, lon, alt=None, cpu=None, memory=None, defaulted=()):
+    def __init__(
+        self,
+        node_type: str,
+        lat: float,
+        lon: float,
+        alt: float | None = None,
+        cpu: int | None = None,
+        memory: int | None = None,
+        defaulted: Sequence[str] = (),
+    ) -> None:
         if node_type not in self.NODE_TYPES:
             raise ValueError(f"Invalid node_type: {node_type!r}. Expected one of {self.NODE_TYPES}.")
 
@@ -153,7 +181,7 @@ class NodeSpec:
         # What the operator never stated, so the gate can say so.
         self.defaulted = tuple(sorted(defaulted))
 
-    def describe(self):
+    def describe(self) -> str:
         """Returns: str: Short description used when summarizing several nodes."""
         return (
             f"{self.node_type} at ({self.lat:.4f}, {self.lon:.4f}, {self.alt:.0f}km) "
@@ -161,23 +189,23 @@ class NodeSpec:
         )
 
 
-class AddNodesPayload:
+class AddNodesPayload(ActionPayload):
     """Data for creating one or more new nodes in the topology."""
 
-    def __init__(self, nodes):
+    def __init__(self, nodes: list[NodeSpec]) -> None:
         """Args: nodes (list): NodeSpec instances, at least one."""
         nodes = list(nodes)
         if not nodes:
             raise ValueError("The node list cannot be empty.")
         self.nodes = nodes
 
-    def describe(self):
+    def describe(self) -> str:
         """Returns: str: Human-readable description shown in the gate."""
         if len(self.nodes) == 1:
             return f"Add {self.nodes[0].describe()}"
         return f"Add {len(self.nodes)} nodes: " + ", ".join(node.describe() for node in self.nodes)
 
-    def describe_defaults(self):
+    def describe_defaults(self) -> str:
         """Returns: str: What was chosen for the operator, empty when nothing was.
 
         Kept apart from `describe` on purpose. The description is handed to the
@@ -191,10 +219,10 @@ class AddNodesPayload:
         return f"Chosen automatically: {', '.join(chosen)}."
 
 
-class AddUserPayload:
+class AddUserPayload(ActionPayload):
     """Data for creating a new user in the simulation."""
 
-    def __init__(self, lat, lon, connection_range):
+    def __init__(self, lat: float, lon: float, connection_range: int) -> None:
         lat, lon = check_coordinates(lat, lon)
         connection_range = int(connection_range)
         if connection_range < 1:
@@ -204,15 +232,15 @@ class AddUserPayload:
         self.lon = lon
         self.connection_range = connection_range
 
-    def describe(self):
+    def describe(self) -> str:
         """Returns: str: Human-readable description shown in the gate."""
         return f"Create user at ({self.lat:.4f}, {self.lon:.4f}) with range of {self.connection_range}km"
 
 
-class AddAppToUserPayload:
+class AddAppToUserPayload(ActionPayload):
     """Data for attaching an application to an existing user."""
 
-    def __init__(self, user_id, cpu_demand, memory_demand):
+    def __init__(self, user_id: int, cpu_demand: int, memory_demand: int) -> None:
         user_id = int(user_id)
         cpu_demand = int(cpu_demand)
         memory_demand = int(memory_demand)
@@ -225,7 +253,7 @@ class AddAppToUserPayload:
         self.cpu_demand = cpu_demand
         self.memory_demand = memory_demand
 
-    def describe(self):
+    def describe(self) -> str:
         """Returns: str: Human-readable description shown in the gate."""
         return f"Create application (CPU={self.cpu_demand}, Mem={self.memory_demand}) for User {self.user_id}"
 
@@ -237,10 +265,10 @@ class ProposedAction:
     the agent asked for. The handler registered for its type executes it.
     """
 
-    def __init__(self, action_type, payload):
+    def __init__(self, action_type: str, payload: ActionPayload) -> None:
         """Args:
             action_type (str): One of the ActionType constants.
-            payload (object): The payload object matching that type.
+            payload (ActionPayload): The payload matching that type.
 
         Raises:
             ValueError: If the type is not recognized.
@@ -252,9 +280,9 @@ class ProposedAction:
         self.payload = payload
         self.description = payload.describe()
         # Shown at the gate, never returned to the model.
-        self.defaults_note = payload.describe_defaults() if hasattr(payload, "describe_defaults") else ""
+        self.defaults_note = payload.describe_defaults()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"ProposedAction(action_type={self.action_type!r}, description={self.description!r})"
 
 
@@ -271,7 +299,9 @@ SCRIPTABLE_ACTIONS = ActionType.ALL
 ACTIONS_NEEDING_CURRENT_CONFIG = (ActionType.RESTART_SIMULATION, ActionType.RUN_FULL_SIMULATION)
 
 
-def build_payload(action_type, arguments, current_config=None):
+def build_payload(
+    action_type: str, arguments: dict[str, Any], current_config: SimulationConfig | None = None
+) -> ActionPayload:
     """Builds the payload for an action from plain arguments.
 
     Shared by the skill script, which validates before printing, and by the
@@ -286,7 +316,7 @@ def build_payload(action_type, arguments, current_config=None):
             the rest.
 
     Returns:
-        object: The validated payload.
+        ActionPayload: The validated payload.
 
     Raises:
         ValueError: If the action is unknown or the arguments are invalid.

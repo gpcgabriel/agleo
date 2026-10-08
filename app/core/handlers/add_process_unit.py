@@ -1,5 +1,9 @@
 """Handler for attaching a process unit to an existing node."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from app.core.action_result import ActionResult
 from app.core.infrastructure import (
     attach_process_unit_to_ground_station,
@@ -8,8 +12,12 @@ from app.core.infrastructure import (
 )
 from leosim.components import GroundStation, Satellite
 
+if TYPE_CHECKING:
+    from app.core.actions import AddProcessUnitPayload
+    from app.core.session import SimulationSession
 
-def handle(session, payload):
+
+def handle(session: SimulationSession, payload: AddProcessUnitPayload) -> ActionResult:
     """Attaches a server to the given satellite or ground station.
 
     Args:
@@ -30,7 +38,7 @@ def handle(session, payload):
 
     unit = build_process_unit(payload.cpu, payload.memory)
 
-    if payload.target_type == "Satellite":
+    if isinstance(target, Satellite):
         attach_process_unit_to_satellite(session, target, unit)
     else:
         attach_process_unit_to_ground_station(session, target, unit)

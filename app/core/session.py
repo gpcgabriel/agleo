@@ -1,12 +1,25 @@
 """The simulation session: sole owner of a running simulation's state."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from app.core.bootstrap import build_simulator
 from app.core.catalog import get_catalog
 from app.core.snapshot import serialize_state
 from leosim.components import GroundStation, Satellite, User
 
+if TYPE_CHECKING:
+    from app.core.config import SimulationConfig
+    from app.core.plan import SimulationPlan
+    from app.core.snapshot import Snapshot
+    from leosim import Simulator
+    from leosim.simulator import AllocationAlgorithm
 
-def create_session(config, allocation_algorithm=None):
+
+def create_session(
+    config: SimulationConfig, allocation_algorithm: AllocationAlgorithm | None = None
+) -> SimulationSession:
     """Builds a new simulation from a configuration.
 
     Args:
@@ -24,7 +37,12 @@ def create_session(config, allocation_algorithm=None):
 class SimulationSession:
     """Holds the simulator, the snapshot history and the viewing position."""
 
-    def __init__(self, simulator, config, allocation_algorithm=None):
+    def __init__(
+        self,
+        simulator: Simulator,
+        config: SimulationConfig,
+        allocation_algorithm: AllocationAlgorithm | None = None,
+    ) -> None:
         """Args:
         simulator (Simulator): An initialized simulator.
         config (SimulationConfig): The configuration it was built from.
@@ -36,12 +54,12 @@ class SimulationSession:
         self.allocation_algorithm = allocation_algorithm
         self.catalog = get_catalog(config.satellites_path)
 
-        self.history = []
+        self.history: list[Snapshot] = []
         self.current_step_index = 0
         self.steps_remaining = 0
         # The plan this run was approved as, when it was approved as one. A
         # session the operator drives by hand never has it.
-        self.active_plan = None
+        self.active_plan: SimulationPlan | None = None
 
         # Connecting the access points before the first draw: a freshly loaded
         # scenario has not gone through a tick yet, so step 0 would otherwise
@@ -51,7 +69,7 @@ class SimulationSession:
 
     # -- History ------------------------------------------------------------
 
-    def commit_snapshot(self):
+    def commit_snapshot(self) -> Snapshot:
         """Captures the current state and makes it the viewed one.
 
         Returns:
@@ -63,7 +81,7 @@ class SimulationSession:
         self.current_step_index = len(self.history) - 1
         return snapshot
 
-    def build_label(self, step):
+    def build_label(self, step: int) -> str:
         """Names a snapshot after what it represents.
 
         The history holds two kinds of capture: the result of a tick, and the
@@ -83,27 +101,27 @@ class SimulationSession:
 
         return f"Step {step} · change {changes_at_this_step}"
 
-    def get_snapshot_labels(self):
+    def get_snapshot_labels(self) -> list[str]:
         """Returns: list: Each snapshot's label, in history order."""
         return [snapshot["label"] for snapshot in self.history]
 
-    def get_current_snapshot(self):
+    def get_current_snapshot(self) -> Snapshot:
         """Returns: dict: The snapshot the operator is looking at."""
         return self.history[self.current_step_index]
 
-    def get_latest_index(self):
+    def get_latest_index(self) -> int:
         """Returns: int: Index of the most recent snapshot."""
         return len(self.history) - 1
 
-    def get_step_count(self):
+    def get_step_count(self) -> int:
         """Returns: int: How many snapshots the history holds."""
         return len(self.history)
 
-    def is_viewing_latest(self):
+    def is_viewing_latest(self) -> bool:
         """Returns: bool: True if the operator is on the most recent snapshot."""
         return self.current_step_index == self.get_latest_index()
 
-    def view_step(self, index):
+    def view_step(self, index: int) -> None:
         """Moves the view to a point in the history.
 
         Args:
@@ -118,7 +136,7 @@ class SimulationSession:
 
     # -- Advancing time -----------------------------------------------------
 
-    def advance_one_step(self):
+    def advance_one_step(self) -> Snapshot:
         """Advances the simulation by one tick and records the result.
 
         Returns:
@@ -127,7 +145,7 @@ class SimulationSession:
         self.simulator.step()
         return self.commit_snapshot()
 
-    def request_steps(self, steps):
+    def request_steps(self, steps: int) -> None:
         """Schedules a number of steps to run.
 
         Steps are consumed a few at a time so the interface can draw progress
@@ -148,7 +166,7 @@ class SimulationSession:
 
         self.steps_remaining = max(0, int(steps))
 
-    def start_plan(self, plan):
+    def start_plan(self, plan: SimulationPlan) -> None:
         """Schedules a whole plan's run.
 
         Args:
@@ -160,7 +178,7 @@ class SimulationSession:
         self.request_steps(plan.steps)
         self.active_plan = plan
 
-    def take_finished_plan(self):
+    def take_finished_plan(self) -> SimulationPlan | None:
         """Hands back the plan whose run has ended, once.
 
         The report is written where the run ends, which is the interface loop,
@@ -180,11 +198,11 @@ class SimulationSession:
         self.active_plan = None
         return plan
 
-    def has_pending_steps(self):
+    def has_pending_steps(self) -> bool:
         """Returns: bool: True if scheduled steps remain."""
         return self.steps_remaining > 0
 
-    def run_next_pending_step(self):
+    def run_next_pending_step(self) -> bool:
         """Runs one scheduled step.
 
         Returns:
@@ -201,13 +219,13 @@ class SimulationSession:
         self.steps_remaining = max(0, self.steps_remaining - 1)
         return self.steps_remaining == 0
 
-    def stop_stepping(self):
+    def stop_stepping(self) -> None:
         """Discards scheduled steps that have not run yet."""
         self.steps_remaining = 0
 
     # -- Infrastructure changes ---------------------------------------------
 
-    def refresh_connectivity(self):
+    def refresh_connectivity(self) -> None:
         """Recomputes links and connections for the current positions.
 
         Runs the connectivity part of a tick without advancing the clock: it
@@ -242,7 +260,7 @@ class SimulationSession:
 
         topology.update_delay()
 
-    def apply_infrastructure_change(self):
+    def apply_infrastructure_change(self) -> Snapshot:
         """Publishes a just-applied infrastructure change to the dashboard.
 
         Recomputes connectivity and records a new snapshot, so the operator
@@ -254,7 +272,7 @@ class SimulationSession:
         self.refresh_connectivity()
         return self.commit_snapshot()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"SimulationSession(step={self.simulator.scheduler.steps}, "
             f"snapshots={self.get_step_count()}, viewing={self.current_step_index}, "

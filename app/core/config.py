@@ -1,5 +1,7 @@
 """Configuration parameters of a simulation."""
 
+from __future__ import annotations
+
 
 class SimulationConfig:
     """Every parameter needed to build a simulation.
@@ -14,7 +16,15 @@ class SimulationConfig:
     ALGORITHMS = ("best_fit_allocation", "longest_duration_allocation", "llm_allocation")
     AGENT_ALGORITHM = "llm_allocation"
 
-    def __init__(self, gml_path, satellites_path, num_users, num_satellites, scenario, algorithm):
+    def __init__(
+        self,
+        gml_path: str,
+        satellites_path: str,
+        num_users: int,
+        num_satellites: int,
+        scenario: str,
+        algorithm: str,
+    ) -> None:
         """Builds a simulation configuration.
 
         Args:
@@ -55,8 +65,14 @@ class SimulationConfig:
         self.algorithm = algorithm
 
     def copy_with(
-        self, gml_path=None, satellites_path=None, num_users=None, num_satellites=None, scenario=None, algorithm=None
-    ):
+        self,
+        gml_path: str | None = None,
+        satellites_path: str | None = None,
+        num_users: int | None = None,
+        num_satellites: int | None = None,
+        scenario: str | None = None,
+        algorithm: str | None = None,
+    ) -> SimulationConfig:
         """Returns a new configuration with only the given fields replaced.
 
         Fields left as None keep their current value. Used by restart
@@ -74,7 +90,7 @@ class SimulationConfig:
             algorithm=algorithm if algorithm is not None else self.algorithm,
         )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"SimulationConfig(gml_path={self.gml_path!r}, satellites_path={self.satellites_path!r}, "
             f"num_users={self.num_users}, num_satellites={self.num_satellites}, "

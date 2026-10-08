@@ -1,10 +1,18 @@
 """Building a simulator from a configuration."""
 
+from __future__ import annotations
+
 import random
+from typing import TYPE_CHECKING
 
 import dataset as ds
 from leosim import ComponentManager, Simulator, clear_components
 from leosim.components import Satellite, best_fit_allocation, default_topology_management, longest_duration_allocation
+
+if TYPE_CHECKING:
+    from app.core.config import SimulationConfig
+    from leosim.components import Topology
+    from leosim.simulator import AllocationAlgorithm
 
 DEFAULT_SCENARY_PATH = "datasets/temp_dashboard_scenary.json"
 DEFAULT_LOGS_DIRECTORY = "logs/dashboard"
@@ -14,13 +22,13 @@ DEFAULT_LOGS_DIRECTORY = "logs/dashboard"
 # `dataset.py` draw from.
 RANDOM_SEED = 42
 
-ALLOCATION_ALGORITHMS = {
+ALLOCATION_ALGORITHMS: dict[str, AllocationAlgorithm] = {
     "best_fit_allocation": best_fit_allocation,
     "longest_duration_allocation": longest_duration_allocation,
 }
 
 
-def resolve_algorithm(name):
+def resolve_algorithm(name: str) -> AllocationAlgorithm:
     """Maps an allocation algorithm name to its function.
 
     Args:
@@ -40,7 +48,7 @@ def resolve_algorithm(name):
     return ALLOCATION_ALGORITHMS[name]
 
 
-def distribute_process_units(topology, scenario):
+def distribute_process_units(topology: Topology, scenario: str) -> None:
     """Distributes process units according to the chosen scenario.
 
     Args:
@@ -58,7 +66,7 @@ def distribute_process_units(topology, scenario):
         ds.add_process_unit_to_satellites(topology, num_process_units=total_resources)
 
 
-def build_scenario(config, scenary_path=DEFAULT_SCENARY_PATH):
+def build_scenario(config: SimulationConfig, scenary_path: str = DEFAULT_SCENARY_PATH) -> str:
     """Assembles the scenario in memory and writes it to disk.
 
     Args:
@@ -85,8 +93,11 @@ def build_scenario(config, scenary_path=DEFAULT_SCENARY_PATH):
 
 
 def build_simulator(
-    config, scenary_path=DEFAULT_SCENARY_PATH, logs_directory=DEFAULT_LOGS_DIRECTORY, allocation_algorithm=None
-):
+    config: SimulationConfig,
+    scenary_path: str = DEFAULT_SCENARY_PATH,
+    logs_directory: str = DEFAULT_LOGS_DIRECTORY,
+    allocation_algorithm: AllocationAlgorithm | None = None,
+) -> Simulator:
     """Builds a simulator ready to run.
 
     Args:

@@ -1,5 +1,12 @@
 """The plan a whole simulation run is approved as."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.core.config import SimulationConfig
+
 
 class SimulationPlan:
     """What to build, and for how long to run it.
@@ -10,7 +17,7 @@ class SimulationPlan:
     are spent instead of after.
     """
 
-    def __init__(self, config, steps):
+    def __init__(self, config: SimulationConfig, steps: int) -> None:
         """Builds the plan of one run.
 
         Args:
@@ -27,7 +34,7 @@ class SimulationPlan:
         self.config = config
         self.steps = steps
 
-    def describe(self):
+    def describe(self) -> str:
         """Returns: str: What the gate shows the operator before they approve."""
         return (
             f"Run a complete simulation of {self.steps} steps and report its metrics "
@@ -35,5 +42,5 @@ class SimulationPlan:
             f"users={self.config.num_users}, satellites={self.config.num_satellites})"
         )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"SimulationPlan(steps={self.steps}, config={self.config!r})"

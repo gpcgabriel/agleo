@@ -1,11 +1,19 @@
 """Handler for attaching an application to a user."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from app.core.action_result import ActionResult
 from dataset_generator.create_components import create_application_to_user
 from leosim.components import User
 
+if TYPE_CHECKING:
+    from app.core.actions import AddAppToUserPayload
+    from app.core.session import SimulationSession
 
-def handle(session, payload):
+
+def handle(session: SimulationSession, payload: AddAppToUserPayload) -> ActionResult:
     """Creates an application and attaches it to the given user.
 
     Args:

@@ -5,15 +5,26 @@ simulation: what the map draws, what the timeline stores and what the agent
 reads.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
 from leosim.components import GroundStation, Satellite, User
 from leosim.geometry import ALTITUDE_INDEX
 
+if TYPE_CHECKING:
+    from leosim import Simulator
 
-def serialize_state(sim):
+# Naming the dictionary `serialize_state` builds: JSON-ready, keyed by "step", "satellites",
+# "ground_stations", "users" and "links".
+Snapshot = dict[str, Any]
+
+
+def serialize_state(sim: Simulator) -> Snapshot:
     """
     Serializes the simulator's current state into a JSON-compatible dictionary.
     """
-    state = {"step": sim.scheduler.steps, "satellites": [], "ground_stations": [], "users": [], "links": []}
+    state: Snapshot = {"step": sim.scheduler.steps, "satellites": [], "ground_stations": [], "users": [], "links": []}
 
     # Exporting the satellites.
     for sat in Satellite.all():
@@ -84,7 +95,7 @@ def serialize_state(sim):
                             "cpu_demand": app.cpu_demand,
                             "memory_demand": app.memory_demand,
                             "storage_demand": app.storage_demand,
-                            "allocated_to": app.process_unit.id if getattr(app, "process_unit", None) else None,
+                            "allocated_to": app.process_unit.id if app.process_unit else None,
                         }
                         for app in user.applications
                     ],
@@ -107,7 +118,7 @@ def serialize_state(sim):
     return state
 
 
-def find_default_node_position(snapshot):
+def find_default_node_position(snapshot: Snapshot | None) -> tuple[float, float] | None:
     """Finds somewhere sensible to put a node the operator did not place.
 
     The centre of the ground stations already in the scenario: a node dropped
@@ -121,8 +132,10 @@ def find_default_node_position(snapshot):
         tuple or None: (latitude, longitude), or None when the scenario has no
         ground station to average.
     """
-    stations = (snapshot or {}).get("ground_stations") or []
-    placed = [station for station in stations if station.get("lat") is not None and station.get("lon") is not None]
+    stations: list[dict[str, Any]] = (snapshot or {}).get("ground_stations") or []
+    placed: list[dict[str, Any]] = [
+        station for station in stations if station.get("lat") is not None and station.get("lon") is not None
+    ]
     if not placed:
         return None
 

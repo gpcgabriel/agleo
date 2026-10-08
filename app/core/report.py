@@ -11,10 +11,19 @@ allocator and is kept in `app/agents/allocation/metrics.py`, because a run
 with no agent in it still has a report.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, TypedDict
+
+if TYPE_CHECKING:
+    from app.core.plan import SimulationPlan
+    from app.core.snapshot import Snapshot
+
+
 PERCENT = 100.0
 
 
-def share(part, whole):
+def share(part: int, whole: int) -> float:
     """Expresses a count as a percentage of its total.
 
     Args:
@@ -32,7 +41,21 @@ def share(part, whole):
     return round(part * PERCENT / whole, 1)
 
 
-def measure_snapshot(snapshot):
+class SnapshotMeasure(TypedDict):
+    """The numbers one snapshot is judged by: counts, the totals they are out of, and the mean delay."""
+
+    step: int
+    users_total: int
+    users_connected: int
+    applications_total: int
+    applications_allocated: int
+    ground_stations: int
+    satellites_active: int
+    links: int
+    mean_delay: float
+
+
+def measure_snapshot(snapshot: Snapshot) -> SnapshotMeasure:
     """Reduces one snapshot to the numbers a run is judged by.
 
     Args:
@@ -43,10 +66,13 @@ def measure_snapshot(snapshot):
         applications were placed, the totals each is out of, and the size and
         mean delay of the network at that moment.
     """
-    users = snapshot.get("users") or []
-    applications = [app for user in users for app in user.get("applications") or []]
-    links = snapshot.get("links") or []
-    delays = [link.get("delay") or 0 for link in links]
+    users: list[dict[str, Any]] = snapshot.get("users") or []
+    no_applications: list[dict[str, Any]] = []
+    applications = [app for user in users for app in user.get("applications") or no_applications]
+    links: list[dict[str, Any]] = snapshot.get("links") or []
+    delays: list[float] = [link.get("delay") or 0 for link in links]
+
+    satellites: list[dict[str, Any]] = snapshot.get("satellites") or []
 
     return {
         "step": snapshot.get("step", 0),
@@ -55,13 +81,13 @@ def measure_snapshot(snapshot):
         "applications_total": len(applications),
         "applications_allocated": sum(1 for app in applications if app.get("allocated_to") is not None),
         "ground_stations": len(snapshot.get("ground_stations") or []),
-        "satellites_active": sum(1 for satellite in snapshot.get("satellites") or [] if satellite.get("active")),
+        "satellites_active": sum(1 for satellite in satellites if satellite.get("active")),
         "links": len(links),
         "mean_delay": round(sum(delays) / len(delays), 2) if delays else 0.0,
     }
 
 
-def collect_run_metrics(history):
+def collect_run_metrics(history: list[Snapshot] | None) -> dict[str, Any]:
     """Measures every snapshot of a run and summarizes the series.
 
     Args:
@@ -100,7 +126,7 @@ def collect_run_metrics(history):
     }
 
 
-def summarize_run(plan, metrics):
+def summarize_run(plan: SimulationPlan, metrics: dict[str, Any]) -> str:
     """Writes the report the operator reads when a run ends.
 
     Args:

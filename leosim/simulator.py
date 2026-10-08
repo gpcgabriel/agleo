@@ -67,7 +67,7 @@ class Simulator(ComponentManager):
         self,
         id: int = 0,
         stopping_criterion: Callable[[Simulator], bool] | None = None,
-        resource_management_algorithm: Callable[[Simulator, dict[str, Any]], object] | None = None,
+        resource_management_algorithm: AllocationAlgorithm | None = None,
         resource_management_algorithm_parameters: dict[str, Any] | None = None,
         topology_management_algorithm: Callable[..., None] = default_topology_management,
         topology_management_algorithm_parameters: dict[str, Any] | None = None,
@@ -327,6 +327,11 @@ class Simulator(ComponentManager):
                 self.running = False
 
         self.dump_data()
+
+
+# Naming the contract of an allocation algorithm: `Simulator.step` calls it once per ground station each
+# tick, with the simulator and that station's parameters, and ignores what it returns.
+AllocationAlgorithm = Callable[[Simulator, dict[str, Any]], object]
 
 
 def find_component_class(class_name: str) -> type[ComponentManager]:

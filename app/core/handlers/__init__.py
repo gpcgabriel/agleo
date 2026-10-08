@@ -1,5 +1,10 @@
 """Handler registry: one module per proposed action."""
 
+from __future__ import annotations
+
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
+
 from app.core.actions import ActionType
 from app.core.handlers import (
     add_app_to_user,
@@ -11,7 +16,14 @@ from app.core.handlers import (
     run_simulation,
 )
 
-HANDLERS = {
+if TYPE_CHECKING:
+    from app.core.action_result import ActionResult
+    from app.core.session import SimulationSession
+
+# Naming a handler's contract: it takes the session and the payload of its own action type.
+Handler = Callable[["SimulationSession", Any], "ActionResult"]
+
+HANDLERS: dict[str, Handler] = {
     ActionType.RUN_SIMULATION: run_simulation.handle,
     ActionType.RUN_FULL_SIMULATION: run_full_simulation.handle,
     ActionType.RESTART_SIMULATION: restart_simulation.handle,
@@ -22,7 +34,7 @@ HANDLERS = {
 }
 
 
-def get_handler(action_type):
+def get_handler(action_type: str) -> Handler:
     """Returns the handler for an action type.
 
     Args:

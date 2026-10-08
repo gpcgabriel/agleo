@@ -1,11 +1,18 @@
 """Handler for carrying out a complete simulation from a plan."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from app.core.action_result import ActionResult
 from app.core.bootstrap import build_simulator
 from app.core.session import SimulationSession
 
+if TYPE_CHECKING:
+    from app.core.actions import RunFullSimulationPayload
 
-def handle(session, payload):
+
+def handle(session: SimulationSession, payload: RunFullSimulationPayload) -> ActionResult:
     """Builds the plan's simulation and schedules its whole run.
 
     The steps are not run here. The interface loop consumes them a batch at a

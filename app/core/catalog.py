@@ -4,12 +4,16 @@ Loads a traces file once, indexes its positions, and answers lookups from
 that index.
 """
 
+from __future__ import annotations
+
 from json import load
 
 import numpy as np
+import numpy.typing as npt
 from geopy.distance import geodesic
 
 from leosim.components import Satellite
+from leosim.geometry import Coordinates
 
 EARTH_RADIUS_KM = 6371.0
 
@@ -22,9 +26,9 @@ EARTH_RADIUS_KM = 6371.0
 CATALOG_ID_ATTRIBUTE = "catalog_id"
 
 
-def get_taken_catalog_ids():
+def get_taken_catalog_ids() -> set[int]:
     """Returns: set: Catalog ids already used by satellites in the simulation."""
-    taken = set()
+    taken: set[int] = set()
 
     for satellite in Satellite.all():
         catalog_id = getattr(satellite, CATALOG_ID_ATTRIBUTE, None)
@@ -47,7 +51,7 @@ class SatelliteCatalog:
     # 25 satellites tied within that margin.
     GEODESIC_CANDIDATES = 25
 
-    def __init__(self, path):
+    def __init__(self, path: str) -> None:
         """Args:
         path (str): Path to the JSON traces file.
         """
@@ -56,14 +60,14 @@ class SatelliteCatalog:
         with open(path, encoding="UTF-8") as file:
             steps = load(file)
 
-        latitudes = []
-        longitudes = []
-        altitudes = []
-        catalog_ids = []
+        latitudes: list[float] = []
+        longitudes: list[float] = []
+        altitudes: list[float] = []
+        catalog_ids: list[int] = []
 
         # Indexing each satellite's path in step order; this is what answers
         # trace lookups.
-        self.positions_by_id = {}
+        self.positions_by_id: dict[int, list[Coordinates]] = {}
 
         for step in steps:
             for satellite in step:
@@ -83,15 +87,15 @@ class SatelliteCatalog:
         self.catalog_ids = np.array(catalog_ids)
         self.step_count = len(steps)
 
-    def count_satellites(self):
+    def count_satellites(self) -> int:
         """Returns: int: How many distinct satellites the file holds."""
         return len(self.positions_by_id)
 
-    def count_positions(self):
+    def count_positions(self) -> int:
         """Returns: int: How many positions are indexed in total."""
         return len(self.latitudes)
 
-    def haversine_to_all(self, target_lat, target_lon):
+    def haversine_to_all(self, target_lat: float, target_lon: float) -> npt.NDArray[np.float64]:
         """Approximate distance from the target to every indexed position.
 
         Used only to rank candidates; the final distance is computed with
@@ -113,7 +117,9 @@ class SatelliteCatalog:
         )
         return 2.0 * EARTH_RADIUS_KM * np.arcsin(np.sqrt(np.clip(inner, 0.0, 1.0)))
 
-    def get_closest_satellite(self, target_coord, exclude_ids=None):
+    def get_closest_satellite(
+        self, target_coord: Coordinates, exclude_ids: set[int] | None = None
+    ) -> tuple[int, tuple[float, float, float]] | tuple[None, None]:
         """Finds the free satellite that passes closest to a point.
 
         Args:
@@ -146,7 +152,8 @@ class SatelliteCatalog:
             if not np.isfinite(distances[index]):
                 continue
 
-            distance = geodesic(target_lat_lon, (self.latitudes[index], self.longitudes[index])).kilometers
+            candidate = (float(self.latitudes[index]), float(self.longitudes[index]))
+            distance = geodesic(target_lat_lon, candidate).kilometers
             if distance < best_distance:
                 best_distance = distance
                 best_index = index
@@ -161,7 +168,7 @@ class SatelliteCatalog:
         )
         return self.catalog_ids[best_index].item(), position
 
-    def get_coordinates_trace(self, catalog_id, start_position):
+    def get_coordinates_trace(self, catalog_id: int, start_position: Coordinates) -> list[Coordinates | None]:
         """Builds a satellite's path starting from a given position.
 
         Args:
@@ -178,11 +185,11 @@ class SatelliteCatalog:
 
         for index, position in enumerate(positions):
             if position == tuple(start_position):
-                return positions[index:]
+                return list(positions[index:])
 
         return [start_position]
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"SatelliteCatalog(path={self.path!r}, satellites={self.count_satellites()}, "
             f"steps={self.step_count}, positions={self.count_positions()})"
@@ -191,10 +198,10 @@ class SatelliteCatalog:
 
 # Caching one index per process: the traces file does not change while the app
 # runs, and indexing it takes a few seconds.
-_LOADED_CATALOGS = {}
+_LOADED_CATALOGS: dict[str, SatelliteCatalog] = {}
 
 
-def get_catalog(path):
+def get_catalog(path: str) -> SatelliteCatalog:
     """Returns the catalog for a file, loading it on the first call.
 
     Args:
