@@ -69,6 +69,15 @@ def test_a_flow_with_no_request_mark_is_rerouted_from_its_users_access_point() -
     assert all(flow in topology.link_between(node, other)["flows"] for node, other in pairwise(flow.path))
 
 
+def test_the_exported_topology_lists_the_satellites_users_reach() -> None:
+    topology, _station, satellite, _unit, user = make_network()
+    user.network_access_points = [satellite]
+
+    exported = topology.export_topology()
+
+    assert [(link["user"], link["sat"]) for link in exported["user_sat"]] == [(user.id, satellite.id)]
+
+
 if __name__ == "__main__":
     from runner import run_module_tests
 

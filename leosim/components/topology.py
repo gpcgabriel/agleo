@@ -290,7 +290,8 @@ class Topology(ComponentManager, NodeGraph):
         user_sat_links = []
         for user in User.all():
             for sat in Satellite.all():
-                if self.has_edge(user, sat):
+                # Reading the user's access points: users reach satellites through them and are never graph nodes.
+                if sat in user.network_access_points:
                     dist = self.calculate_distance(user, sat)
                     max_range = min(user.max_connection_range, sat.max_connection_range)
                     margin = round(((max_range - dist) / max_range) * 100, 1) if max_range > 0 else 0
