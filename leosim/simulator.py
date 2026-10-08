@@ -109,7 +109,7 @@ class Simulator(ComponentManager):
         self.topology = Topology()
 
         self.logs_directory = logs_directory
-        self.agent_metrics: dict[str, list[dict[str, Any]]] = {}
+        self.agent_metrics = {}
         self.last_dump = 0
         # Holding the metrics log's settings at their defaults until `run` sets them.
         self.dump_interval = DEFAULT_DUMP_INTERVAL

@@ -78,7 +78,7 @@ class AccessSchedule:
 
         self.history = []
         self.request_provisioning = False
-        self.flow: NetworkFlow | None = None
+        self.flow = None
 
         # Leaving the links unset on the empty model the scenario loader builds; it sets them right after.
         if user is not None:
