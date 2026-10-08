@@ -13,7 +13,7 @@ from json import loads
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.agents.allocation.metrics import LOG_FILENAME, AllocationMetrics
+from app.agents.allocation.metrics import LOG_FILENAME, AllocationMetrics, ModelCall
 
 
 def test_a_skipped_station_counts_as_skipped_not_as_a_call() -> None:
@@ -27,7 +27,7 @@ def test_a_skipped_station_counts_as_skipped_not_as_a_call() -> None:
 
 def test_an_answered_station_counts_as_one_call() -> None:
     metrics = AllocationMetrics()
-    metrics.add_call(0, 1, "answered", 4, 2000, 1.5, 3, 1)
+    metrics.add_call(0, 1, "answered", ModelCall(4, 2000, 1.5), {"provisioned": 3, "failed": 1})
 
     row = metrics.summarize_by_step()[0]
     assert row["calls"] == 1
@@ -37,7 +37,7 @@ def test_an_answered_station_counts_as_one_call() -> None:
 
 def test_a_fallback_is_a_call_and_is_marked_as_one() -> None:
     metrics = AllocationMetrics()
-    metrics.add_call(0, 1, "fallback", 4, 2000, 0.2, 0, 0)
+    metrics.add_call(0, 1, "fallback", ModelCall(4, 2000, 0.2), {"provisioned": 0, "failed": 0})
 
     row = metrics.summarize_by_step()[0]
     assert row["calls"] == 1
@@ -46,8 +46,8 @@ def test_a_fallback_is_a_call_and_is_marked_as_one() -> None:
 
 def test_a_step_carries_its_cost_next_to_its_outcome() -> None:
     metrics = AllocationMetrics()
-    metrics.add_call(7, 1, "answered", 4, 2000, 1.5, 3, 1)
-    metrics.add_call(7, 2, "answered", 6, 3000, 2.5, 2, 4)
+    metrics.add_call(7, 1, "answered", ModelCall(4, 2000, 1.5), {"provisioned": 3, "failed": 1})
+    metrics.add_call(7, 2, "answered", ModelCall(6, 3000, 2.5), {"provisioned": 2, "failed": 4})
 
     row = metrics.summarize_by_step()[0]
     assert row["step"] == 7
@@ -69,7 +69,7 @@ def test_rows_come_back_in_step_order() -> None:
 
 def test_prompt_tokens_are_reported_as_an_estimate() -> None:
     metrics = AllocationMetrics()
-    metrics.add_call(0, 1, "answered", 4, 4000, 1.0, 1, 0)
+    metrics.add_call(0, 1, "answered", ModelCall(4, 4000, 1.0), {"provisioned": 1, "failed": 0})
 
     assert metrics.summarize_by_step()[0]["prompt_tokens_estimated"] == 1000
 
@@ -78,11 +78,11 @@ def test_writing_twice_does_not_duplicate_rows() -> None:
     """`allocate` writes after every station, so a rewrite must add nothing."""
     with tempfile.TemporaryDirectory() as directory:
         metrics = AllocationMetrics()
-        metrics.add_call(0, 1, "answered", 4, 2000, 1.0, 1, 0)
+        metrics.add_call(0, 1, "answered", ModelCall(4, 2000, 1.0), {"provisioned": 1, "failed": 0})
         metrics.write(directory)
         metrics.write(directory)
 
-        metrics.add_call(0, 2, "answered", 4, 2000, 1.0, 1, 0)
+        metrics.add_call(0, 2, "answered", ModelCall(4, 2000, 1.0), {"provisioned": 1, "failed": 0})
         metrics.write(directory)
 
         with open(os.path.join(directory, LOG_FILENAME), encoding="utf-8") as log_file:

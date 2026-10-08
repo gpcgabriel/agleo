@@ -17,7 +17,7 @@ from agno.agent import Agent
 from agno.models.ollama import Ollama
 
 from app.agents.allocation.decision import AllocationDecision, ReconciledDecision, reconcile
-from app.agents.allocation.metrics import AllocationMetrics
+from app.agents.allocation.metrics import AllocationMetrics, ModelCall
 from app.agents.allocation.prompt import INSTRUCTIONS, build_allocation_prompt
 from app.agents.allocation.state import collect_state
 from app.helper_functions.ollama_helper import DEFAULT_HOST, DEFAULT_MODEL
@@ -187,7 +187,7 @@ class LLMAllocator:
             # `best_fit_allocation` returns nothing, so a fallback row carries no
             # allocation outcome. The "fallback" mark is what distinguishes it.
             self.metrics.add_call(
-                step, station.id, "fallback", len(pending_app_ids), len(prompt), time.monotonic() - started, 0, 0
+                step, station.id, "fallback", ModelCall(len(pending_app_ids), len(prompt), time.monotonic() - started)
             )
             self.metrics.write(getattr(model, "logs_directory", "logs"))
             return
@@ -230,15 +230,6 @@ class LLMAllocator:
         )
         self.record(model, station, answer, results)
         self.metrics.add_call(
-            step,
-            station.id,
-            "answered",
-            len(pending_app_ids),
-            len(prompt),
-            elapsed,
-            results.get("provisioned", 0),
-            results.get("failed", 0),
-            omitted=len(answer.omitted),
-            invented=len(answer.invented),
+            step, station.id, "answered", ModelCall(len(pending_app_ids), len(prompt), elapsed), results
         )
         self.metrics.write(getattr(model, "logs_directory", "logs"))

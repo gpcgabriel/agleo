@@ -122,10 +122,8 @@ def build_simulator(
         scenary_file = build_scenario(config, scenary_path or os.path.join(directory, "scenario.json"))
 
         simulator = Simulator(
-            stopping_criterion=lambda model: False,
             resource_management_algorithm=algorithm,
             topology_management_algorithm=default_topology_management,
-            clean_data_in_memory=False,
             logs_directory=logs_directory,
             scenario=config.scenario,
         )

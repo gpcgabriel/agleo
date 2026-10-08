@@ -94,16 +94,13 @@ def main(args: argparse.Namespace) -> None:
         os.makedirs(log_dir, exist_ok=True)
 
         sim = Simulator(
-            stopping_criterion=build_stopping_criterion(args.num_steps),
             resource_management_algorithm=algorithm,
             topology_management_algorithm=default_topology_management,
-            ignore_list=[],
-            clean_data_in_memory=True,
             logs_directory=log_dir,
         )
 
         sim.initialize(dataset_file)
-        sim.run()
+        sim.run(build_stopping_criterion(args.num_steps), clean_data_in_memory=True)
 
     if args.plot:
         plot_results(args.logs_dir, topology_name, args.scenario, args.repetitions, args.plot_station)

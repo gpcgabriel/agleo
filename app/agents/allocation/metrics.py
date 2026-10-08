@@ -7,6 +7,7 @@ what the decision cost.
 """
 
 import os
+from collections.abc import Mapping
 from json import dumps
 from typing import Any
 
@@ -15,6 +16,21 @@ LOG_FILENAME = "allocation_metrics.jsonl"
 # Rough conversion used only to put prompt sizes on a familiar scale. The
 # exact count depends on the tokenizer, so it is reported as an estimate.
 CHARS_PER_TOKEN = 4
+
+
+class ModelCall:
+    """One question put to the model: how many applications it covered, how long its prompt was, and how
+    long the answer took."""
+
+    def __init__(self, applications: int, prompt_chars: int, elapsed_seconds: float) -> None:
+        """Args:
+        applications (int): How many applications the question covered.
+        prompt_chars (int): Length of the prompt sent.
+        elapsed_seconds (float): Wall clock spent waiting for the model.
+        """
+        self.applications = applications
+        self.prompt_chars = prompt_chars
+        self.elapsed_seconds = elapsed_seconds
 
 
 class AllocationMetrics:
@@ -59,17 +75,7 @@ class AllocationMetrics:
         )
 
     def add_call(
-        self,
-        step: int,
-        station_id: int,
-        outcome: str,
-        applications: int,
-        prompt_chars: int,
-        elapsed_seconds: float,
-        provisioned: int,
-        failed: int,
-        omitted: int = 0,
-        invented: int = 0,
+        self, step: int, station_id: int, outcome: str, call: ModelCall, results: Mapping[str, Any] | None = None
     ) -> None:
         """Records a station that was asked.
 
@@ -77,28 +83,25 @@ class AllocationMetrics:
             step (int): Simulator tick.
             station_id (int): The ground station.
             outcome (str): "answered" or "fallback".
-            applications (int): How many applications the question covered.
-            prompt_chars (int): Length of the prompt sent.
-            elapsed_seconds (float): Wall clock spent waiting for the model.
-            provisioned (int): Applications placed.
-            failed (int): Applications that could not be placed.
-            omitted (int): Applications asked about that the reply left out.
-                These are the decisions that used to leave no trace.
-            invented (int): Ids the reply named that were never asked about.
+            call (ModelCall): What the station was asked and how long the answer took.
+            results (dict): What the answer placed, as `hybrid_allocation` counts it, with the
+                applications the reply omitted, which used to leave no trace, and the ids it
+                invented. None when the model failed and its decision placed nothing.
         """
+        results = results or {}
         self.records.append(
             {
                 "step": step,
                 "ground_station": station_id,
                 "outcome": outcome,
                 "reason": None,
-                "applications": applications,
-                "prompt_chars": prompt_chars,
-                "elapsed_seconds": round(elapsed_seconds, 3),
-                "provisioned": provisioned,
-                "failed": failed,
-                "omitted": omitted,
-                "invented": invented,
+                "applications": call.applications,
+                "prompt_chars": call.prompt_chars,
+                "elapsed_seconds": round(call.elapsed_seconds, 3),
+                "provisioned": results.get("provisioned", 0),
+                "failed": results.get("failed", 0),
+                "omitted": results.get("omitted", 0),
+                "invented": results.get("invented", 0),
             }
         )
 

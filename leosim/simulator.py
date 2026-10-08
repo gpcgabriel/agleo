@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import datetime
 import json
 import os
 from collections.abc import Callable
@@ -23,6 +22,9 @@ from .components import (
     random_mobility_model,
 )
 from .scheduler import Scheduler
+
+# Writing the collected metrics to disk every this many ticks, unless a run says otherwise.
+DEFAULT_DUMP_INTERVAL = 100
 
 # Naming the functions a scenario file may refer to, which are the models a component runs:
 # `save_scenary` writes a model by its `__name__`, and `initialize` reads it back from here.
@@ -48,13 +50,10 @@ class Simulator(ComponentManager):
     Attributes:
         _instances (list): List of active Simulator instances.
         _object_count (int): Counter for the number of created objects.
-        time_units (list): Supported time units for conversion.
     """
 
     _instances = []
     _object_count = 0
-
-    time_units = ["seconds", "minutes", "hours"]
 
     # Leaving the simulator out of the scenario file: it loads the file rather than belonging to it.
     saved_in_scenario = False
@@ -65,60 +64,34 @@ class Simulator(ComponentManager):
 
     def __init__(
         self,
-        id: int = 0,
-        stopping_criterion: Callable[[Simulator], bool] | None = None,
         resource_management_algorithm: AllocationAlgorithm | None = None,
-        resource_management_algorithm_parameters: dict[str, Any] | None = None,
         topology_management_algorithm: Callable[..., None] = default_topology_management,
         topology_management_algorithm_parameters: dict[str, Any] | None = None,
-        user_defined_functions: list[Callable[..., Any]] | None = None,
-        scheduler: type[Scheduler] = Scheduler,
-        dump_interval: int = 100,
         logs_directory: str = "logs",
-        ignore_list: list[type[ComponentManager]] | None = None,
-        clean_data_in_memory: bool = False,
-        tick_duration: int = 1,
-        time_unit: str = "seconds",
         scenario: str = "hybrid",
-        repetition: int = 1,
-        topology_name: str | None = None,
     ) -> None:
         """Initializes a new Simulator instance.
 
+        How long a run lasts and how its metrics are written are options of `run`,
+        the only method that runs to an end and writes them.
+
         Args:
-            id (int): Unique identifier for the simulator. Defaults to 0.
-            stopping_criterion (Callable): Binary function that returns True
-                when the simulation should terminate.
             resource_management_algorithm (Callable): Function implementing
-                provisioning and migration policies.
-            resource_management_algorithm_parameters (dict): Parameters
-                passed to the resource management function.
+                provisioning and migration policies, called once per ground station each tick.
             topology_management_algorithm (Callable): Function implementing
                 link addition and removal logic.
             topology_management_algorithm_parameters (dict): Parameters
                 passed to the topology management function.
-            user_defined_functions (list): List of user functions to be
-                injected into the global namespace.
-            scheduler (Class): Scheduler class used for component execution.
-            dump_interval (int): Tick interval for writing logs to disk.
             logs_directory (str): Path where log files will be stored.
-            ignore_list (list): List of agent classes to exclude from metrics.
-            clean_data_in_memory (bool): If True, clears metric lists after
-                each disk dump.
-            tick_duration (int): Duration value for time conversion.
-            time_unit (str): Unit of time (e.g., 'seconds', 'hours').
-            scenario (str): Scenario label for experiment differentiation.
-            repetition (int): Repetition index for the current simulation.
-            topology_name (str): Name or type of the network topology.
+            scenario (str): Scenario label, handed to the resource management function.
+
+        Raises:
+            TypeError: If the resource management algorithm is given and is not callable.
         """
         self.__class__._instances.append(self)
         self.__class__._object_count += 1
+        self.id = self.__class__._object_count
 
-        if id == 0:
-            id = self.__class__._object_count
-        self.id = id
-
-        self.stopping_criterion = stopping_criterion
         self.running = False
 
         if resource_management_algorithm is not None and not callable(resource_management_algorithm):
@@ -129,38 +102,26 @@ class Simulator(ComponentManager):
             )
         self.resource_management_algorithm = resource_management_algorithm
 
-        # Copying the parameters into a fresh dictionary: using the signature
-        # default directly would make two instances share, and overwrite, the
-        # same dictionary.
-        self.resource_management_algorithm_parameters = dict(resource_management_algorithm_parameters or {})
-        self.resource_management_algorithm_parameters["scenario"] = scenario
-
         self.topology_management_algorithm = topology_management_algorithm
         self.topology_management_parameters = dict(topology_management_algorithm_parameters or {})
 
-        self.scheduler = scheduler(self)
+        self.scheduler = Scheduler(self)
         self.topology = Topology()
 
         self.logs_directory = logs_directory
-        self.dump_interval = dump_interval
+        self.agent_metrics: dict[str, list[dict[str, Any]]] = {}
         self.last_dump = 0
-        self.clean_data_in_memory = clean_data_in_memory
-        self.agent_metrics = {}
-        self.ignore_list = list(ignore_list or [])
+        # Holding the metrics log's settings at their defaults until `run` sets them.
+        self.dump_interval = DEFAULT_DUMP_INTERVAL
+        self.clean_data_in_memory = False
+        self.ignore_list = []
 
-        # Converting the time unit through timedelta, for a single standard.
-        self.tick_duration = datetime.timedelta(**{time_unit: tick_duration}).total_seconds()
-
-        # Adding the caller's own models to the ones a scenario file may name.
+        # Naming the models a scenario file may refer to; a caller with models of its own adds them here.
         self.scenario_functions = dict(SCENARIO_FUNCTIONS)
-        for function in user_defined_functions or []:
-            self.scenario_functions[function.__name__] = function
 
         ComponentManager.model = self
 
         self.scenario = scenario
-        self.repetition = repetition
-        self.topology_name = topology_name
 
     def initialize(self, dataset: str) -> None:
         """Initializes agents and their relationships from a JSON dataset.
@@ -255,9 +216,7 @@ class Simulator(ComponentManager):
 
         if self.resource_management_algorithm is not None:
             for gs in GroundStation.all():
-                params = dict(self.resource_management_algorithm_parameters)
-                params["ground_station"] = gs
-                self.resource_management_algorithm(self, params)
+                self.resource_management_algorithm(self, {"scenario": self.scenario, "ground_station": gs})
 
     def monitor(self) -> None:
         """Collects metrics from all tracked components.
@@ -300,18 +259,28 @@ class Simulator(ComponentManager):
             if self.clean_data_in_memory:
                 self.agent_metrics[agent_class] = []
 
-    def run(self) -> None:
-        """Starts the main simulation execution loop.
+    def run(
+        self,
+        stopping_criterion: Callable[[Simulator], bool],
+        clean_data_in_memory: bool = False,
+        dump_interval: int = DEFAULT_DUMP_INTERVAL,
+        ignore_list: list[type[ComponentManager]] | None = None,
+    ) -> None:
+        """Runs ticks until the stopping criterion holds, collecting metrics and writing them to disk.
 
-        Runs until the `stopping_criterion` evaluates to True. Performs
-        initial monitoring and a final data dump after termination.
+        Monitors once before the first tick and writes whatever is left after the last.
+
+        Args:
+            stopping_criterion (Callable): Function of the simulator that returns True
+                when the run should stop.
+            clean_data_in_memory (bool): Whether to drop the metrics from memory after
+                each write to disk.
+            dump_interval (int): Ticks between writes to disk.
+            ignore_list (list): Component classes left out of the metrics.
         """
-        stopping_criterion = self.stopping_criterion
-        if stopping_criterion is None:
-            raise ValueError(
-                "Invalid stopping_criterion: None. Simulator.run needs a function of the simulator that "
-                "returns True when the run should stop."
-            )
+        self.clean_data_in_memory = clean_data_in_memory
+        self.dump_interval = dump_interval
+        self.ignore_list = list(ignore_list or [])
 
         self.running = True
         self.initialize_logs()
