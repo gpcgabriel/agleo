@@ -11,7 +11,17 @@ from itertools import pairwise
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from leosim import Simulator, clear_components
-from leosim.components import GroundStation, NetworkFlow, NetworkLink, ProcessUnit, Satellite, Topology, User
+from leosim.components import (
+    Application,
+    FixedDurationAccessModel,
+    GroundStation,
+    NetworkFlow,
+    NetworkLink,
+    ProcessUnit,
+    Satellite,
+    Topology,
+    User,
+)
 from leosim.components.topology import Node
 
 
@@ -76,6 +86,26 @@ def test_the_exported_topology_lists_the_satellites_users_reach() -> None:
     exported = topology.export_topology()
 
     assert [(link["user"], link["sat"]) for link in exported["user_sat"]] == [(user.id, satellite.id)]
+
+
+def test_a_users_delay_counts_the_wireless_hop_once() -> None:
+    topology, station, satellite, unit, user = make_network()
+    station.wireless_delay = 5
+    access_model = FixedDurationAccessModel(
+        user=user,
+        application=Application(),
+        duration_values=[5],
+        interval_values=[1],
+        connection_duration_values=[5],
+        connection_interval_values=[1],
+    )
+    user.applications_access_models = [access_model]
+    access_model.flow = NetworkFlow(source=user, target=unit, path=[station, satellite, unit])
+
+    delays = [access["Delay"] for access in user.collect_metrics()["Access to Applications"]]
+
+    assert topology.get_path_delay([station, satellite, unit]) == 7
+    assert delays == [7]
 
 
 if __name__ == "__main__":

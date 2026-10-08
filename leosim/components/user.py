@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from ..component_manager import ComponentManager
 from ..geometry import Coordinates
@@ -161,9 +161,8 @@ class User(ComponentManager):
             delay = float("inf")
 
             if flow and flow.status != "waiting":
+                # Taking the path's delay, which already counts the wireless hop to the access point.
                 delay = topology.get_path_delay(flow.path)
-                # Reading the wireless hop from the path's first node, the user's access point.
-                delay += cast("GroundStation | Satellite", flow.path[0]).wireless_delay
 
             accesses.append(
                 {
