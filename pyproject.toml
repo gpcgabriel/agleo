@@ -33,6 +33,21 @@ ignore = ["S311"]
 # Ignoring S603 in the tests: they run the project's own scripts with the running interpreter,
 # never a command built from outside input.
 "tests/*.py" = ["S603"]
+# Ignoring the argument counts where a constructor takes one argument per attribute of what it builds:
+# the engine's components, whose attributes are the fields of their scenario-file records, and the
+# value objects the dashboard and its agent pass around. Grouping the fields would only rename the list.
+"leosim/components/application.py" = ["PLR0913", "PLR0917"]
+"leosim/components/network_flow.py" = ["PLR0913", "PLR0917"]
+"leosim/components/process_unit.py" = ["PLR0913", "PLR0917"]
+"leosim/components/satellite.py" = ["PLR0913", "PLR0917"]
+"leosim/components/application_access_models/access_schedule.py" = ["PLR0913", "PLR0917"]
+"app/core/config.py" = ["PLR0913", "PLR0917"]
+"app/core/actions.py" = ["PLR0913", "PLR0917"]
+# Ignoring them where a function takes one argument per setting of the run it makes: the dashboard
+# agent's run, one benchmark run, and the test builder of a snapshot from its counts.
+"app/agents/dashboard/runner.py" = ["PLR0913", "PLR0917"]
+"benchmark_modes.py" = ["PLR0913", "PLR0917"]
+"tests/test_run_report.py" = ["PLR0913", "PLR0917"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 10

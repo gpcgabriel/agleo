@@ -223,7 +223,9 @@ class ProposalBuffer:
 
         return self.register(ProposedAction(ActionType.RUN_FULL_SIMULATION, payload))
 
-    def propose_restart_simulation(
+    # Taking one argument per setting a restart may change, against ruff's argument count: agno builds the
+    # tool's JSON schema from these parameters, so grouping them would change what the model is asked for.
+    def propose_restart_simulation(  # noqa: PLR0913, PLR0917
         self,
         selected_gml: str | None = None,
         selected_json: str | None = None,
