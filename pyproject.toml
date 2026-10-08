@@ -32,7 +32,7 @@ ignore = ["S311"]
 "**/test_*.py" = ["S101", "PLR2004"]
 # Ignoring S603 in the tests: they run the project's own scripts with the running interpreter,
 # never a command built from outside input.
-"tests/*.py" = ["S603"]
+"tests/**/*.py" = ["S603"]
 # Ignoring the argument counts where a constructor takes one argument per attribute of what it builds:
 # the engine's components, whose attributes are the fields of their scenario-file records, and the
 # value objects the dashboard and its agent pass around. Grouping the fields would only rename the list.
@@ -47,7 +47,7 @@ ignore = ["S311"]
 # agent's run, one benchmark run, and the test builder of a snapshot from its counts.
 "app/agents/dashboard/runner.py" = ["PLR0913", "PLR0917"]
 "benchmark_modes.py" = ["PLR0913", "PLR0917"]
-"tests/test_run_report.py" = ["PLR0913", "PLR0917"]
+"tests/core/test_run_report.py" = ["PLR0913", "PLR0917"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 10

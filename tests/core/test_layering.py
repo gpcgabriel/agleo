@@ -1,0 +1,136 @@
+"""Enforces the boundary between application logic and the interface.
+
+The project's structural rule: `streamlit` may only be imported inside
+`app/ui`. Every module under `app/core` or `app/agents` must work without the
+interface — that is what allows headless simulation runs, agent tests without
+mocks, and later on exposing the simulation through something other than the
+dashboard.
+"""
+
+import ast
+import importlib
+import subprocess
+import sys
+from pathlib import Path
+
+# Pointing at the repository root, two directories above this module's group.
+ROOT = Path(__file__).resolve().parents[2]
+
+DOMAIN_PACKAGES = ("app/core", "app/agents")
+UI_PACKAGE = "app/ui"
+
+
+def imported_modules(path: Path) -> set[str]:
+    """Returns: set: Names of the modules the file imports."""
+    names = set()
+
+    for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+        if isinstance(node, ast.Import):
+            names.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            names.add(node.module)
+
+    return names
+
+
+def run_in_a_fresh_interpreter(statements: str) -> subprocess.CompletedProcess[str]:
+    """Runs Python statements in a new interpreter that has the repository on its path.
+
+    Args:
+        statements (str): Statements separated by semicolons.
+
+    Returns:
+        subprocess.CompletedProcess: The finished process, with its output captured.
+    """
+    script = f"import sys; sys.path.insert(0, {str(ROOT)!r}); {statements}"
+    return subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, check=False)
+
+
+def test_domain_packages_never_import_streamlit() -> None:
+    offenders = []
+
+    for package in DOMAIN_PACKAGES:
+        for path in (ROOT / package).rglob("*.py"):
+            if any(name.split(".")[0] == "streamlit" for name in imported_modules(path)):
+                offenders.append(str(path.relative_to(ROOT)))
+
+    assert not offenders, f"streamlit imported outside app/ui: {offenders}"
+
+
+def test_domain_packages_never_import_the_ui_package() -> None:
+    offenders = []
+
+    for package in DOMAIN_PACKAGES:
+        for path in (ROOT / package).rglob("*.py"):
+            if any(name.startswith("app.ui") for name in imported_modules(path)):
+                offenders.append(str(path.relative_to(ROOT)))
+
+    assert not offenders, f"app/ui imported by the domain layer: {offenders}"
+
+
+def test_domain_packages_import_without_streamlit_loaded() -> None:
+    """Runtime check: importing the domain must not load Streamlit, not even
+    indirectly."""
+    completed = run_in_a_fresh_interpreter(
+        "import app.core.session, app.core.executor, app.core.router,"
+        " app.core.catalog, app.core.handlers, app.agents.dashboard.runner;"
+        " assert 'streamlit' not in sys.modules, 'streamlit was loaded';"
+        " print('ok')"
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert "ok" in completed.stdout
+
+
+def test_every_ui_module_lives_under_the_ui_package() -> None:
+    """No interface module may sit loose outside `app/ui`."""
+    stray = []
+
+    for path in (ROOT / "app").rglob("*.py"):
+        relative = path.relative_to(ROOT).as_posix()
+        if relative.startswith(UI_PACKAGE):
+            continue
+        if any(name.split(".")[0] == "streamlit" for name in imported_modules(path)):
+            stray.append(relative)
+
+    assert not stray, f"interface modules outside app/ui: {stray}"
+
+
+def test_the_engine_never_imports_the_llm_stack() -> None:
+    """`leosim` must run headless, without Ollama or the agent framework."""
+    offenders = []
+
+    for path in (ROOT / "leosim").rglob("*.py"):
+        if any(name.split(".")[0] in ("agno", "ollama") for name in imported_modules(path)):
+            offenders.append(str(path.relative_to(ROOT)))
+
+    assert not offenders, f"the LLM stack is imported by the engine: {offenders}"
+
+
+def test_the_domain_never_imports_the_agent_package() -> None:
+    """Strategies that need the agent package are injected by the composition
+    root, so the domain layer never reaches for them itself."""
+    offenders = []
+
+    for path in (ROOT / "app/core").rglob("*.py"):
+        if any(name.startswith("app.agents") for name in imported_modules(path)):
+            offenders.append(str(path.relative_to(ROOT)))
+
+    assert not offenders, f"app/agents imported by app/core: {offenders}"
+
+
+def test_the_domain_imports_without_the_llm_stack_loaded() -> None:
+    """Runtime check: building a simulation must not load the agent framework."""
+    completed = run_in_a_fresh_interpreter(
+        "import app.core.session, app.core.bootstrap, app.core.handlers;"
+        " assert 'agno' not in sys.modules, 'agno was loaded';"
+        " print('ok')"
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert "ok" in completed.stdout
+
+
+def test_the_domain_modules_are_importable() -> None:
+    for name in ("app.core.session", "app.core.router", "app.core.handlers", "app.agents.dashboard.runner"):
+        assert importlib.import_module(name) is not None

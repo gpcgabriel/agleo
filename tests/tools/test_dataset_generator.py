@@ -1,0 +1,305 @@
+"""Tests for the scenario builders in `dataset_generator`.
+
+The N2YO API is never reached: `requests.get` is replaced by a response built here, and the
+key the code reads from the environment is a placeholder set for the test alone.
+"""
+
+import json
+import os
+import tempfile
+from typing import Any
+from unittest.mock import MagicMock, patch
+
+import requests
+
+from dataset_generator import (
+    Sighting,
+    build_satellites,
+    capture_steps_from_api,
+    create_application_to_user,
+    create_user,
+    get_satellites_from_api,
+    load_satellites_from_api,
+    load_satellites_from_file,
+)
+from dataset_generator.__main__ import main as capture_main
+from dataset_generator.__main__ import parse_arguments
+from dataset_generator.create_components import N2YO_KEY_VARIABLE, REFERENCE_POINT
+from leosim import clear_components
+from leosim.components import DynamicDurationAccessModel, Satellite
+
+TEST_KEY = "test-key"
+
+
+def seen(satellite_id: int, latitude: float) -> Sighting:
+    """Returns: Sighting: One satellite as the N2YO "above" endpoint reports it."""
+    return {
+        "satid": satellite_id,
+        "satname": f"STARLINK-{satellite_id}",
+        "intDesignator": "2019-074A",
+        "launchDate": "2019-11-11",
+        "satlat": latitude,
+        "satlng": -47.0,
+        "satalt": 550.0,
+    }
+
+
+def answering(payload: dict[str, Any]) -> MagicMock:
+    """Returns: MagicMock: A response from the API carrying the given payload."""
+    response = MagicMock()
+    response.json.return_value = payload
+    return response
+
+
+# -- Asking the API ----------------------------------------------------------
+
+
+def test_the_api_is_asked_with_the_key_from_the_environment() -> None:
+    with (
+        patch.dict(os.environ, {N2YO_KEY_VARIABLE: TEST_KEY}),
+        patch("requests.get", return_value=answering({"above": [seen(1, -15.0)]})) as get,
+    ):
+        satellites = get_satellites_from_api((-15.6, -48.0, 0), sat_range=70)
+
+    assert satellites == [seen(1, -15.0)]
+    url = get.call_args.args[0]
+    assert url.endswith(f"/-15.6/-48.0/0/70/52/&apiKey={TEST_KEY}")
+    assert get.call_args.kwargs["timeout"] > 0
+
+
+def test_a_missing_key_is_refused_before_any_request() -> None:
+    with patch.dict(os.environ), patch("requests.get") as get:
+        os.environ.pop(N2YO_KEY_VARIABLE, None)
+        try:
+            get_satellites_from_api((-15.6, -48.0), sat_range=70)
+        except ValueError as error:
+            assert N2YO_KEY_VARIABLE in str(error)
+        else:
+            raise AssertionError("a request without a key was attempted")
+
+    get.assert_not_called()
+
+
+def test_an_error_the_api_reports_is_raised_instead_of_reading_as_no_satellites() -> None:
+    with (
+        patch.dict(os.environ, {N2YO_KEY_VARIABLE: TEST_KEY}),
+        patch("requests.get", return_value=answering({"error": "Invalid API Key!"})),
+    ):
+        try:
+            get_satellites_from_api((-15.6, -48.0), sat_range=70)
+        except ValueError as error:
+            assert "Invalid API Key!" in str(error)
+        else:
+            raise AssertionError("an error answer was read as an empty sky")
+
+
+def test_an_http_error_is_raised() -> None:
+    response = answering({})
+    response.raise_for_status.side_effect = requests.exceptions.HTTPError("429 Too Many Requests")
+
+    with patch.dict(os.environ, {N2YO_KEY_VARIABLE: TEST_KEY}), patch("requests.get", return_value=response):
+        try:
+            get_satellites_from_api((-15.6, -48.0), sat_range=70)
+        except requests.exceptions.HTTPError as error:
+            assert "429" in str(error)
+        else:
+            raise AssertionError("an HTTP error was swallowed")
+
+
+def test_a_radius_reaching_below_the_horizon_is_refused_before_any_request() -> None:
+    with patch.dict(os.environ, {N2YO_KEY_VARIABLE: TEST_KEY}), patch("requests.get") as get:
+        try:
+            get_satellites_from_api((-15.6, -48.0), sat_range=1000)
+        except ValueError as error:
+            assert "1000" in str(error)
+        else:
+            raise AssertionError("a radius reaching below the horizon was sent")
+
+    get.assert_not_called()
+
+
+# -- Building satellites from a capture ----------------------------------------------
+
+
+def test_a_satellite_first_seen_later_starts_with_empty_slots() -> None:
+    """Its trace lines up with the steps: one empty slot per step before it was first seen."""
+    clear_components()
+    build_satellites([[seen(1, -10.0)], [seen(1, -11.0), seen(2, -20.0)]], max_satellites=10)
+
+    first, second = Satellite.all()
+    assert first.coordinates_trace == [(-10.0, -47.0, 550.0), (-11.0, -47.0, 550.0)]
+    assert first.coordinates == (-10.0, -47.0, 550.0)
+    assert second.coordinates_trace == [None, (-20.0, -47.0, 550.0)]
+    assert second.coordinates is None
+
+
+def test_a_satellite_missing_from_a_step_keeps_an_empty_slot_for_it() -> None:
+    """The positions measured after the gap stay at the steps they were measured in."""
+    clear_components()
+    build_satellites([[seen(1, -10.0)], [], [seen(1, -12.0)], [seen(1, -13.0)]], max_satellites=10)
+
+    assert Satellite.all()[0].coordinates_trace == [
+        (-10.0, -47.0, 550.0),
+        None,
+        (-12.0, -47.0, 550.0),
+        (-13.0, -47.0, 550.0),
+    ]
+
+
+def test_every_trace_holds_one_slot_per_step() -> None:
+    clear_components()
+    build_satellites([[seen(1, -10.0)], [seen(2, -20.0)], []], max_satellites=10)
+
+    assert [len(satellite.coordinates_trace) for satellite in Satellite.all()] == [3, 3]
+
+
+def test_the_first_satellites_seen_are_the_ones_kept() -> None:
+    clear_components()
+    build_satellites([[seen(1, -10.0), seen(2, -11.0), seen(3, -12.0)]], max_satellites=2)
+
+    assert [satellite.name for satellite in Satellite.all()] == ["SATELLITE-1", "SATELLITE-2"]
+
+
+def test_a_traces_file_is_read_up_to_the_steps_asked_for() -> None:
+    steps = [[seen(1, -10.0 - index)] for index in range(5)]
+
+    with tempfile.TemporaryDirectory() as directory:
+        path = os.path.join(directory, "traces.json")
+        with open(path, "w", encoding="UTF-8") as file:
+            json.dump(steps, file)
+
+        clear_components()
+        load_satellites_from_file(path, max_steps=3, max_satellites=10)
+
+    assert len(Satellite.all()[0].coordinates_trace) == 3
+
+
+def test_a_capture_asks_once_per_step_and_waits_between_captures() -> None:
+    steps = [[seen(1, -10.0)], [seen(1, -11.0), seen(2, -20.0)]]
+
+    with (
+        patch("dataset_generator.create_components.get_satellites_from_api", side_effect=steps) as ask,
+        patch("dataset_generator.create_components.sleep") as wait,
+    ):
+        captured = capture_steps_from_api(max_steps=2, interval=30)
+
+    assert captured == steps
+    assert [call.args[0] for call in ask.call_args_list] == [REFERENCE_POINT, REFERENCE_POINT]
+    assert [call.args for call in wait.call_args_list] == [(30,)]
+
+
+def test_a_capture_searches_the_whole_sky_once_a_minute_by_default() -> None:
+    with (
+        patch("dataset_generator.create_components.get_satellites_from_api", return_value=[]) as ask,
+        patch("dataset_generator.create_components.sleep") as wait,
+    ):
+        capture_steps_from_api(max_steps=2)
+
+    assert [call.kwargs["sat_range"] for call in ask.call_args_list] == [90, 90]
+    assert [call.args for call in wait.call_args_list] == [(60,)]
+
+
+def test_a_capture_from_the_api_builds_the_same_satellites_as_a_file_would() -> None:
+    steps = [[seen(1, -10.0)], [seen(1, -11.0), seen(2, -20.0)]]
+
+    with (
+        patch("dataset_generator.create_components.get_satellites_from_api", side_effect=steps),
+        patch("dataset_generator.create_components.sleep"),
+    ):
+        clear_components()
+        load_satellites_from_api(max_steps=2, interval=0, max_satellites=10)
+    captured = [satellite.coordinates_trace for satellite in Satellite.all()]
+
+    clear_components()
+    build_satellites(steps, max_satellites=10)
+
+    assert captured == [satellite.coordinates_trace for satellite in Satellite.all()]
+
+
+# -- Applications ----------------------------------------------------------------
+
+
+def test_an_application_uses_the_access_model_asked_for() -> None:
+    clear_components()
+    user = create_user((-15.0, -47.0, 0))
+
+    application = create_application_to_user(user, 10, 10, access_class=DynamicDurationAccessModel)
+
+    assert isinstance(user.applications_access_models[0], DynamicDurationAccessModel)
+    assert user.applications == [application]
+
+
+# -- The capture CLI -------------------------------------------------------------
+
+
+def test_the_capture_cli_writes_a_traces_file_the_loaders_read() -> None:
+    steps = [[seen(1, -10.0)], [seen(1, -11.0), seen(2, -20.0)]]
+
+    with tempfile.TemporaryDirectory() as directory:
+        path = os.path.join(directory, "traces.json")
+        with (
+            patch("dataset_generator.create_components.get_satellites_from_api", side_effect=steps),
+            patch("dataset_generator.create_components.sleep"),
+        ):
+            capture_main(["--output", path, "--steps", "2"])
+
+        with open(path, encoding="UTF-8") as file:
+            written = json.load(file)
+        clear_components()
+        load_satellites_from_file(path, max_steps=2, max_satellites=10)
+
+    assert written == steps
+    assert [satellite.coordinates_trace for satellite in Satellite.all()] == [
+        [(-10.0, -47.0, 550.0), (-11.0, -47.0, 550.0)],
+        [None, (-20.0, -47.0, 550.0)],
+    ]
+
+
+def test_an_interrupted_capture_keeps_what_was_captured() -> None:
+    answers = [[seen(1, -10.0)], requests.exceptions.ConnectionError("network down")]
+
+    with tempfile.TemporaryDirectory() as directory:
+        path = os.path.join(directory, "traces.json")
+        with (
+            patch("dataset_generator.create_components.get_satellites_from_api", side_effect=answers),
+            patch("dataset_generator.create_components.sleep"),
+        ):
+            try:
+                capture_main(["--output", path, "--steps", "3"])
+            except requests.exceptions.ConnectionError as error:
+                assert "network down" in str(error)
+            else:
+                raise AssertionError("the failed request was swallowed")
+
+        with open(path, encoding="UTF-8") as file:
+            assert json.load(file) == [[seen(1, -10.0)]]
+
+
+def test_the_capture_cli_never_overwrites_a_file() -> None:
+    with tempfile.TemporaryDirectory() as directory:
+        path = os.path.join(directory, "satellites.json")
+        with open(path, "w", encoding="UTF-8") as file:
+            file.write("kept")
+
+        # Replacing the wait too, so that a capture the guard lets through fails at once.
+        with (
+            patch("dataset_generator.create_components.get_satellites_from_api", return_value=[]) as ask,
+            patch("dataset_generator.create_components.sleep"),
+        ):
+            try:
+                capture_main(["--output", path])
+            except SystemExit as exit_signal:
+                assert exit_signal.code == 2
+            else:
+                raise AssertionError("an existing file was accepted as the output")
+
+        with open(path, encoding="UTF-8") as file:
+            assert file.read() == "kept"
+    ask.assert_not_called()
+
+
+def test_the_capture_cli_searches_the_whole_sky_once_a_minute_by_default() -> None:
+    with tempfile.TemporaryDirectory() as directory:
+        options = parse_arguments(["--output", os.path.join(directory, "traces.json")])
+
+    assert (options.radius, options.interval, options.steps) == (90, 60, 10)
