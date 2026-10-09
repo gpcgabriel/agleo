@@ -7,6 +7,7 @@ import streamlit as st
 from streamlit_folium import st_folium
 
 from app.ui.gui.icons import icon_globe, wrap_icon
+from app.ui.telemetry import ground_station_rows, satellite_rows, user_rows
 
 if TYPE_CHECKING:
     from app.core.session import SimulationSession
@@ -68,11 +69,11 @@ def render_map(session: SimulationSession, is_dark: bool, locked: bool = False) 
     with st.expander("Telemetry Details", expanded=False):
         t_sat, t_gs, t_user = st.tabs(["Satellites", "Ground Stations", "Users"])
         with t_sat:
-            st.dataframe(snapshot["satellites"])
+            st.dataframe(satellite_rows(snapshot))
         with t_gs:
-            st.dataframe(snapshot["ground_stations"])
+            st.dataframe(ground_station_rows(snapshot))
         with t_user:
-            st.dataframe(snapshot["users"])
+            st.dataframe(user_rows(snapshot))
 
 
 def render_timeline(session: SimulationSession, locked: bool) -> None:
