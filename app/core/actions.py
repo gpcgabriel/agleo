@@ -150,6 +150,11 @@ class NodeSpec:
     # makes. Satellites in the shipped traces sit between 320 and 528 km.
     DEFAULT_ALTITUDE = {"Satellite": 550.0, "GroundStation": 0.0}
 
+    # Bounding a satellite to low Earth orbit, the only kind this simulator
+    # models: below 160 km an orbit decays within days, and medium Earth orbit
+    # begins at 2000 km.
+    SATELLITE_ALTITUDE_KM = (160.0, 2000.0)
+
     def __init__(
         self,
         node_type: str,
@@ -164,7 +169,13 @@ class NodeSpec:
             raise ValueError(f"Invalid node_type: {node_type!r}. Expected one of {self.NODE_TYPES}.")
 
         lat, lon = check_coordinates(lat, lon)
-        alt = self.DEFAULT_ALTITUDE[node_type] if alt is None else alt
+        alt = self.DEFAULT_ALTITUDE[node_type] if alt is None else float(alt)
+        lowest, highest = self.SATELLITE_ALTITUDE_KM
+        if node_type == "Satellite" and not lowest <= alt <= highest:
+            raise ValueError(
+                f"A satellite's altitude must be between {lowest:.0f} and {highest:.0f} km (low Earth orbit), "
+                f"got {alt} km."
+            )
         cpu = randint(20, 100) if cpu is None else int(cpu)
         memory = randint(20, 100) if memory is None else int(memory)
         if cpu < 1:

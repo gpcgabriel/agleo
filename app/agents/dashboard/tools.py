@@ -284,7 +284,9 @@ class ProposalBuffer:
             node_types: List of node types, for example ["Satellite"].
             latitudes: List of latitudes, one per node. Optional.
             longitudes: List of longitudes, one per node. Optional.
-            altitudes: List of altitudes in kilometres, one per node. Optional.
+            altitudes: List of altitudes in kilometres, one per node. Optional: leave it out
+                unless the operator states an altitude. A distance from another node is not an
+                altitude, and a satellite sits between 160 and 2000 km.
         """
         try:
             node_types = coerce_list(node_types, "node_types")

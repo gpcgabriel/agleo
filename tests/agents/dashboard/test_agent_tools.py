@@ -70,6 +70,28 @@ def test_add_node_rejects_mismatched_parallel_lists() -> None:
     assert buffer.get_proposals() == []
 
 
+def test_a_satellite_outside_low_earth_orbit_is_refused() -> None:
+    """Observed 9 October 2026: "500m away from ground station 18" came back as an
+    altitude of half a kilometre, and the satellite was added on the ground."""
+    buffer = ProposalBuffer()
+
+    for altitude in (0.5, 0.0, 36000.0):
+        message = buffer.propose_add_node(["Satellite"], [-8.7619], [-63.9039], [altitude])
+        assert message.startswith("Error"), f"a satellite at {altitude} km was accepted"
+        assert "160" in message and "2000" in message, message
+
+    assert buffer.get_proposals() == []
+
+
+def test_a_satellite_with_no_altitude_stated_is_placed_in_low_earth_orbit() -> None:
+    buffer = ProposalBuffer()
+    buffer.propose_add_node(["Satellite"], [-8.7619], [-63.9039])
+
+    payload = last_proposal(buffer).payload
+    assert isinstance(payload, AddNodesPayload)
+    assert 160 <= payload.nodes[0].alt <= 2000
+
+
 def test_repeated_add_node_calls_merge_into_one_proposal() -> None:
     buffer = ProposalBuffer()
     buffer.propose_add_node(["Satellite"], [-21.0], [-47.8], [550.0])
