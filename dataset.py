@@ -2,13 +2,14 @@ from random import choices, randint, sample
 
 from app.core.infrastructure import GROUND_STATION_LINK_DELAY, SATELLITE_LINK_DELAY
 from dataset_generator import (
-    create_application_to_user,
+    attach_application_to_user,
     create_link,
     create_satellite_topology,
     create_user,
     load_ground_topology_from_gml,
 )
 from leosim.components import (
+    Application,
     FixedDurationAccessModel,
     GroundStation,
     NetworkLink,
@@ -52,9 +53,8 @@ def create_users(num_users: int) -> None:
         user = create_user(coordinates)
         user.mobility_model = random_mobility_model
 
-        create_application_to_user(
-            user=user, cpu_demand=randint(10, 50), memory_demand=randint(10, 50), access_class=FixedDurationAccessModel
-        )
+        application = Application(cpu_demand=randint(10, 50), memory_demand=randint(10, 50))
+        attach_application_to_user(user, application, access_class=FixedDurationAccessModel)
 
 
 def add_process_unit_to_satellites(topology: Topology, num_process_units: int) -> None:

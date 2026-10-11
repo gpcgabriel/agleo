@@ -67,40 +67,34 @@ def create_user(coordinates: Coordinates, connection_range: int = MAX_RANGE) -> 
     return user
 
 
-def create_application_to_user(
-    user: User,
-    cpu_demand: int = 0,
-    memory_demand: int = 0,
-    storage_demand: int = 0,
-    access_class: type = FixedDurationAccessModel,
+def attach_application_to_user(
+    user: User, application: Application, access_class: type = FixedDurationAccessModel, start: int = 1
 ) -> Application:
-    """Creates an application for a user, accessed through a model drawn at random.
+    """Links an application to a user, accessed through a model drawn at random.
 
     Args:
         user (User): The user who owns it.
-        cpu_demand (int): CPU the application needs.
-        memory_demand (int): Memory the application needs.
-        storage_demand (int): Storage the application needs.
+        application (Application): The application, with its demands already set.
         access_class (type): The access model, `FixedDurationAccessModel` or
             `DynamicDurationAccessModel`.
+        start (int): The step the first access begins at: the first tick for a
+            scenario being built, the next tick for an application added mid-run.
 
     Returns:
-        Application: The application, already linked to the user.
+        Application: The application, now linked to the user.
     """
-    app = Application(cpu_demand=cpu_demand, memory_demand=memory_demand, storage_demand=storage_demand)
-
     access_model = access_class(
         user=user,
-        application=app,
-        start=1,
+        application=application,
+        start=start,
         duration_values=choices(ACCESS_CYCLE_LENGTHS, k=ACCESS_CYCLES_DRAWN),
         interval_values=choices(ACCESS_CYCLE_LENGTHS, k=ACCESS_CYCLES_DRAWN),
         connection_duration_values=choices(ACCESS_CYCLE_LENGTHS, k=ACCESS_CYCLES_DRAWN),
         connection_interval_values=choices(ACCESS_CYCLE_LENGTHS, k=ACCESS_CYCLES_DRAWN),
     )
 
-    user.connection_to_application(application=app, access_model=access_model)
-    return app
+    user.connection_to_application(application=application, access_model=access_model)
+    return application
 
 
 def create_link(

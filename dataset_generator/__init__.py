@@ -2,9 +2,9 @@
 
 from .create_components import (
     Sighting,
+    attach_application_to_user,
     build_satellites,
     capture_steps_from_api,
-    create_application_to_user,
     create_link,
     create_satellite_topology,
     create_user,
@@ -19,7 +19,7 @@ __all__ = [
     "Sighting",
     "build_satellites",
     "capture_steps_from_api",
-    "create_application_to_user",
+    "attach_application_to_user",
     "create_link",
     "create_satellite_topology",
     "create_user",

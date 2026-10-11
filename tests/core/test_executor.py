@@ -11,7 +11,7 @@ from app.core.action_result import ActionResult
 from app.core.config import SimulationConfig
 from app.core.executor import execute_action
 from app.core.session import SimulationSession, create_session
-from leosim.components import GroundStation, Satellite
+from leosim.components import GroundStation, Satellite, User
 from tests.proposals import last_proposal
 
 
@@ -97,3 +97,21 @@ def test_adding_an_application_to_an_unknown_user_is_reported() -> None:
 
     assert result.toast is not None
     assert "not found" in result.toast
+
+
+def test_an_application_added_mid_run_is_requested_on_the_next_step() -> None:
+    """Measured 11 October 2026: an application added at step 5 had its first access
+    scheduled from step 1, already under way, so its user only requested it at the
+    next access, on step 29, and it stayed unallocated all the while."""
+    session = make_session()
+    # Setting the clock by hand: the access is scheduled against it, and no tick is needed.
+    session.simulator.scheduler.steps = 5
+    user = User.find_by("id", 1)
+    assert user is not None
+
+    apply(session, lambda buffer: buffer.propose_add_app_to_user(1, 25, 30))
+    access_model = user.applications_access_models[-1]
+    user.follow_access(access_model)
+
+    assert access_model.history[-1]["start"] == 6
+    assert access_model.request_provisioning, "the application is not requested on the step after it was added"

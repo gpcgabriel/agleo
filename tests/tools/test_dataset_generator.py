@@ -14,9 +14,9 @@ import requests
 
 from dataset_generator import (
     Sighting,
+    attach_application_to_user,
     build_satellites,
     capture_steps_from_api,
-    create_application_to_user,
     create_user,
     get_satellites_from_api,
     load_satellites_from_api,
@@ -26,7 +26,7 @@ from dataset_generator.__main__ import main as capture_main
 from dataset_generator.__main__ import parse_arguments
 from dataset_generator.create_components import N2YO_KEY_VARIABLE, REFERENCE_POINT
 from leosim import clear_components
-from leosim.components import DynamicDurationAccessModel, Satellite
+from leosim.components import Application, DynamicDurationAccessModel, Satellite
 
 TEST_KEY = "test-key"
 
@@ -223,7 +223,9 @@ def test_an_application_uses_the_access_model_asked_for() -> None:
     clear_components()
     user = create_user((-15.0, -47.0, 0))
 
-    application = create_application_to_user(user, 10, 10, access_class=DynamicDurationAccessModel)
+    application = attach_application_to_user(
+        user, Application(cpu_demand=10, memory_demand=10), access_class=DynamicDurationAccessModel
+    )
 
     assert isinstance(user.applications_access_models[0], DynamicDurationAccessModel)
     assert user.applications == [application]
