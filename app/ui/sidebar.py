@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, TypedDict
 import streamlit as st
 
 from app.agents.allocation import LLMAllocator
+from app.agents.dashboard.runner import MODE_TOOLS
 from app.core.config import SimulationConfig
 from app.core.session import create_session
 from app.helper_functions.ollama_helper import DEFAULT_MODEL, list_local_models, model_is_available
@@ -22,7 +23,7 @@ class SidebarChoices(TypedDict):
 
     config: SimulationConfig
     agent_actions_enabled: bool
-    # "Tools" or "Skills", or None when the agent is not allowed to act.
+    # "Tools", or None when the agent is not allowed to act.
     agent_mode: str | None
 
 
@@ -74,10 +75,9 @@ def render_sidebar(ollama_ok: bool, locked: bool = False) -> SidebarChoices:
     # Letting the operator enable or disable agent actions.
     agent_actions_enabled = st.sidebar.checkbox("Allow Agent to execute actions", value=True, disabled=locked)
 
-    if agent_actions_enabled:
-        agent_mode = st.sidebar.radio("Agent Mode", ("Tools", "Skills"), key="agent_mode_key", disabled=locked)
-    else:
-        agent_mode = None
+    # Offering the Tools mode alone: Skills stays in the code, out of the
+    # interface, until it can be tested again.
+    agent_mode = MODE_TOOLS if agent_actions_enabled else None
 
     config = SimulationConfig(**settings)
     render_initialize_button(config, locked)
